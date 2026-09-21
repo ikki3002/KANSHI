@@ -1,0 +1,178 @@
+/* 
+ * Kanshi WMS - White & Dark Red Cherry Theme
+ * Clean, professional industrial aesthetic
+ * Global Typography: Segoe UI / Modern Industrial Sans-Serif
+ */
+
+.root {
+    -fx-font-family: "Segoe UI", "Inter", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    -fx-background-color: #f3f4f8;
+    -fx-font-size: 14px;
+}
+
+/* Full Screen Workspace Layout: Soft Light Canvas */
+.main-container {
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #edf0f5);
+    -fx-alignment: center;
+}
+
+/* Professional White & Dark Cherry Red Card */
+.portal-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8px;
+    -fx-border-color: #7a0c1e #e2e8f0 #e2e8f0 #e2e8f0;
+    -fx-border-width: 4px 1px 1px 1px;
+    -fx-border-radius: 8px;
+    -fx-padding: 38px 40px 38px 40px;
+    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.12), 30, 0.15, 0, 10);
+    -fx-min-width: 420px;
+    -fx-max-width: 440px;
+}
+
+/* Heading: Dark Red Cherry KANSHI WMS */
+.portal-brand {
+    -fx-text-fill: #7a0c1e;
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: 0.5px;
+}
+
+/* Mode Switcher Tabs (White & Dark Cherry Red) */
+.mode-switch-box {
+    -fx-background-color: #f1f3f7;
+    -fx-background-radius: 6px;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+    -fx-padding: 4px;
+}
+
+.mode-tab-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #4b5563;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-padding: 9px 18px;
+    -fx-cursor: hand;
+    -fx-background-radius: 4px;
+}
+
+.mode-tab-btn:hover {
+    -fx-text-fill: #7a0c1e;
+}
+
+.mode-tab-btn-active {
+    -fx-background-color: #7a0c1e;
+    -fx-text-fill: #ffffff;
+    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.25), 8, 0, 0, 2);
+}
+
+.mode-tab-btn-active:hover {
+    -fx-text-fill: #ffffff;
+    -fx-background-color: #8c0f24;
+}
+
+/* Form Controls */
+.field-label {
+    -fx-text-fill: #1f2937;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
+
+.industrial-input {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #111827;
+    -fx-prompt-text-fill: #9ca3af;
+    -fx-background-radius: 5px;
+    -fx-border-color: #d1d5db;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-padding: 10px 14px;
+    -fx-font-size: 14px;
+}
+
+.industrial-input:focused {
+    -fx-border-color: #7a0c1e;
+    -fx-border-width: 1.5px;
+    -fx-background-color: #ffffff;
+    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.2), 6, 0, 0, 0);
+}
+
+/* Primary Dark Cherry Red Button with White Text */
+.btn-primary {
+    -fx-background-color: #7a0c1e;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-padding: 11px 20px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #96152b;
+    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.35), 12, 0, 0, 3);
+}
+
+.btn-primary:pressed {
+    -fx-background-color: #5a0815;
+}
+
+/* Password Strength Meter */
+.progress-bar {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-pref-height: 6px;
+}
+
+.progress-bar > .track {
+    -fx-background-color: #e5e7eb;
+    -fx-background-radius: 3px;
+}
+
+.progress-bar.strength-weak > .bar {
+    -fx-background-color: #dc2626;
+    -fx-background-radius: 3px;
+}
+
+.progress-bar.strength-medium > .bar {
+    -fx-background-color: #d97706;
+    -fx-background-radius: 3px;
+}
+
+.progress-bar.strength-strong > .bar {
+    -fx-background-color: #059669;
+    -fx-background-radius: 3px;
+}
+
+.strength-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.strength-hint {
+    -fx-font-size: 12px;
+    -fx-text-fill: #4b5563;
+}
+
+/* Clean Status Banner */
+.status-banner {
+    -fx-padding: 10px 14px;
+    -fx-background-radius: 5px;
+    -fx-font-size: 13px;
+    -fx-alignment: center-left;
+}
+
+.status-banner-error {
+    -fx-background-color: #fef2f2;
+    -fx-border-color: #fca5a5;
+    -fx-border-width: 1px;
+    -fx-text-fill: #991b1b;
+}
+
+.status-banner-success {
+    -fx-background-color: #ecfdf5;
+    -fx-border-color: #a7f3d0;
+    -fx-border-width: 1px;
+    -fx-text-fill: #065f46;
+}

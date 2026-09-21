@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.example.kanshiwarehousemanagementsystem.controller.LoginController"
+           styleClass="main-container">
+
+    <!-- Centered Professional Login Card -->
+    <VBox alignment="CENTER" spacing="20" styleClass="portal-card">
+
+        <!-- Heading: Only KANSHI WMS as requested -->
+        <VBox alignment="CENTER">
+            <Label text="KANSHI WMS" styleClass="portal-brand" />
+        </VBox>
+
+        <!-- Mode Switcher Tabs -->
+        <HBox spacing="6" alignment="CENTER" styleClass="mode-switch-box">
+            <Button fx:id="btnSignInTab" text="Sign In" onAction="#handleShowSignIn"
+                    styleClass="mode-tab-btn, mode-tab-btn-active" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+            <Button fx:id="btnRegisterTab" text="Register" onAction="#handleShowRegister"
+                    styleClass="mode-tab-btn" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+        </HBox>
+
+        <!-- Dynamic Feedback Banner -->
+        <Label fx:id="lblStatus" wrapText="true" visible="false" managed="false" maxWidth="Infinity" />
+
+        <!-- 1. Industry Standard Sign In Form -->
+        <VBox fx:id="loginFormBox" spacing="14">
+            <VBox spacing="6">
+                <Label text="Username or Email" styleClass="field-label" />
+                <TextField fx:id="txtLoginIdentifier" promptText="Enter username or email" styleClass="industrial-input" />
+            </VBox>
+
+            <VBox spacing="6">
+                <Label text="Password" styleClass="field-label" />
+                <PasswordField fx:id="txtLoginPassword" promptText="Enter password" styleClass="industrial-input" />
+            </VBox>
+
+            <Button fx:id="btnLoginSubmit" text="Sign In" onAction="#handleLoginSubmit"
+                    styleClass="btn-primary" maxWidth="Infinity">
+                <VBox.margin>
+                    <Insets top="6" />
+                </VBox.margin>
+            </Button>
+        </VBox>
+
+        <!-- 2. Clean Registration Form (Gmail, Username, Password) -->
+        <VBox fx:id="registerFormBox" spacing="14" visible="false" managed="false">
+            <VBox spacing="6">
+                <Label text="Gmail / Email Address" styleClass="field-label" />
+                <TextField fx:id="txtRegEmail" promptText="e.g. user@gmail.com" styleClass="industrial-input" />
+            </VBox>
+
+            <VBox spacing="6">
+                <Label text="Username" styleClass="field-label" />
+                <TextField fx:id="txtRegUsername" promptText="Choose a username" styleClass="industrial-input" />
+            </VBox>
+
+            <VBox spacing="6">
+                <Label text="Password" styleClass="field-label" />
+                <PasswordField fx:id="txtRegPassword" promptText="Create a password" styleClass="industrial-input" />
+            </VBox>
+
+            <!-- Real-Time Password Strength Meter -->
+            <VBox spacing="4">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="Strength:" styleClass="field-label" />
+                    <Label fx:id="lblStrengthLevel" text="Empty" styleClass="strength-label" />
+                </HBox>
+                <ProgressBar fx:id="progressStrength" progress="0.0" maxWidth="Infinity" styleClass="progress-bar, strength-weak" />
+                <Label fx:id="lblStrengthHint" text="Requires >= 8 chars, uppercase, number, symbol" styleClass="strength-hint" wrapText="true" />
+            </VBox>
+
+            <VBox spacing="6">
+                <Label text="Confirm Password" styleClass="field-label" />
+                <PasswordField fx:id="txtRegConfirmPassword" promptText="Confirm password" styleClass="industrial-input" />
+            </VBox>
+
+            <Button fx:id="btnRegSubmit" text="Create Account" onAction="#handleRegisterSubmit"
+                    styleClass="btn-primary" maxWidth="Infinity">
+                <VBox.margin>
+                    <Insets top="6" />
+                </VBox.margin>
+            </Button>
+        </VBox>
+
+    </VBox>
+</StackPane>
