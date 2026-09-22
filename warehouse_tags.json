@@ -1,0 +1,26 @@
+[
+  {
+    "id": "coil_0",
+    "name": "Belt Conveyor (6m) 0",
+    "address": 0,
+    "type": "COIL"
+  },
+  {
+    "id": "coil_1",
+    "name": "Belt Conveyor (6m) 1",
+    "address": 1,
+    "type": "COIL"
+  },
+  {
+    "id": "coil_2",
+    "name": "Curved Belt Conveyor 0 CW",
+    "address": 2,
+    "type": "COIL"
+  },
+  {
+    "id": "input_0",
+    "name": "Vision Sensor 0",
+    "address": 0,
+    "type": "DISCRETE_INPUT"
+  }
+]

@@ -102,20 +102,71 @@
 .btn-primary {
     -fx-background-color: #7a0c1e;
     -fx-text-fill: #ffffff;
-    -fx-font-size: 15px;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
-    -fx-padding: 11px 20px;
+    -fx-padding: 9px 18px;
     -fx-background-radius: 5px;
     -fx-cursor: hand;
 }
 
 .btn-primary:hover {
     -fx-background-color: #96152b;
-    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.35), 12, 0, 0, 3);
+    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.35), 10, 0, 0, 2);
 }
 
 .btn-primary:pressed {
     -fx-background-color: #5a0815;
+}
+
+/* Secondary Button */
+.btn-secondary {
+    -fx-background-color: #e5e7eb;
+    -fx-text-fill: #1f2937;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-padding: 9px 18px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #d1d5db;
+}
+
+/* Danger / Emergency Stop Button */
+.btn-estop {
+    -fx-background-color: #991b1b;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+    -fx-padding: 10px 22px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(153, 27, 27, 0.4), 12, 0, 0, 3);
+}
+
+.btn-estop:hover {
+    -fx-background-color: #b91c1c;
+}
+
+.btn-estop:pressed {
+    -fx-background-color: #7f1d1d;
+}
+
+.btn-danger {
+    -fx-background-color: #fee2e2;
+    -fx-text-fill: #991b1b;
+    -fx-border-color: #f87171;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-padding: 5px 12px;
+    -fx-cursor: hand;
+}
+
+.btn-danger:hover {
+    -fx-background-color: #fecaca;
 }
 
 /* Password Strength Meter */
@@ -175,4 +226,171 @@
     -fx-border-color: #a7f3d0;
     -fx-border-width: 1px;
     -fx-text-fill: #065f46;
+}
+
+/* =========================================================================
+ * Hardware Test Station & Tag Settings Styling
+ * ========================================================================= */
+
+.station-header-bar {
+    -fx-background-color: #ffffff;
+    -fx-padding: 14px 24px;
+    -fx-border-color: #e5e7eb;
+    -fx-border-width: 0 0 1 0;
+    -fx-alignment: center-left;
+}
+
+.station-title {
+    -fx-text-fill: #7a0c1e;
+    -fx-font-size: 20px;
+    -fx-font-weight: 800;
+}
+
+.station-subtitle {
+    -fx-text-fill: #6b7280;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.connection-toolbar {
+    -fx-background-color: #f8fafc;
+    -fx-padding: 10px 24px;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* Dynamic Actuator & Sensor Cards */
+.hardware-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 6px;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+    -fx-padding: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 10, 0.1, 0, 2);
+    -fx-min-width: 220px;
+}
+
+.hardware-card-active {
+    -fx-border-color: #059669;
+    -fx-border-width: 1.5px;
+    -fx-background-color: #f0fdf4;
+}
+
+.tag-badge {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: #475569;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 2px 8px;
+    -fx-background-radius: 10px;
+}
+
+.tag-name-label {
+    -fx-text-fill: #0f172a;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+}
+
+/* Running vs Stopped Status Pill */
+.status-pill-stopped {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: #64748b;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 3px 10px;
+    -fx-background-radius: 12px;
+}
+
+.status-pill-running {
+    -fx-background-color: #dcfce7;
+    -fx-text-fill: #15803d;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 3px 10px;
+    -fx-background-radius: 12px;
+}
+
+/* Sensor LED Circle */
+.sensor-led-off {
+    -fx-fill: #cbd5e1;
+    -fx-stroke: #94a3b8;
+    -fx-stroke-width: 2px;
+}
+
+.sensor-led-on {
+    -fx-fill: #10b981;
+    -fx-stroke: #059669;
+    -fx-stroke-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(16, 185, 129, 0.6), 14, 0.3, 0, 0);
+}
+
+/* Event Log Console */
+.hardware-log {
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 12px;
+    -fx-control-inner-background: #0f172a;
+    -fx-text-fill: #38bdf8;
+    -fx-border-color: #1e293b;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+/* Clean Industrial Tabs */
+.tab-pane .tab-header-area {
+    -fx-background-color: #f8fafc;
+    -fx-padding: 6px 20px 0 20px;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #e2e8f0;
+    -fx-background-radius: 6px 6px 0 0;
+    -fx-padding: 8px 18px;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #7a0c1e;
+}
+
+.tab-pane .tab .tab-label {
+    -fx-text-fill: #475569;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #ffffff;
+}
+
+/* TableView for Tag Settings */
+.table-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #f8fafc;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0 0 1 0;
+    -fx-font-weight: bold;
+    -fx-text-fill: #334155;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #f8fafc;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #fee2e2;
+}
+
+.table-row-cell:selected .text {
+    -fx-fill: #7a0c1e;
+    -fx-font-weight: bold;
 }
