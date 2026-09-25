@@ -22,6 +22,8 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -30,6 +32,8 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -118,6 +122,14 @@ public class MainAppController implements Initializable {
 
     private Timeline clockTimeline;
 
+    // 2D Conveyor Schematic Mimic
+    @FXML private Canvas conveyorCanvas;
+    @FXML private Label lblMimicLineStatus;
+
+    private double beltOffset = 0;
+    private Timeline mimicAnimationTimeline;
+    private volatile boolean isVisionSensorActive = false;
+
     private static class ActuatorCardRef {
         VBox card;
         Label statusPill;
@@ -137,6 +149,7 @@ public class MainAppController implements Initializable {
         setupTagForm();
         refreshDynamicHardwareUI();
         refreshKpiMetrics();
+        initMimicSchematic();
 
         log("[SYSTEM] Kanshi WMS 3-Level Executive Shell initialized.");
         logAudit("SYS", "Executive Command Center initialized. Modbus TCP & SQLite ready.");
@@ -153,6 +166,202 @@ public class MainAppController implements Initializable {
         }));
         clockTimeline.setCycleCount(Animation.INDEFINITE);
         clockTimeline.play();
+    }
+
+    // =========================================================================
+    // 2D Interactive Factory I/O Conveyor Line Schematic (Mimic Panel)
+    // =========================================================================
+
+    private void initMimicSchematic() {
+        if (conveyorCanvas == null) return;
+        mimicAnimationTimeline = new Timeline(new KeyFrame(Duration.millis(50), e -> {
+            boolean anyRunning = tagManager.getActuatorTags().stream().anyMatch(ModbusTag::isActive);
+            if (anyRunning) {
+                beltOffset = (beltOffset + 2.5) % 20;
+                redrawMimic();
+            }
+        }));
+        mimicAnimationTimeline.setCycleCount(Animation.INDEFINITE);
+        mimicAnimationTimeline.play();
+        redrawMimic();
+    }
+
+    /**
+     * Renders the 2D visual schematic of the conveyor line.
+     */
+    public synchronized void redrawMimic() {
+        if (conveyorCanvas == null) return;
+        GraphicsContext gc = conveyorCanvas.getGraphicsContext2D();
+        double w = conveyorCanvas.getWidth();
+        double h = conveyorCanvas.getHeight();
+
+        // 1. Clear background
+        gc.setFill(Color.web("#f8fafc"));
+        gc.fillRect(0, 0, w, h);
+
+        // 2. Subtle grid lines
+        gc.setStroke(Color.web("#e2e8f0"));
+        gc.setLineWidth(1);
+        for (double x = 0; x < w; x += 40) {
+            gc.strokeLine(x, 0, x, h);
+        }
+
+        // Tags
+        ModbusTag belt0 = tagManager.findTagByName("Belt Conveyor 0");
+        ModbusTag belt1 = tagManager.findTagByName("Belt Conveyor 1");
+        ModbusTag curved = tagManager.findTagByName("Curved Belt Conveyor");
+        boolean b0Active = belt0 != null && belt0.isActive();
+        boolean b1Active = belt1 != null && belt1.isActive();
+        boolean crvActive = curved != null && curved.isActive();
+
+        // Draw Feeder (Infeed)
+        gc.setFill(Color.web("#64748b"));
+        gc.fillRoundRect(15, 35, 45, 50, 6, 6);
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
+        gc.fillText("INFEED", 19, 64);
+
+        // Draw Belt Conveyor 0
+        drawConveyorSegment(gc, 70, 35, 230, 50, "Conveyor 0 (Coil 0)", b0Active, beltOffset);
+
+        // Draw Vision Sensor 0 Station
+        drawSensorStation(gc, 310, 15, 60, 90, isVisionSensorActive);
+
+        // Draw Belt Conveyor 1
+        drawConveyorSegment(gc, 380, 35, 230, 50, "Conveyor 1 (Coil 1)", b1Active, beltOffset);
+
+        // Draw Curved Belt Conveyor
+        drawCurvedConveyorSegment(gc, 620, 35, 210, 50, "Curved Belt (Coil 2)", crvActive, beltOffset);
+
+        // Draw Outfeed Depot
+        gc.setFill(Color.web("#475569"));
+        gc.fillRoundRect(840, 35, 55, 50, 6, 6);
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
+        gc.fillText("DEPOT", 848, 64);
+
+        // Update Mimic status badge
+        if (lblMimicLineStatus != null) {
+            boolean anyRunning = b0Active || b1Active || crvActive;
+            if (anyRunning) {
+                lblMimicLineStatus.setText("LINE STATUS: ACTIVE / RUNNING");
+                lblMimicLineStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d; -fx-background-color: #dcfce7; -fx-padding: 5 12; -fx-background-radius: 4px;");
+            } else if (ioService.isConnected()) {
+                lblMimicLineStatus.setText("LINE STATUS: STANDBY / IDLE");
+                lblMimicLineStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b; -fx-background-color: #f1f5f9; -fx-padding: 5 12; -fx-background-radius: 4px;");
+            } else {
+                lblMimicLineStatus.setText("LINE STATUS: OFFLINE");
+                lblMimicLineStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #991b1b; -fx-background-color: #fee2e2; -fx-padding: 5 12; -fx-background-radius: 4px;");
+            }
+        }
+    }
+
+    private void drawConveyorSegment(GraphicsContext gc, double x, double y, double w, double h, String label, boolean running, double offset) {
+        // Frame
+        gc.setFill(running ? Color.web("#fef2f2") : Color.web("#ffffff"));
+        gc.setStroke(running ? Color.web("#7a0c1e") : Color.web("#cbd5e1"));
+        gc.setLineWidth(running ? 2.0 : 1.5);
+        gc.fillRoundRect(x, y, w, h, 8, 8);
+        gc.strokeRoundRect(x, y, w, h, 8, 8);
+
+        // Roller belt track top and bottom rails
+        gc.setFill(running ? Color.web("#991b1b") : Color.web("#64748b"));
+        gc.fillRect(x + 5, y + 4, w - 10, 3);
+        gc.fillRect(x + 5, y + h - 7, w - 10, 3);
+
+        // Moving hash markings
+        if (running) {
+            gc.setStroke(Color.web("#e11d48"));
+            gc.setLineWidth(2);
+            for (double hx = x + 10 + (offset % 20); hx < x + w - 10; hx += 20) {
+                gc.strokeLine(hx, y + 10, hx + 8, y + h - 10);
+            }
+        } else {
+            gc.setStroke(Color.web("#e2e8f0"));
+            gc.setLineWidth(1.5);
+            for (double hx = x + 10; hx < x + w - 10; hx += 20) {
+                gc.strokeLine(hx, y + 12, hx, y + h - 12);
+            }
+        }
+
+        // Label
+        gc.setFill(running ? Color.web("#7a0c1e") : Color.web("#334155"));
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 11));
+        gc.fillText(label, x + 12, y + 28);
+
+        // Running status text
+        gc.setFill(running ? Color.web("#15803d") : Color.web("#94a3b8"));
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
+        gc.fillText(running ? "RUNNING ▶▶" : "STOPPED", x + 12, y + 42);
+    }
+
+    private void drawCurvedConveyorSegment(GraphicsContext gc, double x, double y, double w, double h, String label, boolean running, double offset) {
+        drawConveyorSegment(gc, x, y, w, h, label, running, offset);
+
+        // Curve icon
+        gc.setStroke(running ? Color.web("#7a0c1e") : Color.web("#64748b"));
+        gc.setLineWidth(2.5);
+        gc.strokeArc(x + w - 45, y + 12, 30, 26, 0, 180, javafx.scene.shape.ArcType.OPEN);
+        gc.fillText("↷", x + w - 24, y + 32);
+    }
+
+    private void drawSensorStation(GraphicsContext gc, double x, double y, double w, double h, boolean detected) {
+        // Sensor Mount & Head
+        gc.setFill(detected ? Color.web("#22c55e") : Color.web("#0284c7"));
+        gc.fillRoundRect(x + 18, y + 5, 24, 18, 4, 4);
+
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
+        gc.fillText("OPT", x + 21, y + 17);
+
+        // Laser beam down to belt level
+        if (detected) {
+            // Bright neon green beam
+            gc.setStroke(Color.web("#22c55e"));
+            gc.setLineWidth(3);
+            gc.strokeLine(x + 30, y + 23, x + 30, y + 70);
+
+            // Glowing optical cone
+            gc.setFill(Color.rgb(34, 197, 94, 0.25));
+            gc.fillPolygon(
+                new double[]{x + 30, x + 14, x + 46},
+                new double[]{y + 23, y + 70, y + 70},
+                3
+            );
+
+            // Cardboard Box payload detected!
+            gc.setFill(Color.web("#d97706")); // Cardboard Amber
+            gc.setStroke(Color.web("#92400e"));
+            gc.setLineWidth(1.5);
+            gc.fillRect(x + 12, y + 44, 36, 32);
+            gc.strokeRect(x + 12, y + 44, 36, 32);
+
+            // Box sealing tape
+            gc.setStroke(Color.web("#fef3c7"));
+            gc.setLineWidth(2);
+            gc.strokeLine(x + 12, y + 60, x + 48, y + 60);
+
+            // Box Label
+            gc.setFill(Color.WHITE);
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 8));
+            gc.fillText("BOX", x + 19, y + 58);
+
+            // Detection badge
+            gc.setFill(Color.web("#15803d"));
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
+            gc.fillText("DETECTED", x + 5, y + 95);
+        } else {
+            // Idle guide beam
+            gc.setStroke(Color.web("#cbd5e1"));
+            gc.setLineWidth(1);
+            gc.setLineDashes(3);
+            gc.strokeLine(x + 30, y + 23, x + 30, y + 75);
+            gc.setLineDashes(null);
+
+            gc.setFill(Color.web("#64748b"));
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
+            gc.fillText("CLEAR", x + 15, y + 95);
+        }
     }
 
     // =========================================================================
@@ -251,6 +460,9 @@ public class MainAppController implements Initializable {
     public void shutdown() {
         if (clockTimeline != null) {
             clockTimeline.stop();
+        }
+        if (mimicAnimationTimeline != null) {
+            mimicAnimationTimeline.stop();
         }
         if (ioService != null) {
             ioService.disconnect();
@@ -421,9 +633,12 @@ public class MainAppController implements Initializable {
             lblKpiLineState.setText("IDLE");
             lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #64748b;");
         }
+
+        Platform.runLater(this::redrawMimic);
     }
 
     private void updateSensorTileUI(ModbusTag tag, boolean active) {
+        isVisionSensorActive = active;
         SensorCardRef ref = sensorRefs.get(tag.getId());
         if (ref != null) {
             ref.led.getStyleClass().removeAll("sensor-led-on", "sensor-led-off");
@@ -437,6 +652,7 @@ public class MainAppController implements Initializable {
                 lblKpiPackageCount.setText(total + " Pcs");
             }
         }
+        Platform.runLater(this::redrawMimic);
     }
 
     @FXML
@@ -454,6 +670,7 @@ public class MainAppController implements Initializable {
             lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #64748b;");
 
             log("[INFO] Disconnected from Modbus TCP server.");
+            Platform.runLater(this::redrawMimic);
         } else {
             String host = txtHost.getText().trim();
             int port;
@@ -480,6 +697,7 @@ public class MainAppController implements Initializable {
                         lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
 
                         log("[SUCCESS] Connected to Factory I/O Modbus TCP/IP Server at " + host + ":" + port);
+                        redrawMimic();
 
                         // Start real-time background sensor polling
                         ioService.startDynamicSensorPolling(tagManager.getSensorTags(), (tag, active) -> {
@@ -501,6 +719,7 @@ public class MainAppController implements Initializable {
                         lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #b91c1c;");
 
                         log("[ERROR] Connection failed: " + e.getMessage());
+                        redrawMimic();
                         showAlert("Connection Error", "Could not connect to " + host + ":" + port + "\n\nEnsure Factory I/O driver is set to Modbus TCP/IP Server and scene is running.");
                     });
                 }
@@ -519,6 +738,7 @@ public class MainAppController implements Initializable {
                 lblKpiLineState.setText("EMERGENCY STOP");
                 lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #b91c1c;");
                 log(">> [EMERGENCY STOP] All conveyor actuators stopped immediately!");
+                redrawMimic();
             });
         }).start();
     }

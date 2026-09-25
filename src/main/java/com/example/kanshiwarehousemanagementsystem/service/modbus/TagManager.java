@@ -113,6 +113,21 @@ public class TagManager {
                 .collect(Collectors.toList());
     }
 
+    public synchronized ModbusTag findTagByName(String name) {
+        if (name == null) return null;
+        return tags.stream()
+                .filter(t -> t.getName().equalsIgnoreCase(name.trim()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public synchronized ModbusTag findTagByAddress(int address, TagType type) {
+        return tags.stream()
+                .filter(t -> t.getAddress() == address && t.getType() == type)
+                .findFirst()
+                .orElse(null);
+    }
+
     public synchronized void addTag(String name, int address, TagType type) {
         String id = "tag_" + type.name().toLowerCase() + "_" + address + "_" + UUID.randomUUID().toString().substring(0, 4);
         ModbusTag tag = new ModbusTag(id, name, address, type);
