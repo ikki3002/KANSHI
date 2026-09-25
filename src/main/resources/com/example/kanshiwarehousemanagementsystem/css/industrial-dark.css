@@ -497,55 +497,55 @@
     -fx-background-radius: 6px;
     -fx-border-color: #0f172a;
     -fx-border-radius: 6px;
-    -fx-padding: 16px 12px;
-    -fx-min-width: 85px;
-    -fx-max-width: 95px;
+    -fx-padding: 10px 6px;
+    -fx-min-width: 65px;
+    -fx-max-width: 72px;
     -fx-alignment: center;
-    -fx-spacing: 4px;
+    -fx-spacing: 2px;
 }
 
 .pipeline-terminal-label {
     -fx-text-fill: #ffffff;
     -fx-font-weight: bold;
-    -fx-font-size: 11px;
+    -fx-font-size: 10px;
 }
 
 .pipeline-terminal-sub {
     -fx-text-fill: #94a3b8;
-    -fx-font-size: 10px;
+    -fx-font-size: 9px;
 }
 
 .pipeline-block {
     -fx-background-color: #ffffff;
     -fx-border-color: #cbd5e1;
     -fx-border-width: 1.5px;
-    -fx-border-radius: 8px;
-    -fx-background-radius: 8px;
-    -fx-padding: 12px 14px;
-    -fx-min-width: 220px;
-    -fx-max-width: 240px;
-    -fx-spacing: 8px;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 8, 0, 0, 2);
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 8px 10px;
+    -fx-min-width: 155px;
+    -fx-max-width: 165px;
+    -fx-spacing: 5px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.04), 6, 0, 0, 1);
     -fx-cursor: hand;
 }
 
 .pipeline-block:hover {
     -fx-border-color: #7a0c1e;
-    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.15), 10, 0, 0, 3);
+    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.15), 8, 0, 0, 2);
 }
 
 .pipeline-block-running {
     -fx-background-color: #fffbfa;
     -fx-border-color: #7a0c1e;
     -fx-border-width: 2px;
-    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.22), 12, 0, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.22), 10, 0, 0, 3);
 }
 
 .pipeline-block-detected {
     -fx-background-color: #f0fdf4;
     -fx-border-color: #16a34a;
     -fx-border-width: 2px;
-    -fx-effect: dropshadow(gaussian, rgba(22, 163, 74, 0.25), 12, 0, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(22, 163, 74, 0.25), 10, 0, 0, 3);
 }
 
 .drag-hover-target {
@@ -557,13 +557,13 @@
 
 .pipeline-connector-label {
     -fx-text-fill: #94a3b8;
-    -fx-font-size: 16px;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
 }
 
 .pipeline-downward-arrow {
     -fx-text-fill: #94a3b8;
-    -fx-font-size: 16px;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-alignment: center;
 }
@@ -571,12 +571,34 @@
 .pipeline-corner-tag {
     -fx-background-color: #fef2f2;
     -fx-text-fill: #7a0c1e;
-    -fx-font-size: 10px;
+    -fx-font-size: 9px;
     -fx-font-weight: bold;
-    -fx-padding: 2px 6px;
+    -fx-padding: 1px 5px;
     -fx-background-radius: 4px;
     -fx-border-color: #fecaca;
     -fx-border-radius: 4px;
+}
+
+.sidebar-toggle-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #7a0c1e;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-padding: 2px 8px;
+    -fx-background-radius: 4px;
+}
+
+.sidebar-toggle-btn:hover {
+    -fx-background-color: #fee2e2;
+}
+
+.micro-action-btn {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-padding: 3px 6px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
 }
 
 

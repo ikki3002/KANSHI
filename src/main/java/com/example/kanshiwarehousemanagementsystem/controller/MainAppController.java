@@ -67,6 +67,15 @@ public class MainAppController implements Initializable {
     @FXML private Circle circleHeartbeat;
     @FXML private Label lblHeartbeatStatus;
 
+    // Navigation Rail & Sidebar Toggle
+    @FXML private VBox navRail;
+    @FXML private Button btnToggleSidebar;
+    @FXML private Label lblNavCatCore;
+    @FXML private Label lblNavCatWorkspaces;
+    @FXML private Label lblNavCatSystem;
+    @FXML private VBox navRailFooter;
+    private boolean isSidebarCollapsed = false;
+
     // Navigation Rail Buttons
     @FXML private Button btnNavDashboard;
     @FXML private Button btnNavScada;
@@ -225,45 +234,45 @@ public class MainAppController implements Initializable {
 
         // 2. Chassis box
         gc.setStroke(running ? Color.web("#7a0c1e") : Color.web("#cbd5e1"));
-        gc.setLineWidth(running ? 2.0 : 1.5);
-        gc.strokeRoundRect(2, 2, w - 4, h - 4, 6, 6);
+        gc.setLineWidth(running ? 1.8 : 1.2);
+        gc.strokeRoundRect(2, 2, w - 4, h - 4, 5, 5);
 
-        // 3. Curved rails (90-degree outer and inner guides)
+        // 3. Curved rails
         gc.setStroke(running ? Color.web("#991b1b") : Color.web("#64748b"));
-        gc.setLineWidth(3);
-        gc.strokeArc(6, -26, 110, 95, 270, 90, ArcType.OPEN);
-        gc.strokeArc(6, 6, 56, 52, 270, 90, ArcType.OPEN);
+        gc.setLineWidth(2.5);
+        gc.strokeArc(4, -18, 76, 68, 270, 90, ArcType.OPEN);
+        gc.strokeArc(4, 4, 40, 36, 270, 90, ArcType.OPEN);
 
         // 4. Moving radial roller lines
         if (running) {
             gc.setStroke(Color.web("#e11d48"));
-            gc.setLineWidth(2.0);
+            gc.setLineWidth(1.6);
             for (double angle = 275 + (offset % 18); angle < 355; angle += 18) {
                 double rad = Math.toRadians(angle);
-                double x1 = 34 + 28 * Math.cos(rad);
-                double y1 = 26 - 26 * Math.sin(rad);
-                double x2 = 34 + 55 * Math.cos(rad);
-                double y2 = 26 - 47 * Math.sin(rad);
+                double x1 = 24 + 20 * Math.cos(rad);
+                double y1 = 20 - 18 * Math.sin(rad);
+                double x2 = 24 + 38 * Math.cos(rad);
+                double y2 = 20 - 34 * Math.sin(rad);
                 gc.strokeLine(x1, y1, x2, y2);
             }
             // Active rotation label
             gc.setFill(Color.web("#7a0c1e"));
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-            gc.fillText("↷ 90° CW", w - 68, h / 2 + 4);
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
+            gc.fillText("↷ 90° CW", w - 54, h / 2 + 3);
         } else {
             gc.setStroke(Color.web("#cbd5e1"));
-            gc.setLineWidth(1.5);
+            gc.setLineWidth(1.2);
             for (double angle = 275; angle < 355; angle += 18) {
                 double rad = Math.toRadians(angle);
-                double x1 = 34 + 28 * Math.cos(rad);
-                double y1 = 26 - 26 * Math.sin(rad);
-                double x2 = 34 + 55 * Math.cos(rad);
-                double y2 = 26 - 47 * Math.sin(rad);
+                double x1 = 24 + 20 * Math.cos(rad);
+                double y1 = 20 - 18 * Math.sin(rad);
+                double x2 = 24 + 38 * Math.cos(rad);
+                double y2 = 20 - 34 * Math.sin(rad);
                 gc.strokeLine(x1, y1, x2, y2);
             }
             gc.setFill(Color.web("#64748b"));
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-            gc.fillText("↷ Corner", w - 65, h / 2 + 4);
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
+            gc.fillText("↷ Corner", w - 50, h / 2 + 3);
         }
     }
 
@@ -282,25 +291,25 @@ public class MainAppController implements Initializable {
 
         // 2. Top and bottom rails
         gc.setFill(running ? Color.web("#991b1b") : Color.web("#64748b"));
-        gc.fillRect(2, 2, w - 4, 3);
-        gc.fillRect(2, h - 5, w - 4, 3);
+        gc.fillRect(2, 2, w - 4, 2.5);
+        gc.fillRect(2, h - 4, w - 4, 2.5);
 
         // 3. Rollers
         if (running) {
             gc.setStroke(Color.web("#e11d48"));
-            gc.setLineWidth(2.0);
-            for (double x = 6 + (offset % 16); x < w - 6; x += 16) {
-                gc.strokeLine(x, 5, x + 5, h - 5);
+            gc.setLineWidth(1.6);
+            for (double x = 4 + (offset % 14); x < w - 4; x += 14) {
+                gc.strokeLine(x, 4, x + 4, h - 4);
             }
             // Chevron arrow
             gc.setFill(Color.web("#7a0c1e"));
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-            gc.fillText("▶▶", w - 24, h / 2 + 4);
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
+            gc.fillText("▶▶", w - 18, h / 2 + 3);
         } else {
             gc.setStroke(Color.web("#cbd5e1"));
-            gc.setLineWidth(1.5);
-            for (double x = 6; x < w - 6; x += 16) {
-                gc.strokeLine(x, 6, x, h - 6);
+            gc.setLineWidth(1.2);
+            for (double x = 4; x < w - 4; x += 14) {
+                gc.strokeLine(x, 4, x, h - 4);
             }
         }
     }
@@ -322,51 +331,51 @@ public class MainAppController implements Initializable {
 
         // 2. Optical Sensor Head at top
         gc.setFill(detected ? Color.web("#22c55e") : Color.web("#0284c7"));
-        gc.fillRoundRect(centerX - 16, 2, 32, 12, 4, 4);
+        gc.fillRoundRect(centerX - 14, 1, 28, 10, 3, 3);
         gc.setFill(Color.WHITE);
-        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 8));
-        gc.fillText("OPTICAL", centerX - 14, 11);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 7));
+        gc.fillText("OPTICAL", centerX - 12, 8);
 
         if (detected) {
             // Neon green laser beam
             gc.setStroke(Color.web("#22c55e"));
-            gc.setLineWidth(2.5);
-            gc.strokeLine(centerX, 14, centerX, h - 4);
+            gc.setLineWidth(2.0);
+            gc.strokeLine(centerX, 11, centerX, h - 2);
 
             // Light translucent laser cone
             gc.setFill(Color.rgb(34, 197, 94, 0.22));
             gc.fillPolygon(
-                new double[]{centerX, centerX - 18, centerX + 18},
-                new double[]{14, h - 4, h - 4},
+                new double[]{centerX, centerX - 14, centerX + 14},
+                new double[]{11, h - 2, h - 2},
                 3
             );
 
             // Detected Package Box
             gc.setFill(Color.web("#d97706"));
             gc.setStroke(Color.web("#92400e"));
-            gc.setLineWidth(1.5);
-            double boxW = 28;
-            double boxH = 20;
+            gc.setLineWidth(1.2);
+            double boxW = 22;
+            double boxH = 15;
             double boxX = centerX - boxW / 2;
-            double boxY = h - boxH - 3;
+            double boxY = h - boxH - 2;
             gc.fillRect(boxX, boxY, boxW, boxH);
             gc.strokeRect(boxX, boxY, boxW, boxH);
 
             // Box sealing tape
             gc.setStroke(Color.web("#fef3c7"));
-            gc.setLineWidth(1.5);
+            gc.setLineWidth(1.2);
             gc.strokeLine(boxX, boxY + boxH / 2, boxX + boxW, boxY + boxH / 2);
 
             // Box text
             gc.setFill(Color.WHITE);
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 7));
-            gc.fillText("BOX", boxX + 6, boxY + 12);
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 6));
+            gc.fillText("BOX", boxX + 4, boxY + 9);
         } else {
             // Idle guide line
             gc.setStroke(Color.web("#cbd5e1"));
             gc.setLineWidth(1.0);
             gc.setLineDashes(3);
-            gc.strokeLine(centerX, 14, centerX, h - 4);
+            gc.strokeLine(centerX, 11, centerX, h - 2);
             gc.setLineDashes(null);
         }
     }
@@ -394,8 +403,76 @@ public class MainAppController implements Initializable {
     }
 
     // =========================================================================
-    // Navigation Rail View Switcher (Level 1 <-> Level 2 Workspaces)
+    // Navigation Rail View Switcher (Level 1 <-> Level 2 Workspaces) & Sidebar Toggle
     // =========================================================================
+
+    @FXML
+    private void handleToggleSidebar(ActionEvent event) {
+        if (navRail == null) return;
+        isSidebarCollapsed = !isSidebarCollapsed;
+
+        if (isSidebarCollapsed) {
+            navRail.setPrefWidth(64);
+            navRail.setMinWidth(64);
+            navRail.setMaxWidth(64);
+
+            if (lblNavCatCore != null) { lblNavCatCore.setVisible(false); lblNavCatCore.setManaged(false); }
+            if (lblNavCatWorkspaces != null) { lblNavCatWorkspaces.setVisible(false); lblNavCatWorkspaces.setManaged(false); }
+            if (lblNavCatSystem != null) { lblNavCatSystem.setVisible(false); lblNavCatSystem.setManaged(false); }
+            if (navRailFooter != null) { navRailFooter.setVisible(false); navRailFooter.setManaged(false); }
+
+            btnNavDashboard.setText("📊");
+            btnNavDashboard.setTooltip(new Tooltip("Overview Dashboard"));
+            btnNavScada.setText("🏭");
+            btnNavScada.setTooltip(new Tooltip("OT SCADA Station"));
+            btnNavInventory.setText("📦");
+            btnNavInventory.setTooltip(new Tooltip("Inventory Ledger"));
+            btnNavFinance.setText("💰");
+            btnNavFinance.setTooltip(new Tooltip("Finance & Invoicing"));
+            btnNavTags.setText("⚙️");
+            btnNavTags.setTooltip(new Tooltip("Hardware Tag Profiler"));
+
+            btnNavDashboard.setAlignment(Pos.CENTER);
+            btnNavScada.setAlignment(Pos.CENTER);
+            btnNavInventory.setAlignment(Pos.CENTER);
+            btnNavFinance.setAlignment(Pos.CENTER);
+            btnNavTags.setAlignment(Pos.CENTER);
+
+            if (btnToggleSidebar != null) {
+                btnToggleSidebar.setText("▶");
+            }
+        } else {
+            navRail.setPrefWidth(230);
+            navRail.setMinWidth(230);
+            navRail.setMaxWidth(230);
+
+            if (lblNavCatCore != null) { lblNavCatCore.setVisible(true); lblNavCatCore.setManaged(true); }
+            if (lblNavCatWorkspaces != null) { lblNavCatWorkspaces.setVisible(true); lblNavCatWorkspaces.setManaged(true); }
+            if (lblNavCatSystem != null) { lblNavCatSystem.setVisible(true); lblNavCatSystem.setManaged(true); }
+            if (navRailFooter != null) { navRailFooter.setVisible(true); navRailFooter.setManaged(true); }
+
+            btnNavDashboard.setText("📊 Overview Dashboard");
+            btnNavDashboard.setTooltip(null);
+            btnNavScada.setText("🏭 OT SCADA Station");
+            btnNavScada.setTooltip(null);
+            btnNavInventory.setText("📦 Inventory Ledger");
+            btnNavInventory.setTooltip(null);
+            btnNavFinance.setText("💰 Finance & Invoicing");
+            btnNavFinance.setTooltip(null);
+            btnNavTags.setText("⚙️ Hardware Tag Profiler");
+            btnNavTags.setTooltip(null);
+
+            btnNavDashboard.setAlignment(Pos.CENTER_LEFT);
+            btnNavScada.setAlignment(Pos.CENTER_LEFT);
+            btnNavInventory.setAlignment(Pos.CENTER_LEFT);
+            btnNavFinance.setAlignment(Pos.CENTER_LEFT);
+            btnNavTags.setAlignment(Pos.CENTER_LEFT);
+
+            if (btnToggleSidebar != null) {
+                btnToggleSidebar.setText("☰");
+            }
+        }
+    }
 
     @FXML
     private void handleNavDashboard(ActionEvent event) {
@@ -605,8 +682,10 @@ public class MainAppController implements Initializable {
             pipelineTrack.getChildren().add(createConnectorArrow());
 
             // 3. Corner column (Curved Conveyor + vertical downward descent into Depot)
-            VBox cornerColumn = new VBox(8);
+            VBox cornerColumn = new VBox(6);
             cornerColumn.setAlignment(Pos.TOP_CENTER);
+            cornerColumn.setFillWidth(false);
+            cornerColumn.setMaxHeight(Region.USE_PREF_SIZE);
 
             // Curved Conveyor Block
             ModbusTag curvedTag = tagManager.findTagById(pipelineOrder.get(curvedIndex));
@@ -638,7 +717,8 @@ public class MainAppController implements Initializable {
     private Node createDownwardConnectorArrow() {
         VBox box = new VBox(1);
         box.setAlignment(Pos.CENTER);
-        box.setPrefHeight(26);
+        box.setPrefHeight(18);
+        box.setMaxHeight(Region.USE_PREF_SIZE);
         Label line = new Label("│");
         line.getStyleClass().add("pipeline-downward-arrow");
         Label arrow = new Label("▼");
@@ -648,29 +728,34 @@ public class MainAppController implements Initializable {
     }
 
     private Node createInfeedTerminal() {
-        VBox box = new VBox(4);
+        VBox box = new VBox(2);
         box.getStyleClass().add("pipeline-terminal");
+        box.setMinWidth(65);
+        box.setMaxWidth(72);
+        box.setMaxHeight(Region.USE_PREF_SIZE);
+        box.setAlignment(Pos.CENTER);
         Label icon = new Label("📥");
-        icon.setStyle("-fx-font-size: 20px;");
+        icon.setStyle("-fx-font-size: 16px;");
         Label lbl = new Label("INFEED");
         lbl.getStyleClass().add("pipeline-terminal-label");
-        Label sub = new Label("Entry Chute");
+        Label sub = new Label("Entry");
         sub.getStyleClass().add("pipeline-terminal-sub");
         box.getChildren().addAll(icon, lbl, sub);
         return box;
     }
 
     private Node createDepotTerminal() {
-        VBox box = new VBox(4);
+        VBox box = new VBox(2);
         box.getStyleClass().add("pipeline-terminal");
-        box.setMinWidth(110);
-        box.setMaxWidth(130);
+        box.setMinWidth(65);
+        box.setMaxWidth(72);
+        box.setMaxHeight(Region.USE_PREF_SIZE);
         box.setAlignment(Pos.CENTER);
         Label icon = new Label("📦");
-        icon.setStyle("-fx-font-size: 20px;");
+        icon.setStyle("-fx-font-size: 16px;");
         Label lbl = new Label("DEPOT");
         lbl.getStyleClass().add("pipeline-terminal-label");
-        Label sub = new Label("Outfeed Chute");
+        Label sub = new Label("Outfeed");
         sub.getStyleClass().add("pipeline-terminal-sub");
         box.getChildren().addAll(icon, lbl, sub);
         return box;
@@ -679,34 +764,39 @@ public class MainAppController implements Initializable {
     private Node createConnectorArrow() {
         Label arrow = new Label("──►");
         arrow.getStyleClass().add("pipeline-connector-label");
+        arrow.setMaxHeight(Region.USE_PREF_SIZE);
         return arrow;
     }
 
     private Node createConveyorBlock(ModbusTag tag) {
         boolean isCurved = isCurvedConveyor(tag);
-        VBox block = new VBox(8);
+        VBox block = new VBox(5);
         block.getStyleClass().add("pipeline-block");
         if (tag.isActive()) {
             block.getStyleClass().add("pipeline-block-running");
         }
+        block.setMinWidth(155);
+        block.setMaxWidth(165);
+        block.setMaxHeight(Region.USE_PREF_SIZE);
 
         attachDragAndDropHandlers(block, tag.getId());
 
         // Header row
-        HBox topRow = new HBox(8);
+        HBox topRow = new HBox(4);
         topRow.setAlignment(Pos.CENTER_LEFT);
         Label grip = new Label("⠿");
-        grip.setStyle("-fx-font-size: 15px; -fx-text-fill: #94a3b8; -fx-cursor: move;");
+        grip.setStyle("-fx-font-size: 12px; -fx-text-fill: #94a3b8; -fx-cursor: move;");
         Label nameLbl = new Label(tag.getName());
-        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #1e293b;");
+        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #1e293b;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        Label badge = new Label(isCurved ? "Coil " + tag.getAddress() + " (90° CW)" : "Coil " + tag.getAddress());
+        Label badge = new Label(isCurved ? "C" + tag.getAddress() + " (90°)" : "C" + tag.getAddress());
         badge.getStyleClass().add(isCurved ? "pipeline-corner-tag" : "tag-badge");
+        badge.setStyle("-fx-font-size: 9px; -fx-padding: 1 5;");
         topRow.getChildren().addAll(grip, nameLbl, spacer, badge);
 
-        // Animated Belt Canvas
-        Canvas beltCanvas = new Canvas(195, isCurved ? 50 : 32);
+        // Animated Belt Canvas (145 wide x 40/22 tall)
+        Canvas beltCanvas = new Canvas(145, isCurved ? 40 : 22);
         if (isCurved) {
             drawCurvedConveyorBelt(beltCanvas, tag.isActive(), beltOffset);
         } else {
@@ -714,26 +804,25 @@ public class MainAppController implements Initializable {
         }
 
         // Status row
-        HBox statusRow = new HBox(8);
+        HBox statusRow = new HBox(4);
         statusRow.setAlignment(Pos.CENTER_LEFT);
-        Label statusPill = new Label(tag.isActive() ? "● RUNNING" : "● IDLE");
+        Label statusPill = new Label(tag.isActive() ? "● RUN" : "● IDLE");
         statusPill.getStyleClass().add(tag.isActive() ? "status-pill-running" : "status-pill-stopped");
-        statusRow.getChildren().addAll(new Label("Status:"), statusPill);
+        statusPill.setStyle("-fx-font-size: 9px; -fx-padding: 2 6;");
+        statusRow.getChildren().addAll(statusPill);
 
-        // Controls row
-        HBox controlsRow = new HBox(8);
+        // Controls row with micro-action buttons
+        HBox controlsRow = new HBox(4);
         controlsRow.setAlignment(Pos.CENTER_LEFT);
 
-        Button toggleBtn = new Button(tag.isActive() ? "⏹ STOP" : "▶ START");
-        toggleBtn.getStyleClass().add(tag.isActive() ? "btn-estop" : "btn-primary");
-        toggleBtn.setStyle("-fx-font-size: 11px; -fx-padding: 6 12;");
+        Button toggleBtn = new Button(tag.isActive() ? "■ STOP" : "▶ RUN");
+        toggleBtn.getStyleClass().addAll(tag.isActive() ? "btn-estop" : "btn-primary", "micro-action-btn");
         HBox.setHgrow(toggleBtn, Priority.ALWAYS);
         toggleBtn.setMaxWidth(Double.MAX_VALUE);
         toggleBtn.setOnAction(e -> handleToggleActuator(tag));
 
         Button testBtn = new Button("⚡ 2s");
-        testBtn.getStyleClass().add("btn-secondary");
-        testBtn.setStyle("-fx-font-size: 11px; -fx-padding: 6 10;");
+        testBtn.getStyleClass().addAll("btn-secondary", "micro-action-btn");
         testBtn.setOnAction(e -> handleQuickTestActuator(tag));
 
         controlsRow.getChildren().addAll(toggleBtn, testBtn);
@@ -751,46 +840,53 @@ public class MainAppController implements Initializable {
     }
 
     private Node createSensorBlock(ModbusTag tag) {
-        VBox block = new VBox(8);
+        VBox block = new VBox(5);
         block.getStyleClass().add("pipeline-block");
         if (tag.isActive()) {
             block.getStyleClass().add("pipeline-block-detected");
         }
+        block.setMinWidth(155);
+        block.setMaxWidth(165);
+        block.setMaxHeight(Region.USE_PREF_SIZE);
 
         attachDragAndDropHandlers(block, tag.getId());
 
         // Header row
-        HBox topRow = new HBox(8);
+        HBox topRow = new HBox(4);
         topRow.setAlignment(Pos.CENTER_LEFT);
         Label grip = new Label("⠿");
-        grip.setStyle("-fx-font-size: 15px; -fx-text-fill: #94a3b8; -fx-cursor: move;");
+        grip.setStyle("-fx-font-size: 12px; -fx-text-fill: #94a3b8; -fx-cursor: move;");
         Label nameLbl = new Label(tag.getName());
-        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #1e293b;");
+        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #1e293b;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        Label badge = new Label("Input " + tag.getAddress());
+        Label badge = new Label("DI " + tag.getAddress());
         badge.getStyleClass().add("tag-badge");
+        badge.setStyle("-fx-font-size: 9px; -fx-padding: 1 5;");
         topRow.getChildren().addAll(grip, nameLbl, spacer, badge);
 
-        // Sensor Canvas
-        Canvas sensorCanvas = new Canvas(195, 42);
+        // Sensor Canvas (145 x 30)
+        Canvas sensorCanvas = new Canvas(145, 30);
         drawSensorVisual(sensorCanvas, tag.isActive());
 
-        // LED and Status row
-        HBox ledRow = new HBox(8);
+        // LED, Status and Detection Counter inline
+        HBox ledRow = new HBox(6);
         ledRow.setAlignment(Pos.CENTER_LEFT);
-        Circle led = new Circle(7);
+        Circle led = new Circle(5);
         led.getStyleClass().add(tag.isActive() ? "sensor-led-on" : "sensor-led-off");
-        Label statusLbl = new Label(tag.isActive() ? "OBJECT DETECTED" : "BEAM CLEAR");
-        statusLbl.setStyle(tag.isActive() ? "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
-        ledRow.getChildren().addAll(led, statusLbl);
+        Label statusLbl = new Label(tag.isActive() ? "DETECTED" : "CLEAR");
+        statusLbl.setStyle(tag.isActive() ? "-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
 
-        // Detection Counter row
         sensorCounters.putIfAbsent(tag.getId(), 0);
-        Label counterBadge = new Label("Detections: " + sensorCounters.get(tag.getId()));
-        counterBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-background-color: #f1f5f9; -fx-padding: 3 8; -fx-background-radius: 4px;");
+        Label counterBadge = new Label("Ct: " + sensorCounters.get(tag.getId()));
+        counterBadge.setStyle("-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-background-color: #f1f5f9; -fx-padding: 2 6; -fx-background-radius: 4px;");
 
-        block.getChildren().addAll(topRow, sensorCanvas, ledRow, counterBadge);
+        Region spacer2 = new Region();
+        HBox.setHgrow(spacer2, Priority.ALWAYS);
+
+        ledRow.getChildren().addAll(led, statusLbl, spacer2, counterBadge);
+
+        block.getChildren().addAll(topRow, sensorCanvas, ledRow);
 
         SensorBlockRef ref = new SensorBlockRef();
         ref.block = block;
@@ -947,11 +1043,11 @@ public class MainAppController implements Initializable {
     private void updateActuatorTileUI(ModbusTag tag, boolean running) {
         ActuatorBlockRef ref = actuatorRefs.get(tag.getId());
         if (ref != null) {
-            ref.statusPill.setText(running ? "● RUNNING" : "● IDLE");
+            ref.statusPill.setText(running ? "● RUN" : "● IDLE");
             ref.statusPill.getStyleClass().removeAll("status-pill-running", "status-pill-stopped");
             ref.statusPill.getStyleClass().add(running ? "status-pill-running" : "status-pill-stopped");
 
-            ref.toggleBtn.setText(running ? "⏹ STOP" : "▶ START");
+            ref.toggleBtn.setText(running ? "■ STOP" : "▶ RUN");
             ref.toggleBtn.getStyleClass().removeAll("btn-primary", "btn-estop");
             ref.toggleBtn.getStyleClass().add(running ? "btn-estop" : "btn-primary");
 
@@ -988,15 +1084,15 @@ public class MainAppController implements Initializable {
         if (ref != null) {
             ref.led.getStyleClass().removeAll("sensor-led-on", "sensor-led-off");
             ref.led.getStyleClass().add(active ? "sensor-led-on" : "sensor-led-off");
-            ref.statusLabel.setText(active ? "OBJECT DETECTED" : "BEAM CLEAR");
-            ref.statusLabel.setStyle(active ? "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+            ref.statusLabel.setText(active ? "DETECTED" : "CLEAR");
+            ref.statusLabel.setStyle(active ? "-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
 
             if (active) {
                 if (!ref.block.getStyleClass().contains("pipeline-block-detected")) {
                     ref.block.getStyleClass().add("pipeline-block-detected");
                 }
                 int count = sensorCounters.compute(tag.getId(), (k, v) -> v == null ? 1 : v + 1);
-                ref.counterLabel.setText("Detections: " + count);
+                ref.counterLabel.setText("Ct: " + count);
                 int total = totalDetectedPackages.incrementAndGet();
                 lblKpiPackageCount.setText(total + " Pcs");
             } else {

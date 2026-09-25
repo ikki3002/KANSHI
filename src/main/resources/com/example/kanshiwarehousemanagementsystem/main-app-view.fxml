@@ -27,7 +27,10 @@
 
     <!-- Top Navigation & Header Bar -->
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="16" styleClass="station-header-bar">
+        <HBox alignment="CENTER_LEFT" spacing="14" styleClass="station-header-bar">
+            <!-- Sidebar Toggle Button -->
+            <Button fx:id="btnToggleSidebar" text="☰" onAction="#handleToggleSidebar" styleClass="sidebar-toggle-btn" />
+
             <!-- Brand -->
             <VBox spacing="2">
                 <Label text="KANSHI WMS" styleClass="portal-brand" style="-fx-font-size: 22px;" />
@@ -57,11 +60,11 @@
 
     <!-- Left Navigation Rail (3-Level Architecture Navigation) -->
     <left>
-        <VBox styleClass="nav-rail">
-            <Label text="CORE COMMAND" styleClass="nav-category-header" />
+        <VBox fx:id="navRail" styleClass="nav-rail">
+            <Label fx:id="lblNavCatCore" text="CORE COMMAND" styleClass="nav-category-header" />
             <Button fx:id="btnNavDashboard" text="📊 Overview Dashboard" onAction="#handleNavDashboard" styleClass="nav-item-btn, active" />
 
-            <Label text="WORKSPACES" styleClass="nav-category-header">
+            <Label fx:id="lblNavCatWorkspaces" text="WORKSPACES" styleClass="nav-category-header">
                 <VBox.margin>
                     <Insets top="10" />
                 </VBox.margin>
@@ -70,7 +73,7 @@
             <Button fx:id="btnNavInventory" text="📦 Inventory Ledger" onAction="#handleNavInventory" styleClass="nav-item-btn" />
             <Button fx:id="btnNavFinance" text="💰 Finance &amp; Invoicing" onAction="#handleNavFinance" styleClass="nav-item-btn" />
 
-            <Label text="SYSTEM &amp; CONFIG" styleClass="nav-category-header">
+            <Label fx:id="lblNavCatSystem" text="SYSTEM &amp; CONFIG" styleClass="nav-category-header">
                 <VBox.margin>
                     <Insets top="10" />
                 </VBox.margin>
@@ -80,7 +83,7 @@
             <Region VBox.vgrow="ALWAYS" />
 
             <!-- System Info Footer -->
-            <VBox spacing="4" style="-fx-padding: 10px; -fx-background-color: #f8fafc; -fx-background-radius: 6px; -fx-border-color: #e2e8f0; -fx-border-radius: 6px;">
+            <VBox fx:id="navRailFooter" spacing="4" style="-fx-padding: 10px; -fx-background-color: #f8fafc; -fx-background-radius: 6px; -fx-border-color: #e2e8f0; -fx-border-radius: 6px;">
                 <Label text="KANSHI WMS v1.0" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #7a0c1e;" />
                 <Label text="Modbus TCP / Factory I/O" style="-fx-font-size: 10px; -fx-text-fill: #64748b;" />
                 <Label text="SQLite kanshi.db Connected" style="-fx-font-size: 10px; -fx-text-fill: #15803d; -fx-font-weight: 600;" />
@@ -214,8 +217,8 @@
                                 <Button text="↺ Reset Line Order" onAction="#handleResetLineOrder" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 5 12;" />
                                 <Label fx:id="lblMimicLineStatus" text="LINE STATUS: IDLE" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b; -fx-background-color: #f1f5f9; -fx-padding: 5 12; -fx-background-radius: 4px;" />
                             </HBox>
-                            <ScrollPane fitToHeight="true" vbarPolicy="NEVER" hbarPolicy="AS_NEEDED" style="-fx-background-color: transparent; -fx-padding: 0;">
-                                <HBox fx:id="pipelineTrack" styleClass="pipeline-track" alignment="CENTER_LEFT" />
+                            <ScrollPane fitToHeight="false" fitToWidth="false" vbarPolicy="AS_NEEDED" hbarPolicy="AS_NEEDED" style="-fx-background-color: transparent; -fx-padding: 0;">
+                                <HBox fx:id="pipelineTrack" styleClass="pipeline-track" alignment="TOP_LEFT" fillHeight="false" />
                             </ScrollPane>
                         </VBox>
 
