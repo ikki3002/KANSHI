@@ -18,6 +18,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.layout.GridPane?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
@@ -206,19 +207,27 @@
                 <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
                     <VBox spacing="20" style="-fx-padding: 24px;">
 
-                        <!-- Option B: Unified Interactive Conveyor Line Pipeline (Direct Controls + Drag-and-Drop) -->
+                        <!-- 2D SCADA Studio Canvas (Design & Operational Modes) -->
                         <VBox spacing="12" styleClass="pipeline-board">
                             <HBox alignment="CENTER_LEFT" spacing="12">
                                 <VBox spacing="2">
-                                    <Label text="🏭 Interactive Factory I/O Equipment Pipeline" styleClass="station-title" style="-fx-font-size: 16px;" />
-                                    <Label text="Drag and drop stations to reconfigure line layout. Embedded toggles operate Modbus coils directly in real-time." styleClass="station-subtitle" />
+                                    <Label text="🏭 2D Factory Floor SCADA Studio" styleClass="station-title" style="-fx-font-size: 16px;" />
+                                    <Label fx:id="lblFloorStudioSubtitle" text="Live operational SCADA mimic. Toggle Edit Mode to place and orient machines on the factory floor grid." styleClass="station-subtitle" />
                                 </VBox>
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Button text="↺ Reset Line Order" onAction="#handleResetLineOrder" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 5 12;" />
+                                <Button fx:id="btnToggleDesignMode" text="✏️ Edit Floor Layout" onAction="#handleToggleDesignMode" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 5 14;" />
+                                <Button text="↺ Reset Default" onAction="#handleResetFloorLayout" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 5 12;" />
                                 <Label fx:id="lblMimicLineStatus" text="LINE STATUS: IDLE" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b; -fx-background-color: #f1f5f9; -fx-padding: 5 12; -fx-background-radius: 4px;" />
                             </HBox>
+
+                            <!-- Amber Studio Mode Notice Banner -->
+                            <HBox fx:id="boxDesignModeBanner" visible="false" managed="false" alignment="CENTER_LEFT" spacing="10" styleClass="design-mode-banner">
+                                <Label text="⚠️ LAYOUT STUDIO ACTIVE" style="-fx-font-weight: bold; -fx-text-fill: #92400e; -fx-font-size: 11px;" />
+                                <Label text="Click [+] on any empty cell to place hardware tags. Click [↻] to rotate flow direction, or [🗑] to remove equipment." style="-fx-text-fill: #78350f; -fx-font-size: 11px;" />
+                            </HBox>
+
                             <ScrollPane fitToHeight="false" fitToWidth="false" vbarPolicy="AS_NEEDED" hbarPolicy="AS_NEEDED" style="-fx-background-color: transparent; -fx-padding: 0;">
-                                <HBox fx:id="pipelineTrack" styleClass="pipeline-track" alignment="TOP_LEFT" fillHeight="false" />
+                                <GridPane fx:id="floorGridPane" styleClass="floor-grid-pane" hgap="12" vgap="12" />
                             </ScrollPane>
                         </VBox>
 

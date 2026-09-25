@@ -601,4 +601,96 @@
     -fx-cursor: hand;
 }
 
+/* ========================================================================= */
+/* 2D SCADA Studio & Grid Layout Styling                                    */
+/* ========================================================================= */
 
+.floor-grid-pane {
+    -fx-padding: 10px;
+    -fx-background-color: transparent;
+}
+
+.floor-cell-empty-design {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #cbd5e1;
+    -fx-border-style: dashed;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 8px 10px;
+    -fx-min-width: 155px;
+    -fx-max-width: 165px;
+    -fx-min-height: 118px;
+    -fx-max-height: 118px;
+    -fx-alignment: center;
+    -fx-spacing: 6px;
+    -fx-cursor: hand;
+}
+
+.floor-cell-empty-design:hover {
+    -fx-background-color: #fef2f2;
+    -fx-border-color: #7a0c1e;
+}
+
+.floor-cell-empty-operational {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-min-width: 155px;
+    -fx-max-width: 165px;
+    -fx-min-height: 118px;
+    -fx-max-height: 118px;
+}
+
+.design-mode-banner {
+    -fx-background-color: #fffbeb;
+    -fx-border-color: #fde68a;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 8px 14px;
+}
+
+.cell-tool-btn {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: #475569;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 2px 6px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 4px;
+}
+
+.cell-tool-btn:hover {
+    -fx-background-color: #e2e8f0;
+    -fx-text-fill: #0f172a;
+}
+
+.cell-tool-btn-danger {
+    -fx-background-color: #fef2f2;
+    -fx-text-fill: #991b1b;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 2px 6px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+    -fx-border-color: #fecaca;
+    -fx-border-radius: 4px;
+}
+
+.cell-tool-btn-danger:hover {
+    -fx-background-color: #fee2e2;
+    -fx-text-fill: #7f1d1d;
+}
+
+.cell-direction-badge {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: #475569;
+    -fx-font-size: 9px;
+    -fx-font-weight: bold;
+    -fx-padding: 2px 6px;
+    -fx-background-radius: 4px;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 4px;
+}
