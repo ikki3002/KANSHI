@@ -1,11 +1,15 @@
 package com.example.kanshiwarehousemanagementsystem.controller;
 
 import com.example.kanshiwarehousemanagementsystem.HelloApplication;
+import com.example.kanshiwarehousemanagementsystem.database.InventoryDao;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag.TagType;
 import com.example.kanshiwarehousemanagementsystem.model.User;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.FactoryIOService;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.TagManager;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -16,35 +20,64 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.IOException;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Controller for the integrated Kanshi WMS Main Application.
- * Manages user session, SCADA hardware operations, and dynamic tag configuration.
+ * Implements 3-Level Architecture: Level 1 Command Hub, Level 2 Workspaces (SCADA, Inventory, Finance, Tags).
  */
 public class MainAppController implements Initializable {
 
-    // Top Header & Session
+    // Top Header & Real-Time Telemetry
     @FXML private Label lblOperatorEmail;
+    @FXML private Label lblClock;
+    @FXML private Circle circleHeartbeat;
+    @FXML private Label lblHeartbeatStatus;
 
-    // Connection Bar
+    // Navigation Rail Buttons
+    @FXML private Button btnNavDashboard;
+    @FXML private Button btnNavScada;
+    @FXML private Button btnNavInventory;
+    @FXML private Button btnNavFinance;
+    @FXML private Button btnNavTags;
+
+    // Workspace View Containers
+    @FXML private StackPane mainContentPane;
+    @FXML private ScrollPane paneDashboard;
+    @FXML private VBox paneScada;
+    @FXML private VBox paneInventory;
+    @FXML private VBox paneFinance;
+    @FXML private VBox paneTags;
+
+    // Level 1 KPI Overview Labels
+    @FXML private Label lblKpiValuation;
+    @FXML private Label lblKpiInventory;
+    @FXML private Label lblKpiLineState;
+    @FXML private Label lblKpiPackageCount;
+
+    // Connection Bar (SCADA View)
     @FXML private TextField txtHost;
     @FXML private TextField txtPort;
     @FXML private Button btnConnect;
@@ -53,12 +86,15 @@ public class MainAppController implements Initializable {
     @FXML private Button btnAutoTest;
     @FXML private Button btnEstop;
 
-    // Tab 1: Live Hardware Controls
+    // Live Hardware Controls
     @FXML private FlowPane actuatorsContainer;
     @FXML private FlowPane sensorsContainer;
     @FXML private TextArea txtLog;
 
-    // Tab 2: Tag Settings
+    // Overview Dashboard Stream
+    @FXML private TextArea txtAuditStream;
+
+    // Tag Settings
     @FXML private TableView<ModbusTag> tableTags;
     @FXML private TableColumn<ModbusTag, String> colTagName;
     @FXML private TableColumn<ModbusTag, String> colTagType;
@@ -72,11 +108,15 @@ public class MainAppController implements Initializable {
     private User sessionUser;
     private final TagManager tagManager = new TagManager();
     private final FactoryIOService ioService = new FactoryIOService();
+    private final InventoryDao inventoryDao = new InventoryDao();
     private final ObservableList<ModbusTag> tableData = FXCollections.observableArrayList();
 
     private final Map<String, ActuatorCardRef> actuatorRefs = new ConcurrentHashMap<>();
     private final Map<String, SensorCardRef> sensorRefs = new ConcurrentHashMap<>();
     private final Map<String, Integer> sensorCounters = new ConcurrentHashMap<>();
+    private final AtomicInteger totalDetectedPackages = new AtomicInteger(0);
+
+    private Timeline clockTimeline;
 
     private static class ActuatorCardRef {
         VBox card;
@@ -92,11 +132,82 @@ public class MainAppController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        initClock();
         setupTagTable();
         setupTagForm();
         refreshDynamicHardwareUI();
+        refreshKpiMetrics();
 
-        log("[SYSTEM] Kanshi WMS Main SCADA Control Center initialized.");
+        log("[SYSTEM] Kanshi WMS 3-Level Executive Shell initialized.");
+        logAudit("SYS", "Executive Command Center initialized. Modbus TCP & SQLite ready.");
+    }
+
+    /**
+     * Initializes the live ticking header clock.
+     */
+    private void initClock() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss  |  dd MMM yyyy");
+        lblClock.setText(LocalDateTime.now().format(formatter));
+        clockTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+            lblClock.setText(LocalDateTime.now().format(formatter));
+        }));
+        clockTimeline.setCycleCount(Animation.INDEFINITE);
+        clockTimeline.play();
+    }
+
+    // =========================================================================
+    // Navigation Rail View Switcher (Level 1 <-> Level 2 Workspaces)
+    // =========================================================================
+
+    @FXML
+    private void handleNavDashboard(ActionEvent event) {
+        activateView(paneDashboard, btnNavDashboard);
+    }
+
+    @FXML
+    private void handleNavScada(ActionEvent event) {
+        activateView(paneScada, btnNavScada);
+    }
+
+    @FXML
+    private void handleNavInventory(ActionEvent event) {
+        activateView(paneInventory, btnNavInventory);
+    }
+
+    @FXML
+    private void handleNavFinance(ActionEvent event) {
+        activateView(paneFinance, btnNavFinance);
+    }
+
+    @FXML
+    private void handleNavTags(ActionEvent event) {
+        activateView(paneTags, btnNavTags);
+    }
+
+    private void activateView(Node activePane, Button activeBtn) {
+        paneDashboard.setVisible(false);
+        paneDashboard.setManaged(false);
+        paneScada.setVisible(false);
+        paneScada.setManaged(false);
+        paneInventory.setVisible(false);
+        paneInventory.setManaged(false);
+        paneFinance.setVisible(false);
+        paneFinance.setManaged(false);
+        paneTags.setVisible(false);
+        paneTags.setManaged(false);
+
+        activePane.setVisible(true);
+        activePane.setManaged(true);
+
+        btnNavDashboard.getStyleClass().remove("active");
+        btnNavScada.getStyleClass().remove("active");
+        btnNavInventory.getStyleClass().remove("active");
+        btnNavFinance.getStyleClass().remove("active");
+        btnNavTags.getStyleClass().remove("active");
+
+        if (!activeBtn.getStyleClass().contains("active")) {
+            activeBtn.getStyleClass().add("active");
+        }
     }
 
     /**
@@ -107,7 +218,9 @@ public class MainAppController implements Initializable {
         if (user != null) {
             lblOperatorEmail.setText("👤 Operator: " + (user.getEmail() != null ? user.getEmail() : user.getUsername()));
             log("[AUTH] Session established for user: " + user.getUsername() + " (" + user.getEmail() + ")");
+            logAudit("AUTH", "Operator authenticated: " + user.getEmail());
         }
+        refreshKpiMetrics();
     }
 
     @FXML
@@ -136,6 +249,9 @@ public class MainAppController implements Initializable {
      * Clean shutdown of Modbus connections and background threads.
      */
     public void shutdown() {
+        if (clockTimeline != null) {
+            clockTimeline.stop();
+        }
         if (ioService != null) {
             ioService.disconnect();
         }
@@ -296,6 +412,15 @@ public class MainAppController implements Initializable {
             ref.toggleBtn.getStyleClass().removeAll("btn-primary", "btn-estop");
             ref.toggleBtn.getStyleClass().add(running ? "btn-estop" : "btn-primary");
         }
+
+        boolean anyRunning = tagManager.getActuatorTags().stream().anyMatch(ModbusTag::isActive);
+        if (anyRunning) {
+            lblKpiLineState.setText("RUNNING");
+            lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
+        } else if (ioService.isConnected()) {
+            lblKpiLineState.setText("IDLE");
+            lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #64748b;");
+        }
     }
 
     private void updateSensorTileUI(ModbusTag tag, boolean active) {
@@ -308,6 +433,8 @@ public class MainAppController implements Initializable {
             if (active) {
                 int count = sensorCounters.compute(tag.getId(), (k, v) -> v == null ? 1 : v + 1);
                 ref.counterLabel.setText("Detections: " + count);
+                int total = totalDetectedPackages.incrementAndGet();
+                lblKpiPackageCount.setText(total + " Pcs");
             }
         }
     }
@@ -319,6 +446,13 @@ public class MainAppController implements Initializable {
             circleStatus.setFill(Color.web("#ef4444"));
             lblConnectionStatus.setText("DISCONNECTED");
             btnConnect.setText("Connect");
+
+            circleHeartbeat.setFill(Color.web("#ef4444"));
+            circleHeartbeat.setStroke(Color.web("#b91c1c"));
+            lblHeartbeatStatus.setText("● OFFLINE: 502");
+            lblKpiLineState.setText("DISCONNECTED");
+            lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #64748b;");
+
             log("[INFO] Disconnected from Modbus TCP server.");
         } else {
             String host = txtHost.getText().trim();
@@ -338,6 +472,13 @@ public class MainAppController implements Initializable {
                         circleStatus.setFill(Color.web("#10b981"));
                         lblConnectionStatus.setText("CONNECTED (" + port + ")");
                         btnConnect.setText("Disconnect");
+
+                        circleHeartbeat.setFill(Color.web("#22c55e"));
+                        circleHeartbeat.setStroke(Color.web("#16a34a"));
+                        lblHeartbeatStatus.setText("● ONLINE: " + port);
+                        lblKpiLineState.setText("ONLINE");
+                        lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
+
                         log("[SUCCESS] Connected to Factory I/O Modbus TCP/IP Server at " + host + ":" + port);
 
                         // Start real-time background sensor polling
@@ -352,6 +493,13 @@ public class MainAppController implements Initializable {
                     Platform.runLater(() -> {
                         circleStatus.setFill(Color.web("#ef4444"));
                         lblConnectionStatus.setText("FAILED");
+
+                        circleHeartbeat.setFill(Color.web("#ef4444"));
+                        circleHeartbeat.setStroke(Color.web("#b91c1c"));
+                        lblHeartbeatStatus.setText("● FAILED: " + port);
+                        lblKpiLineState.setText("ERROR");
+                        lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #b91c1c;");
+
                         log("[ERROR] Connection failed: " + e.getMessage());
                         showAlert("Connection Error", "Could not connect to " + host + ":" + port + "\n\nEnsure Factory I/O driver is set to Modbus TCP/IP Server and scene is running.");
                     });
@@ -368,6 +516,8 @@ public class MainAppController implements Initializable {
                 for (ModbusTag tag : tagManager.getActuatorTags()) {
                     updateActuatorTileUI(tag, false);
                 }
+                lblKpiLineState.setText("EMERGENCY STOP");
+                lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #b91c1c;");
                 log(">> [EMERGENCY STOP] All conveyor actuators stopped immediately!");
             });
         }).start();
@@ -470,9 +620,57 @@ public class MainAppController implements Initializable {
         txtLog.clear();
     }
 
+    @FXML
+    private void handleRefreshDashboard(ActionEvent event) {
+        refreshKpiMetrics();
+        logAudit("IT-STOCK", "Dashboard KPIs refreshed from SQLite inventory database.");
+    }
+
+    @FXML
+    private void handleClearAuditStream(ActionEvent event) {
+        if (txtAuditStream != null) {
+            txtAuditStream.clear();
+        }
+    }
+
+    /**
+     * Refreshes executive KPI metrics directly from the SQLite database.
+     */
+    public void refreshKpiMetrics() {
+        int totalUnits = inventoryDao.getTotalStockCount();
+        double totalValuation = inventoryDao.getTotalValuation();
+        if (lblKpiInventory != null) {
+            lblKpiInventory.setText(String.format("%,d Units", totalUnits));
+        }
+        if (lblKpiValuation != null) {
+            lblKpiValuation.setText(String.format("$%,.2f", totalValuation));
+        }
+    }
+
+    /**
+     * Writes timestamped entries to the converged activity audit log.
+     */
+    public void logAudit(String category, String message) {
+        String timestamp = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+        String entry = "[" + timestamp + "] [" + category + "] " + message + "\n";
+        Platform.runLater(() -> {
+            if (txtAuditStream != null) {
+                txtAuditStream.appendText(entry);
+            }
+        });
+    }
+
     private void log(String message) {
         String timestamp = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-        txtLog.appendText("[" + timestamp + "] " + message + "\n");
+        String entry = "[" + timestamp + "] " + message + "\n";
+        Platform.runLater(() -> {
+            if (txtLog != null) {
+                txtLog.appendText(entry);
+            }
+            if (txtAuditStream != null) {
+                txtAuditStream.appendText(entry);
+            }
+        });
     }
 
     private void showAlert(String title, String message) {

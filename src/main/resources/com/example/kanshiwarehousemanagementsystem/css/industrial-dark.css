@@ -394,3 +394,78 @@
     -fx-fill: #7a0c1e;
     -fx-font-weight: bold;
 }
+
+/* ==========================================================================
+   Level 1 Navigation Rail & Modular Shell
+   ========================================================================== */
+
+.nav-rail {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0 1px 0 0;
+    -fx-pref-width: 230px;
+    -fx-min-width: 230px;
+    -fx-padding: 16px 10px;
+    -fx-spacing: 6px;
+}
+
+.nav-category-header {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 12px 4px 12px;
+}
+
+.nav-item-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #334155;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 10px 14px;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-max-width: Infinity;
+}
+
+.nav-item-btn:hover {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: #7a0c1e;
+}
+
+.nav-item-btn.active {
+    -fx-background-color: #7a0c1e;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(122, 12, 30, 0.25), 8, 0, 0, 2);
+}
+
+.nav-item-btn.active:hover {
+    -fx-background-color: #96152b;
+    -fx-text-fill: #ffffff;
+}
+
+.header-clock-badge {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 6px 14px;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #334155;
+}
+
+.plc-heartbeat-pill {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 6px 12px;
+}
+
+.content-pane {
+    -fx-background-color: #f8fafc;
+}
+
