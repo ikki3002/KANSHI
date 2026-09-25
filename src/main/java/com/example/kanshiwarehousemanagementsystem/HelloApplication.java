@@ -20,10 +20,13 @@ public class HelloApplication extends Application {
         // Initialize SQLite database and seed initial accounts
         DatabaseManager.initializeDatabase();
     }
-
     @Override
     public void start(Stage stage) throws IOException {
-        FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("login-view.fxml"));
+        URL fxmlLocation = HelloApplication.class.getResource("login-view.fxml");
+        if (fxmlLocation == null) {
+            throw new IllegalStateException("CRITICAL ERROR: 'login-view.fxml' was not found on classpath. Please run 'Build -> Rebuild Project' in IntelliJ or 'mvn compile'.");
+        }
+        FXMLLoader fxmlLoader = new FXMLLoader(fxmlLocation);
         Scene scene = new Scene(fxmlLoader.load());
 
         // Apply White + Dark Red Cherry industrial stylesheet with Segoe UI typography
