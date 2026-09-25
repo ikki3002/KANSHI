@@ -821,3 +821,38 @@
     -fx-padding: 6px 10px;
 }
 
+/* Micro Status & Indicators for Pure Visual Mimic Cards */
+.state-led-dot-active {
+    -fx-fill: #22c55e;
+    -fx-effect: dropshadow(gaussian, rgba(34, 197, 94, 0.65), 5, 0.4, 0, 0);
+}
+
+.state-led-dot-idle {
+    -fx-fill: #94a3b8;
+}
+
+.card-micro-bar {
+    -fx-alignment: center-left;
+    -fx-padding: 0 1px;
+    -fx-spacing: 4px;
+    -fx-min-height: 19px;
+    -fx-max-height: 19px;
+}
+
+.micro-dir-arrow {
+    -fx-font-size: 9px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #64748b;
+}
+
+.card-counter-chip {
+    -fx-font-size: 8px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1e293b;
+    -fx-background-color: #f1f5f9;
+    -fx-padding: 1px 4px;
+    -fx-background-radius: 3px;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 3px;
+}
+

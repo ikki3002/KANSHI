@@ -156,19 +156,20 @@ public class MainAppController implements Initializable {
 
     private static class ActuatorBlockRef {
         VBox block;
-        Label statusPill;
+        Circle ledDot;
         Button toggleBtn;
         Canvas beltCanvas;
         Direction direction;
+        Tooltip tooltip;
     }
 
     private static class SensorBlockRef {
         VBox block;
         Circle led;
-        Label statusLabel;
         Label counterLabel;
         Canvas sensorCanvas;
         Direction direction;
+        Tooltip tooltip;
     }
 
     @Override
@@ -240,49 +241,61 @@ public class MainAppController implements Initializable {
         double h = canvas.getHeight();
 
         // 1. Background
-        gc.setFill(running ? Color.web("#fff1f2") : Color.web("#f8fafc"));
+        gc.setFill(running ? Color.web("#f0fdf4") : Color.web("#f8fafc"));
         gc.fillRect(0, 0, w, h);
 
-        // 2. Chassis box
-        gc.setStroke(running ? Color.web("#7a0c1e") : Color.web("#cbd5e1"));
-        gc.setLineWidth(running ? 1.8 : 1.2);
-        gc.strokeRoundRect(2, 2, w - 4, h - 4, 5, 5);
+        // 2. Chassis outer border
+        gc.setStroke(running ? Color.web("#22c55e") : Color.web("#cbd5e1"));
+        gc.setLineWidth(running ? 1.8 : 1.0);
+        gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
 
-        // 3. Curved rails
-        gc.setStroke(running ? Color.web("#991b1b") : Color.web("#64748b"));
-        gc.setLineWidth(2.5);
-        gc.strokeArc(4, -18, 76, 68, 270, 90, ArcType.OPEN);
-        gc.strokeArc(4, 4, 40, 36, 270, 90, ArcType.OPEN);
+        double pivotX = 8;
+        double pivotY = h - 4;
 
-        // 4. Moving radial roller lines
+        // 3. Curved Rails (Arc)
+        gc.setStroke(running ? Color.web("#15803d") : Color.web("#64748b"));
+        gc.setLineWidth(running ? 3.0 : 2.5);
+        gc.strokeArc(pivotX - 86, pivotY - 86, 172, 172, 270, 90, ArcType.OPEN);
+        gc.strokeArc(pivotX - 32, pivotY - 32, 64, 64, 270, 90, ArcType.OPEN);
+
         if (running) {
-            gc.setStroke(Color.web("#e11d48"));
-            gc.setLineWidth(1.6);
-            for (double angle = 275 + (offset % 18); angle < 355; angle += 18) {
-                double rad = Math.toRadians(angle);
-                double x1 = 24 + 20 * Math.cos(rad);
-                double y1 = 20 - 18 * Math.sin(rad);
-                double x2 = 24 + 38 * Math.cos(rad);
-                double y2 = 20 - 34 * Math.sin(rad);
-                gc.strokeLine(x1, y1, x2, y2);
-            }
-            gc.setFill(Color.web("#7a0c1e"));
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
-            gc.fillText("↷ 90° CW", w - 54, h / 2 + 3);
-        } else {
-            gc.setStroke(Color.web("#cbd5e1"));
+            gc.setStroke(Color.web("#4ade80"));
             gc.setLineWidth(1.2);
-            for (double angle = 275; angle < 355; angle += 18) {
-                double rad = Math.toRadians(angle);
-                double x1 = 24 + 20 * Math.cos(rad);
-                double y1 = 20 - 18 * Math.sin(rad);
-                double x2 = 24 + 38 * Math.cos(rad);
-                double y2 = 20 - 34 * Math.sin(rad);
-                gc.strokeLine(x1, y1, x2, y2);
-            }
+            gc.strokeArc(pivotX - 88, pivotY - 88, 176, 176, 270, 90, ArcType.OPEN);
+        }
+
+        // 4. Moving Radial Rollers
+        double step = 14.0;
+        double startAngle = 274 + (running ? (offset % step) : 0);
+        for (double angle = startAngle; angle < 360; angle += step) {
+            double rad = Math.toRadians(angle);
+            double x1 = pivotX + 34 * Math.cos(rad);
+            double y1 = pivotY - 34 * Math.sin(rad);
+            double x2 = pivotX + 84 * Math.cos(rad);
+            double y2 = pivotY - 84 * Math.sin(rad);
+
+            gc.setStroke(running ? Color.web("#94a3b8") : Color.web("#cbd5e1"));
+            gc.setLineWidth(running ? 2.4 : 1.8);
+            gc.strokeLine(x1, y1, x2, y2);
+        }
+
+        // 5. Curved Center Flow Marker
+        if (running) {
+            gc.setStroke(Color.web("#22c55e"));
+            gc.setLineWidth(2.2);
+            gc.strokeArc(pivotX - 58, pivotY - 58, 116, 116, 282, 66, ArcType.OPEN);
+
+            gc.setFill(Color.web("#15803d"));
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 11));
+            gc.fillText("↷ 90°", w - 42, 20);
+        } else {
+            gc.setStroke(Color.web("#94a3b8"));
+            gc.setLineWidth(1.4);
+            gc.strokeArc(pivotX - 58, pivotY - 58, 116, 116, 282, 66, ArcType.OPEN);
+
             gc.setFill(Color.web("#64748b"));
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
-            gc.fillText("↷ Corner", w - 50, h / 2 + 3);
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
+            gc.fillText("↷ Corner", w - 48, 20);
         }
     }
 
@@ -295,70 +308,98 @@ public class MainAppController implements Initializable {
         double w = canvas.getWidth();
         double h = canvas.getHeight();
 
-        gc.setFill(running ? Color.web("#fff1f2") : Color.web("#f8fafc"));
+        // 1. Background
+        gc.setFill(running ? Color.web("#f0fdf4") : Color.web("#f8fafc"));
         gc.fillRect(0, 0, w, h);
+
+        // 2. Chassis border
+        gc.setStroke(running ? Color.web("#22c55e") : Color.web("#cbd5e1"));
+        gc.setLineWidth(running ? 1.8 : 1.0);
+        gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
 
         Direction d = dir != null ? dir : Direction.EAST;
 
         if (d == Direction.EAST || d == Direction.WEST) {
-            // Horizontal rails
-            gc.setFill(running ? Color.web("#991b1b") : Color.web("#64748b"));
-            gc.fillRect(2, 2, w - 4, 2.5);
-            gc.fillRect(2, h - 4, w - 4, 2.5);
+            // Horizontal rails (Top and Bottom)
+            gc.setFill(running ? Color.web("#15803d") : Color.web("#64748b"));
+            gc.fillRect(2, 3, w - 4, 3.5);
+            gc.fillRect(2, h - 6.5, w - 4, 3.5);
 
             if (running) {
-                gc.setStroke(Color.web("#e11d48"));
-                gc.setLineWidth(1.6);
-                double off = (d == Direction.EAST) ? (offset % 14) : (14 - (offset % 14));
-                for (double x = 4 + off; x < w - 4; x += 14) {
-                    gc.strokeLine(x, 4, x + (d == Direction.EAST ? 4 : -4), h - 4);
+                gc.setFill(Color.web("#4ade80"));
+                gc.fillRect(2, 2, w - 4, 1.2);
+                gc.fillRect(2, h - 3.2, w - 4, 1.2);
+            }
+
+            // Rollers spanning vertically across the belt bed
+            for (double x = 4; x < w - 8; x += 14) {
+                gc.setFill(running ? Color.web("#ffffff") : Color.web("#f8fafc"));
+                gc.fillRoundRect(x, 7, 9, h - 14, 3, 3);
+                gc.setStroke(running ? Color.web("#94a3b8") : Color.web("#cbd5e1"));
+                gc.setLineWidth(1.0);
+                gc.strokeRoundRect(x, 7, 9, h - 14, 3, 3);
+
+                if (running) {
+                    double rotY = 8 + ((offset + x * 2) % (h - 18));
+                    gc.setStroke(Color.web("#22c55e"));
+                    gc.setLineWidth(1.5);
+                    gc.strokeLine(x + 1, rotY, x + 8, rotY);
                 }
-                gc.setFill(Color.web("#7a0c1e"));
-                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
-                if (d == Direction.EAST) {
-                    gc.fillText("▶▶", w - 18, h / 2 + 3);
-                } else {
-                    gc.fillText("◀◀", 6, h / 2 + 3);
+            }
+
+            // Center Flow Chevron Stream
+            if (running) {
+                double flowOff = (d == Direction.EAST) ? (offset % 24) : (24 - (offset % 24));
+                gc.setFill(Color.web("#15803d"));
+                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 13));
+                for (double fx = 6 + flowOff; fx < w - 6; fx += 24) {
+                    gc.fillText(d == Direction.EAST ? "»" : "«", fx, h / 2 + 5);
                 }
             } else {
-                gc.setStroke(Color.web("#cbd5e1"));
-                gc.setLineWidth(1.2);
-                for (double x = 4; x < w - 4; x += 14) {
-                    gc.strokeLine(x, 4, x, h - 4);
-                }
                 gc.setFill(Color.web("#94a3b8"));
-                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 8));
-                gc.fillText(d == Direction.EAST ? "→" : "←", w / 2 - 4, h / 2 + 3);
+                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
+                gc.fillText(d == Direction.EAST ? "→" : "←", w / 2 - 4, h / 2 + 4);
             }
         } else {
-            // Vertical rails (NORTH or SOUTH)
-            gc.setFill(running ? Color.web("#991b1b") : Color.web("#64748b"));
-            gc.fillRect(2, 2, 2.5, h - 4);
-            gc.fillRect(w - 4, 2, 2.5, h - 4);
+            // Vertical rails (Left and Right)
+            gc.setFill(running ? Color.web("#15803d") : Color.web("#64748b"));
+            gc.fillRect(3, 2, 3.5, h - 4);
+            gc.fillRect(w - 6.5, 2, 3.5, h - 4);
 
             if (running) {
-                gc.setStroke(Color.web("#e11d48"));
-                gc.setLineWidth(1.6);
-                double off = (d == Direction.SOUTH) ? (offset % 10) : (10 - (offset % 10));
-                for (double y = 4 + off; y < h - 4; y += 10) {
-                    gc.strokeLine(4, y, w - 4, y + (d == Direction.SOUTH ? 2 : -2));
+                gc.setFill(Color.web("#4ade80"));
+                gc.fillRect(2, 2, 1.2, h - 4);
+                gc.fillRect(w - 3.2, 2, 1.2, h - 4);
+            }
+
+            // Rollers spanning horizontally across the belt bed
+            for (double y = 4; y < h - 8; y += 12) {
+                gc.setFill(running ? Color.web("#ffffff") : Color.web("#f8fafc"));
+                gc.fillRoundRect(7, y, w - 14, 8, 3, 3);
+                gc.setStroke(running ? Color.web("#94a3b8") : Color.web("#cbd5e1"));
+                gc.setLineWidth(1.0);
+                gc.strokeRoundRect(7, y, w - 14, 8, 3, 3);
+
+                if (running) {
+                    double rotX = 8 + ((offset + y * 2) % (w - 18));
+                    gc.setStroke(Color.web("#22c55e"));
+                    gc.setLineWidth(1.5);
+                    gc.strokeLine(rotX, y + 1, rotX, y + 7);
                 }
-                gc.setFill(Color.web("#7a0c1e"));
-                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
-                if (d == Direction.SOUTH) {
-                    gc.fillText("▼▼", w / 2 - 6, h - 3);
-                } else {
-                    gc.fillText("▲▲", w / 2 - 6, 11);
+            }
+
+            // Center Flow Chevron Stream
+            if (running) {
+                double flowOff = (d == Direction.SOUTH) ? (offset % 20) : (20 - (offset % 20));
+                gc.setFill(Color.web("#15803d"));
+                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
+                for (double fy = 6 + flowOff; fy < h - 6; fy += 20) {
+                    gc.fillText(d == Direction.SOUTH ? "▼" : "▲", w / 2 - 5, fy + 8);
                 }
             } else {
-                gc.setStroke(Color.web("#cbd5e1"));
-                gc.setLineWidth(1.2);
-                for (double y = 4; y < h - 4; y += 10) {
-                    gc.strokeLine(4, y, w - 4, y);
-                }
                 gc.setFill(Color.web("#94a3b8"));
-                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 8));
-                gc.fillText(d == Direction.SOUTH ? "↓" : "↑", w / 2 - 4, h / 2 + 3);
+                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
+                gc.fillText(d == Direction.SOUTH ? "↓" : "↑", w / 2 - 4, h / 2 + 4);
             }
         }
     }
@@ -375,51 +416,210 @@ public class MainAppController implements Initializable {
         gc.setFill(detected ? Color.web("#f0fdf4") : Color.web("#f8fafc"));
         gc.fillRect(0, 0, w, h);
 
+        gc.setStroke(detected ? Color.web("#22c55e") : Color.web("#cbd5e1"));
+        gc.setLineWidth(detected ? 1.8 : 1.0);
+        gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
+
         double centerX = w / 2.0;
 
         // Optical Sensor Head at top
+        gc.setFill(Color.web("#0f172a"));
+        gc.fillRoundRect(centerX - 16, 2, 32, 12, 3, 3);
+
         gc.setFill(detected ? Color.web("#22c55e") : Color.web("#0284c7"));
-        gc.fillRoundRect(centerX - 14, 1, 28, 10, 3, 3);
+        gc.fillOval(centerX - 4, 10, 8, 4);
+
         gc.setFill(Color.WHITE);
         gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 7));
-        gc.fillText("OPTICAL", centerX - 12, 8);
+        gc.fillText("OPTICAL", centerX - 14, 10);
+
+        // Conveyor bed rails at bottom
+        gc.setFill(Color.web("#64748b"));
+        gc.fillRect(2, h - 6, w - 4, 3);
 
         if (detected) {
-            gc.setStroke(Color.web("#22c55e"));
-            gc.setLineWidth(2.0);
-            gc.strokeLine(centerX, 11, centerX, h - 2);
+            // Crate centered on conveyor bed
+            double bw = 32, bh = 22;
+            double bx = centerX - bw / 2;
+            double by = h - bh - 6;
 
-            gc.setFill(Color.rgb(34, 197, 94, 0.22));
+            // Translucent laser halo cone
+            gc.setFill(Color.rgb(34, 197, 94, 0.20));
             gc.fillPolygon(
-                new double[]{centerX, centerX - 14, centerX + 14},
-                new double[]{11, h - 2, h - 2},
+                new double[]{centerX, bx, bx + bw},
+                new double[]{14, by, by},
                 3
             );
 
-            double boxW = 22;
-            double boxH = 14;
-            double boxX = centerX - boxW / 2;
-            double boxY = h - boxH - 2;
+            // Emerald laser line
+            gc.setStroke(Color.web("#22c55e"));
+            gc.setLineWidth(2.4);
+            gc.strokeLine(centerX, 14, centerX, by);
+
+            // 3D Shipping Crate
             gc.setFill(Color.web("#d97706"));
-            gc.fillRect(boxX, boxY, boxW, boxH);
+            gc.fillRoundRect(bx, by, bw, bh, 3, 3);
             gc.setStroke(Color.web("#92400e"));
             gc.setLineWidth(1.2);
-            gc.strokeRect(boxX, boxY, boxW, boxH);
+            gc.strokeRoundRect(bx, by, bw, bh, 3, 3);
 
+            // Packing tape
             gc.setStroke(Color.web("#fef3c7"));
-            gc.setLineWidth(1.2);
-            gc.strokeLine(boxX, boxY + boxH / 2, boxX + boxW, boxY + boxH / 2);
+            gc.setLineWidth(1.6);
+            gc.strokeLine(bx, by + bh / 2, bx + bw, by + bh / 2);
 
+            // Kanshi label
             gc.setFill(Color.WHITE);
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 6));
-            gc.fillText("BOX", boxX + 4, boxY + 9);
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 7));
+            gc.fillText("KANSHI", bx + 3, by + 10);
+
+            // Laser impact dot & ripple
+            gc.setFill(Color.web("#4ade80"));
+            gc.fillOval(centerX - 3, by - 2, 6, 4);
+            gc.setStroke(Color.web("#22c55e"));
+            gc.setLineWidth(1.0);
+            gc.strokeOval(centerX - 6, by - 4, 12, 8);
         } else {
+            // Clear Standby Beam
+            gc.setStroke(Color.web("#94a3b8"));
+            gc.setLineWidth(1.2);
+            gc.setLineDashes(4);
+            gc.strokeLine(centerX, 14, centerX, h - 6);
+            gc.setLineDashes(null);
+
+            // Reflector plate at bottom
+            gc.setFill(Color.web("#64748b"));
+            gc.fillRoundRect(centerX - 10, h - 6, 20, 3, 1.5, 1.5);
+        }
+    }
+
+    private void drawInfeedVisual(Canvas canvas, double offset, Direction dir) {
+        if (canvas == null) return;
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        gc.setFill(Color.web("#f8fafc"));
+        gc.fillRect(0, 0, w, h);
+
+        gc.setStroke(Color.web("#cbd5e1"));
+        gc.setLineWidth(1.0);
+        gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
+
+        // Hopper chute geometry (wedge funnel on left)
+        gc.setFill(Color.web("#1e293b"));
+        gc.fillPolygon(
+            new double[]{4, 4, 32, 32},
+            new double[]{4, h - 4, h - 14, 14},
+            4
+        );
+        gc.setStroke(Color.web("#0f172a"));
+        gc.setLineWidth(1.5);
+        gc.strokePolygon(
+            new double[]{4, 4, 32, 32},
+            new double[]{4, h - 4, h - 14, 14},
+            4
+        );
+
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 8));
+        gc.fillText("FEED", 8, h / 2 + 3);
+
+        // Rollers continuing out of hopper
+        for (double x = 38; x < w - 8; x += 14) {
+            gc.setFill(Color.web("#f1f5f9"));
+            gc.fillRoundRect(x, 10, 9, h - 20, 3, 3);
             gc.setStroke(Color.web("#cbd5e1"));
             gc.setLineWidth(1.0);
-            gc.setLineDashes(3);
-            gc.strokeLine(centerX, 11, centerX, h - 2);
-            gc.setLineDashes(null);
+            gc.strokeRoundRect(x, 10, 9, h - 20, 3, 3);
         }
+
+        // Animated entry arrow
+        gc.setFill(Color.web("#7a0c1e"));
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
+        double arrowX = 40 + (offset % 20);
+        gc.fillText("»»", Math.min(arrowX, w - 24), h / 2 + 4);
+    }
+
+    private void drawDepotVisual(Canvas canvas, double offset, Direction dir) {
+        if (canvas == null) return;
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        gc.setFill(Color.web("#f8fafc"));
+        gc.fillRect(0, 0, w, h);
+
+        gc.setStroke(Color.web("#cbd5e1"));
+        gc.setLineWidth(1.0);
+        gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
+
+        // Rollers on left entering depot bay
+        for (double x = 4; x < 54; x += 14) {
+            gc.setFill(Color.web("#f1f5f9"));
+            gc.fillRoundRect(x, 10, 9, h - 20, 3, 3);
+            gc.setStroke(Color.web("#cbd5e1"));
+            gc.setLineWidth(1.0);
+            gc.strokeRoundRect(x, 10, 9, h - 20, 3, 3);
+        }
+
+        // Pallet bay on right
+        gc.setFill(Color.web("#0f172a"));
+        gc.fillRoundRect(58, 4, w - 62, h - 8, 4, 4);
+
+        // Wooden pallet base
+        gc.setFill(Color.web("#b45309"));
+        gc.fillRoundRect(62, h - 14, w - 70, 7, 2, 2);
+
+        // Stacked boxes
+        gc.setFill(Color.web("#d97706"));
+        gc.fillRoundRect(64, h - 34, 18, 18, 2, 2);
+        gc.setStroke(Color.web("#92400e"));
+        gc.strokeRect(64, h - 34, 18, 18);
+
+        gc.setFill(Color.web("#d97706"));
+        gc.fillRoundRect(80, h - 28, 16, 12, 2, 2);
+        gc.setStroke(Color.web("#92400e"));
+        gc.strokeRect(80, h - 28, 16, 12);
+
+        gc.setFill(Color.web("#15803d"));
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
+        double arrowX = 8 + (offset % 20);
+        gc.fillText("»", Math.min(arrowX, 44), h / 2 + 4);
+    }
+
+    private void drawBridgeVisual(Canvas canvas, Direction dir) {
+        if (canvas == null) return;
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        gc.setFill(Color.web("#f8fafc"));
+        gc.fillRect(0, 0, w, h);
+
+        gc.setStroke(Color.web("#cbd5e1"));
+        gc.setLineWidth(1.0);
+        gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
+
+        // Bridge chassis rails
+        gc.setFill(Color.web("#64748b"));
+        gc.fillRect(2, 4, w - 4, 3);
+        gc.fillRect(2, h - 7, w - 4, 3);
+
+        // Steel rollers across bridge
+        for (double x = 4; x < w - 6; x += 14) {
+            gc.setFill(Color.web("#f1f5f9"));
+            gc.fillRoundRect(x, 9, 9, h - 18, 3, 3);
+            gc.setStroke(Color.web("#cbd5e1"));
+            gc.setLineWidth(1.0);
+            gc.strokeRoundRect(x, 9, 9, h - 18, 3, 3);
+        }
+
+        // Bridge direction arrow
+        gc.setFill(Color.web("#7a0c1e"));
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
+        String arrow = getBridgeArrowForDirection(dir);
+        gc.fillText(arrow, w / 2 - 12, h / 2 + 6);
     }
 
     /**
@@ -907,37 +1107,57 @@ public class MainAppController implements Initializable {
         switch (placement.getAssetType()) {
             case INFEED -> {
                 VBox box = new VBox(2);
-                box.getStyleClass().add("pipeline-terminal");
+                box.getStyleClass().add("pipeline-block");
                 box.setMinWidth(118);
                 box.setMaxWidth(122);
                 box.setMinHeight(84);
                 box.setMaxHeight(84);
-                box.setAlignment(Pos.CENTER);
+
+                HBox microTopBar = new HBox(4);
+                microTopBar.getStyleClass().add("card-micro-bar");
                 Label icon = new Label("📥");
-                icon.setStyle("-fx-font-size: 18px;");
-                Label lbl = new Label("INFEED");
-                lbl.getStyleClass().add("pipeline-terminal-label");
-                Label sub = new Label("Entry (" + placement.getDirection().getLabel() + ")");
-                sub.getStyleClass().add("pipeline-terminal-sub");
-                box.getChildren().addAll(icon, lbl, sub);
+                icon.setStyle("-fx-font-size: 10px;");
+                Label lbl = new Label("ENTRY");
+                lbl.getStyleClass().add("micro-dir-arrow");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                Label dir = new Label(getBridgeArrowForDirection(placement.getDirection()));
+                dir.getStyleClass().add("micro-dir-arrow");
+                microTopBar.getChildren().addAll(icon, lbl, spacer, dir);
+
+                Canvas canvas = new Canvas(108, 54);
+                drawInfeedVisual(canvas, beltOffset, placement.getDirection());
+
+                box.getChildren().addAll(microTopBar, canvas);
+                Tooltip.install(box, new Tooltip("Infeed Chute (Entry Point)\nClick for Diagnostics"));
                 box.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
                 return box;
             }
             case DEPOT -> {
                 VBox box = new VBox(2);
-                box.getStyleClass().add("pipeline-terminal");
+                box.getStyleClass().add("pipeline-block");
                 box.setMinWidth(118);
                 box.setMaxWidth(122);
                 box.setMinHeight(84);
                 box.setMaxHeight(84);
-                box.setAlignment(Pos.CENTER);
+
+                HBox microTopBar = new HBox(4);
+                microTopBar.getStyleClass().add("card-micro-bar");
                 Label icon = new Label("📦");
-                icon.setStyle("-fx-font-size: 18px;");
+                icon.setStyle("-fx-font-size: 10px;");
                 Label lbl = new Label("DEPOT");
-                lbl.getStyleClass().add("pipeline-terminal-label");
-                Label sub = new Label("Outfeed (" + placement.getDirection().getLabel() + ")");
-                sub.getStyleClass().add("pipeline-terminal-sub");
-                box.getChildren().addAll(icon, lbl, sub);
+                lbl.getStyleClass().add("micro-dir-arrow");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                Label dir = new Label(getBridgeArrowForDirection(placement.getDirection()));
+                dir.getStyleClass().add("micro-dir-arrow");
+                microTopBar.getChildren().addAll(icon, lbl, spacer, dir);
+
+                Canvas canvas = new Canvas(108, 54);
+                drawDepotVisual(canvas, beltOffset, placement.getDirection());
+
+                box.getChildren().addAll(microTopBar, canvas);
+                Tooltip.install(box, new Tooltip("Warehouse Depot (Outfeed Chute)\nClick for Diagnostics"));
                 box.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
                 return box;
             }
@@ -948,13 +1168,20 @@ public class MainAppController implements Initializable {
                 box.setMaxWidth(122);
                 box.setMinHeight(84);
                 box.setMaxHeight(84);
-                box.setAlignment(Pos.CENTER);
+
+                HBox microTopBar = new HBox(4);
+                microTopBar.getStyleClass().add("card-micro-bar");
                 Label arrow = new Label(getBridgeArrowForDirection(placement.getDirection()));
-                arrow.getStyleClass().add("pipeline-connector-label");
-                arrow.setStyle("-fx-font-size: 18px; -fx-text-fill: #7a0c1e;");
-                Label lbl = new Label("Conveyor Bridge");
-                lbl.setStyle("-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
-                box.getChildren().addAll(arrow, lbl);
+                arrow.getStyleClass().add("micro-dir-arrow");
+                Label lbl = new Label("BRIDGE");
+                lbl.getStyleClass().add("micro-dir-arrow");
+                microTopBar.getChildren().addAll(arrow, lbl);
+
+                Canvas canvas = new Canvas(108, 54);
+                drawBridgeVisual(canvas, placement.getDirection());
+
+                box.getChildren().addAll(microTopBar, canvas);
+                Tooltip.install(box, new Tooltip("Conveyor Bridge (Flow Link)\nClick for Diagnostics"));
                 box.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
                 return box;
             }
@@ -991,13 +1218,14 @@ public class MainAppController implements Initializable {
         Label sub = new Label("Unassigned Tag");
         sub.setStyle("-fx-font-size: 8px; -fx-text-fill: #64748b;");
         box.getChildren().addAll(icon, lbl, sub);
+        Tooltip.install(box, new Tooltip("Unassigned Equipment\nClick for Diagnostics & Assignment"));
         box.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
         return box;
     }
 
     private Node createOperationalConveyorBlock(ModbusTag tag, FloorCellPlacement placement) {
         boolean isCurved = (placement.getAssetType() == AssetType.CURVED_CONVEYOR) || isCurvedConveyor(tag);
-        VBox block = new VBox(3);
+        VBox block = new VBox(2);
         block.getStyleClass().add("pipeline-block");
         if (tag.isActive()) {
             block.getStyleClass().add("pipeline-block-running");
@@ -1007,38 +1235,19 @@ public class MainAppController implements Initializable {
         block.setMinHeight(84);
         block.setMaxHeight(84);
 
-        // Header row: icon, name, badge
-        HBox topRow = new HBox(4);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-        Label icon = new Label(isCurved ? "↷" : "⚙️");
-        icon.setStyle("-fx-font-size: 10px;");
-        Label nameLbl = new Label(tag.getName());
-        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 9px; -fx-text-fill: #1e293b;");
+        // Micro Top Bar (no name, no dot-run text pill)
+        HBox microTopBar = new HBox(4);
+        microTopBar.getStyleClass().add("card-micro-bar");
+
+        // State LED dot: green when on, ash when off
+        Circle ledDot = new Circle(4);
+        ledDot.getStyleClass().add(tag.isActive() ? "state-led-dot-active" : "state-led-dot-idle");
+
+        Label dirLbl = new Label(isCurved ? "↷" : getBridgeArrowForDirection(placement.getDirection()));
+        dirLbl.getStyleClass().add("micro-dir-arrow");
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        Label badge = new Label(isCurved ? "C" + tag.getAddress() + " (" + placement.getDirection().getLabel() + ")" : "C" + tag.getAddress());
-        badge.getStyleClass().add(isCurved ? "pipeline-corner-tag" : "tag-badge");
-        badge.setStyle("-fx-font-size: 8px; -fx-padding: 1 3;");
-        topRow.getChildren().addAll(icon, nameLbl, spacer, badge);
-
-        // Animated Belt Canvas
-        Canvas beltCanvas = new Canvas(108, isCurved ? 28 : 18);
-        if (isCurved) {
-            drawCurvedConveyorBelt(beltCanvas, tag.isActive(), beltOffset, placement.getDirection());
-        } else {
-            drawConveyorBelt(beltCanvas, tag.isActive(), beltOffset, placement.getDirection());
-        }
-
-        // Status & Symbol Control row
-        HBox bottomRow = new HBox(4);
-        bottomRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label statusPill = new Label(tag.isActive() ? "● RUN" : "● IDLE");
-        statusPill.getStyleClass().add(tag.isActive() ? "status-pill-running" : "status-pill-stopped");
-        statusPill.setStyle("-fx-font-size: 8px; -fx-padding: 1 4;");
-
-        Region spacer2 = new Region();
-        HBox.setHgrow(spacer2, Priority.ALWAYS);
 
         // Symbol-only Run/Stop button: ▶ when stopped/idle, ⏹ when running
         Button toggleBtn = new Button(tag.isActive() ? "⏹" : "▶");
@@ -1049,26 +1258,39 @@ public class MainAppController implements Initializable {
             handleToggleActuator(tag);
         });
 
-        bottomRow.getChildren().addAll(statusPill, spacer2, toggleBtn);
+        microTopBar.getChildren().addAll(ledDot, dirLbl, spacer, toggleBtn);
 
-        block.getChildren().addAll(topRow, beltCanvas, bottomRow);
+        // High-Definition Animated Belt Canvas (108 x 54)
+        Canvas beltCanvas = new Canvas(108, 54);
+        if (isCurved) {
+            drawCurvedConveyorBelt(beltCanvas, tag.isActive(), beltOffset, placement.getDirection());
+        } else {
+            drawConveyorBelt(beltCanvas, tag.isActive(), beltOffset, placement.getDirection());
+        }
+
+        block.getChildren().addAll(microTopBar, beltCanvas);
+
+        // Rich Smart Tooltip on mouse hover
+        Tooltip tooltip = new Tooltip(tag.getName() + " (Coil " + tag.getAddress() + ") • " + (tag.isActive() ? "RUNNING" : "STANDBY") + "\nClick for Diagnostics & Controls");
+        Tooltip.install(block, tooltip);
 
         // Clicking operational card opens full diagnostics & parameters dialog
         block.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
 
         ActuatorBlockRef ref = new ActuatorBlockRef();
         ref.block = block;
-        ref.statusPill = statusPill;
+        ref.ledDot = ledDot;
         ref.toggleBtn = toggleBtn;
         ref.beltCanvas = beltCanvas;
         ref.direction = placement.getDirection();
+        ref.tooltip = tooltip;
         actuatorRefs.put(tag.getId(), ref);
 
         return block;
     }
 
     private Node createOperationalSensorBlock(ModbusTag tag, FloorCellPlacement placement) {
-        VBox block = new VBox(3);
+        VBox block = new VBox(2);
         block.getStyleClass().add("pipeline-block");
         if (tag.isActive()) {
             block.getStyleClass().add("pipeline-block-detected");
@@ -1078,42 +1300,35 @@ public class MainAppController implements Initializable {
         block.setMinHeight(84);
         block.setMaxHeight(84);
 
-        // Header row
-        HBox topRow = new HBox(4);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-        Label icon = new Label("👁️");
-        icon.setStyle("-fx-font-size: 10px;");
-        Label nameLbl = new Label(tag.getName());
-        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 9px; -fx-text-fill: #1e293b;");
+        // Micro Top Bar
+        HBox microTopBar = new HBox(4);
+        microTopBar.getStyleClass().add("card-micro-bar");
+
+        // State LED dot: green when detected, ash when clear
+        Circle led = new Circle(4);
+        led.getStyleClass().add(tag.isActive() ? "state-led-dot-active" : "state-led-dot-idle");
+
+        Label sensLbl = new Label("OPTICAL " + getBridgeArrowForDirection(placement.getDirection()));
+        sensLbl.getStyleClass().add("micro-dir-arrow");
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        Label badge = new Label("DI " + tag.getAddress());
-        badge.getStyleClass().add("tag-badge");
-        badge.setStyle("-fx-font-size: 8px; -fx-padding: 1 3;");
-        topRow.getChildren().addAll(icon, nameLbl, spacer, badge);
-
-        // Sensor Canvas
-        Canvas sensorCanvas = new Canvas(108, 22);
-        drawSensorVisual(sensorCanvas, tag.isActive(), placement.getDirection());
-
-        // LED, Status and Detection Counter inline
-        HBox ledRow = new HBox(4);
-        ledRow.setAlignment(Pos.CENTER_LEFT);
-        Circle led = new Circle(4);
-        led.getStyleClass().add(tag.isActive() ? "sensor-led-on" : "sensor-led-off");
-        Label statusLbl = new Label(tag.isActive() ? "DETECTED" : "CLEAR");
-        statusLbl.setStyle(tag.isActive() ? "-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
 
         sensorCounters.putIfAbsent(tag.getId(), 0);
         Label counterBadge = new Label("Ct: " + sensorCounters.get(tag.getId()));
-        counterBadge.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-background-color: #f1f5f9; -fx-padding: 1 4; -fx-background-radius: 3px;");
+        counterBadge.getStyleClass().add("card-counter-chip");
 
-        Region spacer2 = new Region();
-        HBox.setHgrow(spacer2, Priority.ALWAYS);
+        microTopBar.getChildren().addAll(led, sensLbl, spacer, counterBadge);
 
-        ledRow.getChildren().addAll(led, statusLbl, spacer2, counterBadge);
+        // High-Definition Sensor Canvas (108 x 54)
+        Canvas sensorCanvas = new Canvas(108, 54);
+        drawSensorVisual(sensorCanvas, tag.isActive(), placement.getDirection());
 
-        block.getChildren().addAll(topRow, sensorCanvas, ledRow);
+        block.getChildren().addAll(microTopBar, sensorCanvas);
+
+        // Rich Smart Tooltip on mouse hover
+        Tooltip tooltip = new Tooltip(tag.getName() + " (DI " + tag.getAddress() + ") • " + (tag.isActive() ? "DETECTED" : "CLEAR") + "\nClick for Diagnostics & Controls");
+        Tooltip.install(block, tooltip);
 
         // Clicking sensor card opens full diagnostics & parameters dialog
         block.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
@@ -1121,10 +1336,10 @@ public class MainAppController implements Initializable {
         SensorBlockRef ref = new SensorBlockRef();
         ref.block = block;
         ref.led = led;
-        ref.statusLabel = statusLbl;
         ref.counterLabel = counterBadge;
         ref.sensorCanvas = sensorCanvas;
         ref.direction = placement.getDirection();
+        ref.tooltip = tooltip;
         sensorRefs.put(tag.getId(), ref);
 
         return block;
@@ -1496,14 +1711,19 @@ public class MainAppController implements Initializable {
     private void updateActuatorTileUI(ModbusTag tag, boolean running) {
         ActuatorBlockRef ref = actuatorRefs.get(tag.getId());
         if (ref != null) {
-            ref.statusPill.setText(running ? "● RUN" : "● IDLE");
-            ref.statusPill.getStyleClass().removeAll("status-pill-running", "status-pill-stopped");
-            ref.statusPill.getStyleClass().add(running ? "status-pill-running" : "status-pill-stopped");
+            // State LED dot: green when running, ash when idle
+            if (ref.ledDot != null) {
+                ref.ledDot.getStyleClass().removeAll("state-led-dot-active", "state-led-dot-idle");
+                ref.ledDot.getStyleClass().add(running ? "state-led-dot-active" : "state-led-dot-idle");
+            }
 
-            ref.toggleBtn.setText(running ? "⏹" : "▶");
-            ref.toggleBtn.getStyleClass().removeAll("symbol-toggle-btn", "symbol-toggle-btn-stop", "btn-primary", "btn-estop");
-            ref.toggleBtn.getStyleClass().add(running ? "symbol-toggle-btn-stop" : "symbol-toggle-btn");
-            ref.toggleBtn.setTooltip(new Tooltip(running ? "Stop Conveyor" : "Start Conveyor"));
+            // Symbol-only Run/Stop button: ⏹ when running, ▶ when stopped
+            if (ref.toggleBtn != null) {
+                ref.toggleBtn.setText(running ? "⏹" : "▶");
+                ref.toggleBtn.getStyleClass().removeAll("symbol-toggle-btn", "symbol-toggle-btn-stop", "btn-primary", "btn-estop");
+                ref.toggleBtn.getStyleClass().add(running ? "symbol-toggle-btn-stop" : "symbol-toggle-btn");
+                ref.toggleBtn.setTooltip(new Tooltip(running ? "Stop Conveyor" : "Start Conveyor"));
+            }
 
             if (running) {
                 if (!ref.block.getStyleClass().contains("pipeline-block-running")) {
@@ -1511,6 +1731,11 @@ public class MainAppController implements Initializable {
                 }
             } else {
                 ref.block.getStyleClass().remove("pipeline-block-running");
+            }
+
+            // Update tooltip text with live telemetry
+            if (ref.tooltip != null) {
+                ref.tooltip.setText(tag.getName() + " (Coil " + tag.getAddress() + ") • " + (running ? "RUNNING" : "STANDBY") + "\nClick for Diagnostics & Controls");
             }
 
             if (isCurvedConveyor(tag)) {
@@ -1536,21 +1761,29 @@ public class MainAppController implements Initializable {
         isVisionSensorActive = active;
         SensorBlockRef ref = sensorRefs.get(tag.getId());
         if (ref != null) {
-            ref.led.getStyleClass().removeAll("sensor-led-on", "sensor-led-off");
-            ref.led.getStyleClass().add(active ? "sensor-led-on" : "sensor-led-off");
-            ref.statusLabel.setText(active ? "DETECTED" : "CLEAR");
-            ref.statusLabel.setStyle(active ? "-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+            // State LED dot: green when detected, ash when clear
+            if (ref.led != null) {
+                ref.led.getStyleClass().removeAll("state-led-dot-active", "state-led-dot-idle", "sensor-led-on", "sensor-led-off");
+                ref.led.getStyleClass().add(active ? "state-led-dot-active" : "state-led-dot-idle");
+            }
 
             if (active) {
                 if (!ref.block.getStyleClass().contains("pipeline-block-detected")) {
                     ref.block.getStyleClass().add("pipeline-block-detected");
                 }
                 int count = sensorCounters.compute(tag.getId(), (k, v) -> v == null ? 1 : v + 1);
-                ref.counterLabel.setText("Ct: " + count);
+                if (ref.counterLabel != null) {
+                    ref.counterLabel.setText("Ct: " + count);
+                }
                 int total = totalDetectedPackages.incrementAndGet();
                 lblKpiPackageCount.setText(total + " Pcs");
             } else {
                 ref.block.getStyleClass().remove("pipeline-block-detected");
+            }
+
+            // Update tooltip text with live telemetry
+            if (ref.tooltip != null) {
+                ref.tooltip.setText(tag.getName() + " (DI " + tag.getAddress() + ") • " + (active ? "DETECTED" : "CLEAR") + "\nClick for Diagnostics & Controls");
             }
 
             drawSensorVisual(ref.sensorCanvas, active, ref.direction);
