@@ -25,8 +25,11 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
-import javafx.scene.layout.FlowPane;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -42,11 +45,14 @@ import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * Controller for the integrated Kanshi WMS Main Application.
@@ -90,9 +96,8 @@ public class MainAppController implements Initializable {
     @FXML private Button btnAutoTest;
     @FXML private Button btnEstop;
 
-    // Live Hardware Controls
-    @FXML private FlowPane actuatorsContainer;
-    @FXML private FlowPane sensorsContainer;
+    // Live Hardware Interactive Pipeline (Option B)
+    @FXML private HBox pipelineTrack;
     @FXML private TextArea txtLog;
 
     // Overview Dashboard Stream
@@ -115,31 +120,34 @@ public class MainAppController implements Initializable {
     private final InventoryDao inventoryDao = new InventoryDao();
     private final ObservableList<ModbusTag> tableData = FXCollections.observableArrayList();
 
-    private final Map<String, ActuatorCardRef> actuatorRefs = new ConcurrentHashMap<>();
-    private final Map<String, SensorCardRef> sensorRefs = new ConcurrentHashMap<>();
+    private final Map<String, ActuatorBlockRef> actuatorRefs = new ConcurrentHashMap<>();
+    private final Map<String, SensorBlockRef> sensorRefs = new ConcurrentHashMap<>();
     private final Map<String, Integer> sensorCounters = new ConcurrentHashMap<>();
     private final AtomicInteger totalDetectedPackages = new AtomicInteger(0);
+    private final List<String> pipelineOrder = new ArrayList<>();
 
     private Timeline clockTimeline;
 
-    // 2D Conveyor Schematic Mimic
-    @FXML private Canvas conveyorCanvas;
+    // SCADA Status & Animation
     @FXML private Label lblMimicLineStatus;
 
     private double beltOffset = 0;
     private Timeline mimicAnimationTimeline;
     private volatile boolean isVisionSensorActive = false;
 
-    private static class ActuatorCardRef {
-        VBox card;
+    private static class ActuatorBlockRef {
+        VBox block;
         Label statusPill;
         Button toggleBtn;
+        Canvas beltCanvas;
     }
 
-    private static class SensorCardRef {
+    private static class SensorBlockRef {
+        VBox block;
         Circle led;
         Label statusLabel;
         Label counterLabel;
+        Canvas sensorCanvas;
     }
 
     @Override
@@ -149,7 +157,7 @@ public class MainAppController implements Initializable {
         setupTagForm();
         refreshDynamicHardwareUI();
         refreshKpiMetrics();
-        initMimicSchematic();
+        initMimicAnimation();
 
         log("[SYSTEM] Kanshi WMS 3-Level Executive Shell initialized.");
         logAudit("SYS", "Executive Command Center initialized. Modbus TCP & SQLite ready.");
@@ -169,199 +177,152 @@ public class MainAppController implements Initializable {
     }
 
     // =========================================================================
-    // 2D Interactive Factory I/O Conveyor Line Schematic (Mimic Panel)
+    // Option B: Real-Time Conveyor Line Pipeline Animation & Visual Rendering
     // =========================================================================
 
-    private void initMimicSchematic() {
-        if (conveyorCanvas == null) return;
+    private void initMimicAnimation() {
         mimicAnimationTimeline = new Timeline(new KeyFrame(Duration.millis(50), e -> {
             boolean anyRunning = tagManager.getActuatorTags().stream().anyMatch(ModbusTag::isActive);
             if (anyRunning) {
-                beltOffset = (beltOffset + 2.5) % 20;
-                redrawMimic();
+                beltOffset = (beltOffset + 2.5) % 18;
+                for (ModbusTag tag : tagManager.getActuatorTags()) {
+                    if (tag.isActive()) {
+                        ActuatorBlockRef ref = actuatorRefs.get(tag.getId());
+                        if (ref != null && ref.beltCanvas != null) {
+                            drawConveyorBelt(ref.beltCanvas, true, beltOffset);
+                        }
+                    }
+                }
             }
         }));
         mimicAnimationTimeline.setCycleCount(Animation.INDEFINITE);
         mimicAnimationTimeline.play();
-        redrawMimic();
     }
 
     /**
-     * Renders the 2D visual schematic of the conveyor line.
+     * Draws animated roller belt markings and chassis on the in-block canvas.
      */
-    public synchronized void redrawMimic() {
-        if (conveyorCanvas == null) return;
-        GraphicsContext gc = conveyorCanvas.getGraphicsContext2D();
-        double w = conveyorCanvas.getWidth();
-        double h = conveyorCanvas.getHeight();
+    private void drawConveyorBelt(Canvas canvas, boolean running, double offset) {
+        if (canvas == null) return;
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
 
-        // 1. Clear background
-        gc.setFill(Color.web("#f8fafc"));
+        // 1. Background
+        gc.setFill(running ? Color.web("#fff1f2") : Color.web("#f8fafc"));
         gc.fillRect(0, 0, w, h);
 
-        // 2. Subtle grid lines
-        gc.setStroke(Color.web("#e2e8f0"));
-        gc.setLineWidth(1);
-        for (double x = 0; x < w; x += 40) {
-            gc.strokeLine(x, 0, x, h);
-        }
-
-        // Tags
-        ModbusTag belt0 = tagManager.findTagByName("Belt Conveyor 0");
-        ModbusTag belt1 = tagManager.findTagByName("Belt Conveyor 1");
-        ModbusTag curved = tagManager.findTagByName("Curved Belt Conveyor");
-        boolean b0Active = belt0 != null && belt0.isActive();
-        boolean b1Active = belt1 != null && belt1.isActive();
-        boolean crvActive = curved != null && curved.isActive();
-
-        // Draw Feeder (Infeed)
-        gc.setFill(Color.web("#64748b"));
-        gc.fillRoundRect(15, 35, 45, 50, 6, 6);
-        gc.setFill(Color.WHITE);
-        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-        gc.fillText("INFEED", 19, 64);
-
-        // Draw Belt Conveyor 0
-        drawConveyorSegment(gc, 70, 35, 230, 50, "Conveyor 0 (Coil 0)", b0Active, beltOffset);
-
-        // Draw Vision Sensor 0 Station
-        drawSensorStation(gc, 310, 15, 60, 90, isVisionSensorActive);
-
-        // Draw Belt Conveyor 1
-        drawConveyorSegment(gc, 380, 35, 230, 50, "Conveyor 1 (Coil 1)", b1Active, beltOffset);
-
-        // Draw Curved Belt Conveyor
-        drawCurvedConveyorSegment(gc, 620, 35, 210, 50, "Curved Belt (Coil 2)", crvActive, beltOffset);
-
-        // Draw Outfeed Depot
-        gc.setFill(Color.web("#475569"));
-        gc.fillRoundRect(840, 35, 55, 50, 6, 6);
-        gc.setFill(Color.WHITE);
-        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-        gc.fillText("DEPOT", 848, 64);
-
-        // Update Mimic status badge
-        if (lblMimicLineStatus != null) {
-            boolean anyRunning = b0Active || b1Active || crvActive;
-            if (anyRunning) {
-                lblMimicLineStatus.setText("LINE STATUS: ACTIVE / RUNNING");
-                lblMimicLineStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d; -fx-background-color: #dcfce7; -fx-padding: 5 12; -fx-background-radius: 4px;");
-            } else if (ioService.isConnected()) {
-                lblMimicLineStatus.setText("LINE STATUS: STANDBY / IDLE");
-                lblMimicLineStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b; -fx-background-color: #f1f5f9; -fx-padding: 5 12; -fx-background-radius: 4px;");
-            } else {
-                lblMimicLineStatus.setText("LINE STATUS: OFFLINE");
-                lblMimicLineStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #991b1b; -fx-background-color: #fee2e2; -fx-padding: 5 12; -fx-background-radius: 4px;");
-            }
-        }
-    }
-
-    private void drawConveyorSegment(GraphicsContext gc, double x, double y, double w, double h, String label, boolean running, double offset) {
-        // Frame
-        gc.setFill(running ? Color.web("#fef2f2") : Color.web("#ffffff"));
-        gc.setStroke(running ? Color.web("#7a0c1e") : Color.web("#cbd5e1"));
-        gc.setLineWidth(running ? 2.0 : 1.5);
-        gc.fillRoundRect(x, y, w, h, 8, 8);
-        gc.strokeRoundRect(x, y, w, h, 8, 8);
-
-        // Roller belt track top and bottom rails
+        // 2. Top and bottom rails
         gc.setFill(running ? Color.web("#991b1b") : Color.web("#64748b"));
-        gc.fillRect(x + 5, y + 4, w - 10, 3);
-        gc.fillRect(x + 5, y + h - 7, w - 10, 3);
+        gc.fillRect(2, 2, w - 4, 3);
+        gc.fillRect(2, h - 5, w - 4, 3);
 
-        // Moving hash markings
+        // 3. Rollers
         if (running) {
             gc.setStroke(Color.web("#e11d48"));
-            gc.setLineWidth(2);
-            for (double hx = x + 10 + (offset % 20); hx < x + w - 10; hx += 20) {
-                gc.strokeLine(hx, y + 10, hx + 8, y + h - 10);
+            gc.setLineWidth(2.0);
+            for (double x = 6 + (offset % 16); x < w - 6; x += 16) {
+                gc.strokeLine(x, 5, x + 5, h - 5);
             }
+            // Chevron arrow
+            gc.setFill(Color.web("#7a0c1e"));
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
+            gc.fillText("▶▶", w - 24, h / 2 + 4);
         } else {
-            gc.setStroke(Color.web("#e2e8f0"));
+            gc.setStroke(Color.web("#cbd5e1"));
             gc.setLineWidth(1.5);
-            for (double hx = x + 10; hx < x + w - 10; hx += 20) {
-                gc.strokeLine(hx, y + 12, hx, y + h - 12);
+            for (double x = 6; x < w - 6; x += 16) {
+                gc.strokeLine(x, 6, x, h - 6);
             }
         }
-
-        // Label
-        gc.setFill(running ? Color.web("#7a0c1e") : Color.web("#334155"));
-        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 11));
-        gc.fillText(label, x + 12, y + 28);
-
-        // Running status text
-        gc.setFill(running ? Color.web("#15803d") : Color.web("#94a3b8"));
-        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-        gc.fillText(running ? "RUNNING ▶▶" : "STOPPED", x + 12, y + 42);
     }
 
-    private void drawCurvedConveyorSegment(GraphicsContext gc, double x, double y, double w, double h, String label, boolean running, double offset) {
-        drawConveyorSegment(gc, x, y, w, h, label, running, offset);
+    /**
+     * Draws optical sensor head, laser cone, and detected package on the in-block canvas.
+     */
+    private void drawSensorVisual(Canvas canvas, boolean detected) {
+        if (canvas == null) return;
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
 
-        // Curve icon
-        gc.setStroke(running ? Color.web("#7a0c1e") : Color.web("#64748b"));
-        gc.setLineWidth(2.5);
-        gc.strokeArc(x + w - 45, y + 12, 30, 26, 0, 180, javafx.scene.shape.ArcType.OPEN);
-        gc.fillText("↷", x + w - 24, y + 32);
-    }
+        // 1. Clear background
+        gc.setFill(detected ? Color.web("#f0fdf4") : Color.web("#f8fafc"));
+        gc.fillRect(0, 0, w, h);
 
-    private void drawSensorStation(GraphicsContext gc, double x, double y, double w, double h, boolean detected) {
-        // Sensor Mount & Head
+        double centerX = w / 2.0;
+
+        // 2. Optical Sensor Head at top
         gc.setFill(detected ? Color.web("#22c55e") : Color.web("#0284c7"));
-        gc.fillRoundRect(x + 18, y + 5, 24, 18, 4, 4);
-
+        gc.fillRoundRect(centerX - 16, 2, 32, 12, 4, 4);
         gc.setFill(Color.WHITE);
-        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
-        gc.fillText("OPT", x + 21, y + 17);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 8));
+        gc.fillText("OPTICAL", centerX - 14, 11);
 
-        // Laser beam down to belt level
         if (detected) {
-            // Bright neon green beam
+            // Neon green laser beam
             gc.setStroke(Color.web("#22c55e"));
-            gc.setLineWidth(3);
-            gc.strokeLine(x + 30, y + 23, x + 30, y + 70);
+            gc.setLineWidth(2.5);
+            gc.strokeLine(centerX, 14, centerX, h - 4);
 
-            // Glowing optical cone
-            gc.setFill(Color.rgb(34, 197, 94, 0.25));
+            // Light translucent laser cone
+            gc.setFill(Color.rgb(34, 197, 94, 0.22));
             gc.fillPolygon(
-                new double[]{x + 30, x + 14, x + 46},
-                new double[]{y + 23, y + 70, y + 70},
+                new double[]{centerX, centerX - 18, centerX + 18},
+                new double[]{14, h - 4, h - 4},
                 3
             );
 
-            // Cardboard Box payload detected!
-            gc.setFill(Color.web("#d97706")); // Cardboard Amber
+            // Detected Package Box
+            gc.setFill(Color.web("#d97706"));
             gc.setStroke(Color.web("#92400e"));
             gc.setLineWidth(1.5);
-            gc.fillRect(x + 12, y + 44, 36, 32);
-            gc.strokeRect(x + 12, y + 44, 36, 32);
+            double boxW = 28;
+            double boxH = 20;
+            double boxX = centerX - boxW / 2;
+            double boxY = h - boxH - 3;
+            gc.fillRect(boxX, boxY, boxW, boxH);
+            gc.strokeRect(boxX, boxY, boxW, boxH);
 
             // Box sealing tape
             gc.setStroke(Color.web("#fef3c7"));
-            gc.setLineWidth(2);
-            gc.strokeLine(x + 12, y + 60, x + 48, y + 60);
+            gc.setLineWidth(1.5);
+            gc.strokeLine(boxX, boxY + boxH / 2, boxX + boxW, boxY + boxH / 2);
 
-            // Box Label
+            // Box text
             gc.setFill(Color.WHITE);
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 8));
-            gc.fillText("BOX", x + 19, y + 58);
-
-            // Detection badge
-            gc.setFill(Color.web("#15803d"));
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-            gc.fillText("DETECTED", x + 5, y + 95);
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 7));
+            gc.fillText("BOX", boxX + 6, boxY + 12);
         } else {
-            // Idle guide beam
+            // Idle guide line
             gc.setStroke(Color.web("#cbd5e1"));
-            gc.setLineWidth(1);
+            gc.setLineWidth(1.0);
             gc.setLineDashes(3);
-            gc.strokeLine(x + 30, y + 23, x + 30, y + 75);
+            gc.strokeLine(centerX, 14, centerX, h - 4);
             gc.setLineDashes(null);
-
-            gc.setFill(Color.web("#64748b"));
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
-            gc.fillText("CLEAR", x + 15, y + 95);
         }
+    }
+
+    /**
+     * Updates the line status badge in the pipeline header.
+     */
+    public synchronized void updateMimicLineStatus() {
+        if (lblMimicLineStatus == null) return;
+        boolean anyRunning = tagManager.getActuatorTags().stream().anyMatch(ModbusTag::isActive);
+        if (anyRunning) {
+            lblMimicLineStatus.setText("LINE STATUS: ACTIVE / RUNNING");
+            lblMimicLineStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d; -fx-background-color: #dcfce7; -fx-padding: 5 12; -fx-background-radius: 4px;");
+        } else if (ioService.isConnected()) {
+            lblMimicLineStatus.setText("LINE STATUS: STANDBY / IDLE");
+            lblMimicLineStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b; -fx-background-color: #f1f5f9; -fx-padding: 5 12; -fx-background-radius: 4px;");
+        } else {
+            lblMimicLineStatus.setText("LINE STATUS: OFFLINE");
+            lblMimicLineStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #991b1b; -fx-background-color: #fee2e2; -fx-padding: 5 12; -fx-background-radius: 4px;");
+        }
+    }
+
+    public synchronized void redrawMimic() {
+        updateMimicLineStatus();
     }
 
     // =========================================================================
@@ -509,86 +470,318 @@ public class MainAppController implements Initializable {
     }
 
     public void refreshDynamicHardwareUI() {
-        actuatorsContainer.getChildren().clear();
-        sensorsContainer.getChildren().clear();
+        List<ModbusTag> allTags = tagManager.getAllTags();
+        Set<String> validIds = allTags.stream().map(ModbusTag::getId).collect(Collectors.toSet());
+        pipelineOrder.removeIf(id -> !validIds.contains(id));
+
+        if (pipelineOrder.isEmpty()) {
+            resetPipelineOrderToDefault();
+        } else {
+            for (ModbusTag tag : allTags) {
+                if (!pipelineOrder.contains(tag.getId())) {
+                    pipelineOrder.add(tag.getId());
+                }
+            }
+        }
+
+        renderPipeline();
+    }
+
+    private synchronized void renderPipeline() {
+        if (pipelineTrack == null) return;
+        pipelineTrack.getChildren().clear();
         actuatorRefs.clear();
         sensorRefs.clear();
 
-        // 1. Build Actuators (Coils)
-        List<ModbusTag> actuators = tagManager.getActuatorTags();
-        for (ModbusTag tag : actuators) {
-            VBox card = new VBox(10);
-            card.getStyleClass().add("hardware-card");
+        // 1. Infeed Terminal
+        pipelineTrack.getChildren().add(createInfeedTerminal());
 
-            HBox topRow = new HBox(8);
-            topRow.setAlignment(Pos.CENTER_LEFT);
-            Label nameLabel = new Label(tag.getName());
-            nameLabel.getStyleClass().add("tag-name-label");
-            Region spacer = new Region();
-            HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
-            Label addressBadge = new Label("Coil " + tag.getAddress());
-            addressBadge.getStyleClass().add("tag-badge");
-            topRow.getChildren().addAll(nameLabel, spacer, addressBadge);
+        // 2. Machine Blocks in sequence
+        for (String tagId : pipelineOrder) {
+            ModbusTag tag = tagManager.findTagById(tagId);
+            if (tag == null) continue;
 
-            HBox statusRow = new HBox(8);
-            statusRow.setAlignment(Pos.CENTER_LEFT);
-            Label statusPill = new Label(tag.isActive() ? "RUNNING" : "STOPPED");
-            statusPill.getStyleClass().add(tag.isActive() ? "status-pill-running" : "status-pill-stopped");
-            statusRow.getChildren().addAll(new Label("Status:"), statusPill);
+            pipelineTrack.getChildren().add(createConnectorArrow());
 
-            Button toggleBtn = new Button(tag.isActive() ? "STOP CONVEYOR" : "START CONVEYOR");
-            toggleBtn.setMaxWidth(Double.MAX_VALUE);
-            toggleBtn.getStyleClass().add(tag.isActive() ? "btn-estop" : "btn-primary");
-
-            toggleBtn.setOnAction(e -> handleToggleActuator(tag));
-
-            card.getChildren().addAll(topRow, statusRow, toggleBtn);
-            actuatorsContainer.getChildren().add(card);
-
-            ActuatorCardRef ref = new ActuatorCardRef();
-            ref.card = card;
-            ref.statusPill = statusPill;
-            ref.toggleBtn = toggleBtn;
-            actuatorRefs.put(tag.getId(), ref);
+            if (tag.getType() == TagType.COIL) {
+                pipelineTrack.getChildren().add(createConveyorBlock(tag));
+            } else if (tag.getType() == TagType.DISCRETE_INPUT) {
+                pipelineTrack.getChildren().add(createSensorBlock(tag));
+            }
         }
 
-        // 2. Build Sensors (Discrete Inputs)
-        List<ModbusTag> sensors = tagManager.getSensorTags();
-        for (ModbusTag tag : sensors) {
-            VBox card = new VBox(10);
-            card.getStyleClass().add("hardware-card");
+        // 3. Outfeed Depot Terminal
+        pipelineTrack.getChildren().add(createConnectorArrow());
+        pipelineTrack.getChildren().add(createDepotTerminal());
 
-            HBox topRow = new HBox(8);
-            topRow.setAlignment(Pos.CENTER_LEFT);
-            Label nameLabel = new Label(tag.getName());
-            nameLabel.getStyleClass().add("tag-name-label");
-            Region spacer = new Region();
-            HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
-            Label addressBadge = new Label("Input " + tag.getAddress());
-            addressBadge.getStyleClass().add("tag-badge");
-            topRow.getChildren().addAll(nameLabel, spacer, addressBadge);
+        updateMimicLineStatus();
+    }
 
-            HBox ledRow = new HBox(12);
-            ledRow.setAlignment(Pos.CENTER_LEFT);
-            Circle led = new Circle(10);
-            led.getStyleClass().add(tag.isActive() ? "sensor-led-on" : "sensor-led-off");
-            Label statusLabel = new Label(tag.isActive() ? "OBJECT DETECTED" : "CLEAR");
-            statusLabel.setStyle("-fx-font-weight: bold;");
-            ledRow.getChildren().addAll(led, statusLabel);
+    private Node createInfeedTerminal() {
+        VBox box = new VBox(4);
+        box.getStyleClass().add("pipeline-terminal");
+        Label icon = new Label("📥");
+        icon.setStyle("-fx-font-size: 20px;");
+        Label lbl = new Label("INFEED");
+        lbl.getStyleClass().add("pipeline-terminal-label");
+        Label sub = new Label("Entry Chute");
+        sub.getStyleClass().add("pipeline-terminal-sub");
+        box.getChildren().addAll(icon, lbl, sub);
+        return box;
+    }
 
-            sensorCounters.putIfAbsent(tag.getId(), 0);
-            Label counterLabel = new Label("Detections: " + sensorCounters.get(tag.getId()));
-            counterLabel.getStyleClass().add("station-subtitle");
+    private Node createDepotTerminal() {
+        VBox box = new VBox(4);
+        box.getStyleClass().add("pipeline-terminal");
+        Label icon = new Label("📦");
+        icon.setStyle("-fx-font-size: 20px;");
+        Label lbl = new Label("DEPOT");
+        lbl.getStyleClass().add("pipeline-terminal-label");
+        Label sub = new Label("Outfeed Area");
+        sub.getStyleClass().add("pipeline-terminal-sub");
+        box.getChildren().addAll(icon, lbl, sub);
+        return box;
+    }
 
-            card.getChildren().addAll(topRow, ledRow, counterLabel);
-            sensorsContainer.getChildren().add(card);
+    private Node createConnectorArrow() {
+        Label arrow = new Label("──►");
+        arrow.getStyleClass().add("pipeline-connector-label");
+        return arrow;
+    }
 
-            SensorCardRef ref = new SensorCardRef();
-            ref.led = led;
-            ref.statusLabel = statusLabel;
-            ref.counterLabel = counterLabel;
-            sensorRefs.put(tag.getId(), ref);
+    private Node createConveyorBlock(ModbusTag tag) {
+        VBox block = new VBox(8);
+        block.getStyleClass().add("pipeline-block");
+        if (tag.isActive()) {
+            block.getStyleClass().add("pipeline-block-running");
         }
+
+        attachDragAndDropHandlers(block, tag.getId());
+
+        // Header row
+        HBox topRow = new HBox(8);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+        Label grip = new Label("⠿");
+        grip.setStyle("-fx-font-size: 15px; -fx-text-fill: #94a3b8; -fx-cursor: move;");
+        Label nameLbl = new Label(tag.getName());
+        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #1e293b;");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label badge = new Label("Coil " + tag.getAddress());
+        badge.getStyleClass().add("tag-badge");
+        topRow.getChildren().addAll(grip, nameLbl, spacer, badge);
+
+        // Animated Belt Canvas
+        Canvas beltCanvas = new Canvas(195, 32);
+        drawConveyorBelt(beltCanvas, tag.isActive(), beltOffset);
+
+        // Status row
+        HBox statusRow = new HBox(8);
+        statusRow.setAlignment(Pos.CENTER_LEFT);
+        Label statusPill = new Label(tag.isActive() ? "● RUNNING" : "● IDLE");
+        statusPill.getStyleClass().add(tag.isActive() ? "status-pill-running" : "status-pill-stopped");
+        statusRow.getChildren().addAll(new Label("Status:"), statusPill);
+
+        // Controls row
+        HBox controlsRow = new HBox(8);
+        controlsRow.setAlignment(Pos.CENTER_LEFT);
+
+        Button toggleBtn = new Button(tag.isActive() ? "⏹ STOP" : "▶ START");
+        toggleBtn.getStyleClass().add(tag.isActive() ? "btn-estop" : "btn-primary");
+        toggleBtn.setStyle("-fx-font-size: 11px; -fx-padding: 6 12;");
+        HBox.setHgrow(toggleBtn, Priority.ALWAYS);
+        toggleBtn.setMaxWidth(Double.MAX_VALUE);
+        toggleBtn.setOnAction(e -> handleToggleActuator(tag));
+
+        Button testBtn = new Button("⚡ 2s");
+        testBtn.getStyleClass().add("btn-secondary");
+        testBtn.setStyle("-fx-font-size: 11px; -fx-padding: 6 10;");
+        testBtn.setOnAction(e -> handleQuickTestActuator(tag));
+
+        controlsRow.getChildren().addAll(toggleBtn, testBtn);
+
+        block.getChildren().addAll(topRow, beltCanvas, statusRow, controlsRow);
+
+        ActuatorBlockRef ref = new ActuatorBlockRef();
+        ref.block = block;
+        ref.statusPill = statusPill;
+        ref.toggleBtn = toggleBtn;
+        ref.beltCanvas = beltCanvas;
+        actuatorRefs.put(tag.getId(), ref);
+
+        return block;
+    }
+
+    private Node createSensorBlock(ModbusTag tag) {
+        VBox block = new VBox(8);
+        block.getStyleClass().add("pipeline-block");
+        if (tag.isActive()) {
+            block.getStyleClass().add("pipeline-block-detected");
+        }
+
+        attachDragAndDropHandlers(block, tag.getId());
+
+        // Header row
+        HBox topRow = new HBox(8);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+        Label grip = new Label("⠿");
+        grip.setStyle("-fx-font-size: 15px; -fx-text-fill: #94a3b8; -fx-cursor: move;");
+        Label nameLbl = new Label(tag.getName());
+        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #1e293b;");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label badge = new Label("Input " + tag.getAddress());
+        badge.getStyleClass().add("tag-badge");
+        topRow.getChildren().addAll(grip, nameLbl, spacer, badge);
+
+        // Sensor Canvas
+        Canvas sensorCanvas = new Canvas(195, 42);
+        drawSensorVisual(sensorCanvas, tag.isActive());
+
+        // LED and Status row
+        HBox ledRow = new HBox(8);
+        ledRow.setAlignment(Pos.CENTER_LEFT);
+        Circle led = new Circle(7);
+        led.getStyleClass().add(tag.isActive() ? "sensor-led-on" : "sensor-led-off");
+        Label statusLbl = new Label(tag.isActive() ? "OBJECT DETECTED" : "BEAM CLEAR");
+        statusLbl.setStyle(tag.isActive() ? "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+        ledRow.getChildren().addAll(led, statusLbl);
+
+        // Detection Counter row
+        sensorCounters.putIfAbsent(tag.getId(), 0);
+        Label counterBadge = new Label("Detections: " + sensorCounters.get(tag.getId()));
+        counterBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-background-color: #f1f5f9; -fx-padding: 3 8; -fx-background-radius: 4px;");
+
+        block.getChildren().addAll(topRow, sensorCanvas, ledRow, counterBadge);
+
+        SensorBlockRef ref = new SensorBlockRef();
+        ref.block = block;
+        ref.led = led;
+        ref.statusLabel = statusLbl;
+        ref.counterLabel = counterBadge;
+        ref.sensorCanvas = sensorCanvas;
+        sensorRefs.put(tag.getId(), ref);
+
+        return block;
+    }
+
+    private void attachDragAndDropHandlers(VBox block, String tagId) {
+        block.setOnDragDetected(event -> {
+            Dragboard db = block.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent content = new ClipboardContent();
+            content.putString(tagId);
+            db.setContent(content);
+            block.setOpacity(0.6);
+            event.consume();
+        });
+
+        block.setOnDragDone(event -> {
+            block.setOpacity(1.0);
+            event.consume();
+        });
+
+        block.setOnDragOver(event -> {
+            if (event.getGestureSource() != block && event.getDragboard().hasString()) {
+                event.acceptTransferModes(TransferMode.MOVE);
+            }
+            event.consume();
+        });
+
+        block.setOnDragEntered(event -> {
+            if (event.getGestureSource() != block && event.getDragboard().hasString()) {
+                block.getStyleClass().add("drag-hover-target");
+            }
+            event.consume();
+        });
+
+        block.setOnDragExited(event -> {
+            block.getStyleClass().remove("drag-hover-target");
+            event.consume();
+        });
+
+        block.setOnDragDropped(event -> {
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasString()) {
+                String sourceId = db.getString();
+                reorderPipeline(sourceId, tagId);
+                success = true;
+            }
+            event.setDropCompleted(success);
+            event.consume();
+        });
+    }
+
+    private synchronized void reorderPipeline(String sourceId, String targetId) {
+        if (sourceId == null || targetId == null || sourceId.equals(targetId)) return;
+        int srcIndex = pipelineOrder.indexOf(sourceId);
+        int tgtIndex = pipelineOrder.indexOf(targetId);
+        if (srcIndex != -1 && tgtIndex != -1) {
+            pipelineOrder.remove(srcIndex);
+            pipelineOrder.add(tgtIndex, sourceId);
+            renderPipeline();
+            ModbusTag src = tagManager.findTagById(sourceId);
+            ModbusTag tgt = tagManager.findTagById(targetId);
+            String srcName = src != null ? src.getName() : sourceId;
+            String tgtName = tgt != null ? tgt.getName() : targetId;
+            log("[PIPELINE] Machine reordered: " + srcName + " moved to position of " + tgtName);
+            logAudit("OT-SCADA", "Pipeline station reordered: " + srcName + " moved to slot " + (tgtIndex + 1));
+        }
+    }
+
+    @FXML
+    private void handleResetLineOrder(ActionEvent event) {
+        resetPipelineOrderToDefault();
+        renderPipeline();
+        log("[PIPELINE] Equipment line sequence reset to default layout.");
+        logAudit("OT-SCADA", "Pipeline sequence reset to factory default layout.");
+    }
+
+    private void resetPipelineOrderToDefault() {
+        pipelineOrder.clear();
+        List<ModbusTag> all = tagManager.getAllTags();
+        List<String> preferredNames = List.of(
+            "Belt Conveyor 0",
+            "Vision Sensor 0",
+            "Belt Conveyor 1",
+            "Curved Belt Conveyor"
+        );
+        for (String name : preferredNames) {
+            ModbusTag tag = tagManager.findTagByName(name);
+            if (tag != null && !pipelineOrder.contains(tag.getId())) {
+                pipelineOrder.add(tag.getId());
+            }
+        }
+        for (ModbusTag tag : all) {
+            if (!pipelineOrder.contains(tag.getId())) {
+                pipelineOrder.add(tag.getId());
+            }
+        }
+    }
+
+    private void handleQuickTestActuator(ModbusTag tag) {
+        if (!ioService.isConnected()) {
+            showAlert("Not Connected", "Please connect to Factory I/O Modbus TCP server first.");
+            return;
+        }
+        log("[TEST] Triggering 2s quick pulse test on " + tag.getName() + "...");
+        new Thread(() -> {
+            try {
+                ioService.writeTag(tag, true);
+                Platform.runLater(() -> {
+                    updateActuatorTileUI(tag, true);
+                    log("[ACTUATOR] " + tag.getName() + " (Coil " + tag.getAddress() + ") -> PULSE START");
+                });
+                Thread.sleep(2000);
+                ioService.writeTag(tag, false);
+                Platform.runLater(() -> {
+                    updateActuatorTileUI(tag, false);
+                    log("[ACTUATOR] " + tag.getName() + " (Coil " + tag.getAddress() + ") -> PULSE FINISHED");
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> log("[ERROR] Quick pulse test failed for " + tag.getName() + ": " + ex.getMessage()));
+            }
+        }).start();
     }
 
     private void handleToggleActuator(ModbusTag tag) {
@@ -614,15 +807,25 @@ public class MainAppController implements Initializable {
     }
 
     private void updateActuatorTileUI(ModbusTag tag, boolean running) {
-        ActuatorCardRef ref = actuatorRefs.get(tag.getId());
+        ActuatorBlockRef ref = actuatorRefs.get(tag.getId());
         if (ref != null) {
-            ref.statusPill.setText(running ? "RUNNING" : "STOPPED");
+            ref.statusPill.setText(running ? "● RUNNING" : "● IDLE");
             ref.statusPill.getStyleClass().removeAll("status-pill-running", "status-pill-stopped");
             ref.statusPill.getStyleClass().add(running ? "status-pill-running" : "status-pill-stopped");
 
-            ref.toggleBtn.setText(running ? "STOP CONVEYOR" : "START CONVEYOR");
+            ref.toggleBtn.setText(running ? "⏹ STOP" : "▶ START");
             ref.toggleBtn.getStyleClass().removeAll("btn-primary", "btn-estop");
             ref.toggleBtn.getStyleClass().add(running ? "btn-estop" : "btn-primary");
+
+            if (running) {
+                if (!ref.block.getStyleClass().contains("pipeline-block-running")) {
+                    ref.block.getStyleClass().add("pipeline-block-running");
+                }
+            } else {
+                ref.block.getStyleClass().remove("pipeline-block-running");
+            }
+
+            drawConveyorBelt(ref.beltCanvas, running, beltOffset);
         }
 
         boolean anyRunning = tagManager.getActuatorTags().stream().anyMatch(ModbusTag::isActive);
@@ -634,25 +837,33 @@ public class MainAppController implements Initializable {
             lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #64748b;");
         }
 
-        Platform.runLater(this::redrawMimic);
+        updateMimicLineStatus();
     }
 
     private void updateSensorTileUI(ModbusTag tag, boolean active) {
         isVisionSensorActive = active;
-        SensorCardRef ref = sensorRefs.get(tag.getId());
+        SensorBlockRef ref = sensorRefs.get(tag.getId());
         if (ref != null) {
             ref.led.getStyleClass().removeAll("sensor-led-on", "sensor-led-off");
             ref.led.getStyleClass().add(active ? "sensor-led-on" : "sensor-led-off");
-            ref.statusLabel.setText(active ? "OBJECT DETECTED" : "CLEAR");
+            ref.statusLabel.setText(active ? "OBJECT DETECTED" : "BEAM CLEAR");
+            ref.statusLabel.setStyle(active ? "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
 
             if (active) {
+                if (!ref.block.getStyleClass().contains("pipeline-block-detected")) {
+                    ref.block.getStyleClass().add("pipeline-block-detected");
+                }
                 int count = sensorCounters.compute(tag.getId(), (k, v) -> v == null ? 1 : v + 1);
                 ref.counterLabel.setText("Detections: " + count);
                 int total = totalDetectedPackages.incrementAndGet();
                 lblKpiPackageCount.setText(total + " Pcs");
+            } else {
+                ref.block.getStyleClass().remove("pipeline-block-detected");
             }
+
+            drawSensorVisual(ref.sensorCanvas, active);
         }
-        Platform.runLater(this::redrawMimic);
+        updateMimicLineStatus();
     }
 
     @FXML

@@ -128,6 +128,14 @@ public class TagManager {
                 .orElse(null);
     }
 
+    public synchronized ModbusTag findTagById(String id) {
+        if (id == null) return null;
+        return tags.stream()
+                .filter(t -> t.getId().equals(id))
+                .findFirst()
+                .orElse(null);
+    }
+
     public synchronized void addTag(String name, int address, TagType type) {
         String id = "tag_" + type.name().toLowerCase() + "_" + address + "_" + UUID.randomUUID().toString().substring(0, 4);
         ModbusTag tag = new ModbusTag(id, name, address, type);

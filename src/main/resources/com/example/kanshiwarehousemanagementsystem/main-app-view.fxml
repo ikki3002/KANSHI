@@ -203,37 +203,20 @@
                 <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
                     <VBox spacing="20" style="-fx-padding: 24px;">
 
-                        <!-- 2D Interactive Conveyor Line Schematic (Mimic Panel) -->
-                        <VBox spacing="10" style="-fx-background-color: #ffffff; -fx-padding: 18px 22px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+                        <!-- Option B: Unified Interactive Conveyor Line Pipeline (Direct Controls + Drag-and-Drop) -->
+                        <VBox spacing="12" styleClass="pipeline-board">
                             <HBox alignment="CENTER_LEFT" spacing="12">
                                 <VBox spacing="2">
-                                    <Label text="🏭 Real-Time Factory I/O Conveyor Line Schematic" styleClass="station-title" style="-fx-font-size: 16px;" />
-                                    <Label text="Live 2D mimic tracking conveyor motion, optical laser cone, and package transfer in Factory I/O." styleClass="station-subtitle" />
+                                    <Label text="🏭 Interactive Factory I/O Equipment Pipeline" styleClass="station-title" style="-fx-font-size: 16px;" />
+                                    <Label text="Drag and drop stations to reconfigure line layout. Embedded toggles operate Modbus coils directly in real-time." styleClass="station-subtitle" />
                                 </VBox>
                                 <Region HBox.hgrow="ALWAYS" />
+                                <Button text="↺ Reset Line Order" onAction="#handleResetLineOrder" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 5 12;" />
                                 <Label fx:id="lblMimicLineStatus" text="LINE STATUS: IDLE" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b; -fx-background-color: #f1f5f9; -fx-padding: 5 12; -fx-background-radius: 4px;" />
                             </HBox>
-                            <Canvas fx:id="conveyorCanvas" width="940" height="120" />
-                        </VBox>
-
-                        <!-- Actuators Panel -->
-                        <VBox spacing="12" style="-fx-background-color: #ffffff; -fx-padding: 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
-                            <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Label text="⚙ Output Actuators (Coils)" styleClass="station-title" style="-fx-font-size: 16px;" />
-                                <Region HBox.hgrow="ALWAYS" />
-                                <Label text="Auto-populated from warehouse_tags.json" styleClass="station-subtitle" />
-                            </HBox>
-                            <FlowPane fx:id="actuatorsContainer" hgap="16" vgap="16" />
-                        </VBox>
-
-                        <!-- Sensors Panel -->
-                        <VBox spacing="12" style="-fx-background-color: #ffffff; -fx-padding: 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
-                            <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Label text="📡 Digital Inputs (Discrete Sensors)" styleClass="station-title" style="-fx-font-size: 16px;" />
-                                <Region HBox.hgrow="ALWAYS" />
-                                <Label text="Polling rate: 100ms background thread" styleClass="station-subtitle" />
-                            </HBox>
-                            <FlowPane fx:id="sensorsContainer" hgap="16" vgap="16" />
+                            <ScrollPane fitToHeight="true" vbarPolicy="NEVER" hbarPolicy="AS_NEEDED" style="-fx-background-color: transparent; -fx-padding: 0;">
+                                <HBox fx:id="pipelineTrack" styleClass="pipeline-track" alignment="CENTER_LEFT" />
+                            </ScrollPane>
                         </VBox>
 
                         <!-- Telemetry Log -->
