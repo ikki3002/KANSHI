@@ -561,4 +561,22 @@
     -fx-font-weight: bold;
 }
 
+.pipeline-downward-arrow {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-alignment: center;
+}
+
+.pipeline-corner-tag {
+    -fx-background-color: #fef2f2;
+    -fx-text-fill: #7a0c1e;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-padding: 2px 6px;
+    -fx-background-radius: 4px;
+    -fx-border-color: #fecaca;
+    -fx-border-radius: 4px;
+}
+
 

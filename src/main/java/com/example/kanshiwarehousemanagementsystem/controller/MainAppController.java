@@ -34,6 +34,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.ArcType;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -189,7 +190,11 @@ public class MainAppController implements Initializable {
                     if (tag.isActive()) {
                         ActuatorBlockRef ref = actuatorRefs.get(tag.getId());
                         if (ref != null && ref.beltCanvas != null) {
-                            drawConveyorBelt(ref.beltCanvas, true, beltOffset);
+                            if (isCurvedConveyor(tag)) {
+                                drawCurvedConveyorBelt(ref.beltCanvas, true, beltOffset);
+                            } else {
+                                drawConveyorBelt(ref.beltCanvas, true, beltOffset);
+                            }
                         }
                     }
                 }
@@ -197,6 +202,69 @@ public class MainAppController implements Initializable {
         }));
         mimicAnimationTimeline.setCycleCount(Animation.INDEFINITE);
         mimicAnimationTimeline.play();
+    }
+
+    private boolean isCurvedConveyor(ModbusTag tag) {
+        if (tag == null || tag.getName() == null) return false;
+        String name = tag.getName().toLowerCase();
+        return name.contains("curved") || name.contains("corner") || name.contains("turn");
+    }
+
+    /**
+     * Draws animated 90-degree curved roller belt markings for corner conveyor blocks.
+     */
+    private void drawCurvedConveyorBelt(Canvas canvas, boolean running, double offset) {
+        if (canvas == null) return;
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        // 1. Background
+        gc.setFill(running ? Color.web("#fff1f2") : Color.web("#f8fafc"));
+        gc.fillRect(0, 0, w, h);
+
+        // 2. Chassis box
+        gc.setStroke(running ? Color.web("#7a0c1e") : Color.web("#cbd5e1"));
+        gc.setLineWidth(running ? 2.0 : 1.5);
+        gc.strokeRoundRect(2, 2, w - 4, h - 4, 6, 6);
+
+        // 3. Curved rails (90-degree outer and inner guides)
+        gc.setStroke(running ? Color.web("#991b1b") : Color.web("#64748b"));
+        gc.setLineWidth(3);
+        gc.strokeArc(6, -26, 110, 95, 270, 90, ArcType.OPEN);
+        gc.strokeArc(6, 6, 56, 52, 270, 90, ArcType.OPEN);
+
+        // 4. Moving radial roller lines
+        if (running) {
+            gc.setStroke(Color.web("#e11d48"));
+            gc.setLineWidth(2.0);
+            for (double angle = 275 + (offset % 18); angle < 355; angle += 18) {
+                double rad = Math.toRadians(angle);
+                double x1 = 34 + 28 * Math.cos(rad);
+                double y1 = 26 - 26 * Math.sin(rad);
+                double x2 = 34 + 55 * Math.cos(rad);
+                double y2 = 26 - 47 * Math.sin(rad);
+                gc.strokeLine(x1, y1, x2, y2);
+            }
+            // Active rotation label
+            gc.setFill(Color.web("#7a0c1e"));
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
+            gc.fillText("↷ 90° CW", w - 68, h / 2 + 4);
+        } else {
+            gc.setStroke(Color.web("#cbd5e1"));
+            gc.setLineWidth(1.5);
+            for (double angle = 275; angle < 355; angle += 18) {
+                double rad = Math.toRadians(angle);
+                double x1 = 34 + 28 * Math.cos(rad);
+                double y1 = 26 - 26 * Math.sin(rad);
+                double x2 = 34 + 55 * Math.cos(rad);
+                double y2 = 26 - 47 * Math.sin(rad);
+                gc.strokeLine(x1, y1, x2, y2);
+            }
+            gc.setFill(Color.web("#64748b"));
+            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
+            gc.fillText("↷ Corner", w - 65, h / 2 + 4);
+        }
     }
 
     /**
@@ -493,28 +561,90 @@ public class MainAppController implements Initializable {
         actuatorRefs.clear();
         sensorRefs.clear();
 
-        // 1. Infeed Terminal
-        pipelineTrack.getChildren().add(createInfeedTerminal());
-
-        // 2. Machine Blocks in sequence
-        for (String tagId : pipelineOrder) {
-            ModbusTag tag = tagManager.findTagById(tagId);
-            if (tag == null) continue;
-
-            pipelineTrack.getChildren().add(createConnectorArrow());
-
-            if (tag.getType() == TagType.COIL) {
-                pipelineTrack.getChildren().add(createConveyorBlock(tag));
-            } else if (tag.getType() == TagType.DISCRETE_INPUT) {
-                pipelineTrack.getChildren().add(createSensorBlock(tag));
+        // 1. Check if there is a curved conveyor corner in the sequence
+        int curvedIndex = -1;
+        for (int i = 0; i < pipelineOrder.size(); i++) {
+            ModbusTag tag = tagManager.findTagById(pipelineOrder.get(i));
+            if (tag != null && isCurvedConveyor(tag)) {
+                curvedIndex = i;
+                break;
             }
         }
 
-        // 3. Outfeed Depot Terminal
-        pipelineTrack.getChildren().add(createConnectorArrow());
-        pipelineTrack.getChildren().add(createDepotTerminal());
+        // 2. Infeed Terminal always starts the line
+        pipelineTrack.getChildren().add(createInfeedTerminal());
+
+        if (curvedIndex == -1) {
+            // No curve: render linear straight run
+            for (String tagId : pipelineOrder) {
+                ModbusTag tag = tagManager.findTagById(tagId);
+                if (tag == null) continue;
+                pipelineTrack.getChildren().add(createConnectorArrow());
+                if (tag.getType() == TagType.COIL) {
+                    pipelineTrack.getChildren().add(createConveyorBlock(tag));
+                } else if (tag.getType() == TagType.DISCRETE_INPUT) {
+                    pipelineTrack.getChildren().add(createSensorBlock(tag));
+                }
+            }
+            pipelineTrack.getChildren().add(createConnectorArrow());
+            pipelineTrack.getChildren().add(createDepotTerminal());
+        } else {
+            // L-Shape Layout: stations up to curvedIndex go in horizontal top arm
+            for (int i = 0; i < curvedIndex; i++) {
+                ModbusTag tag = tagManager.findTagById(pipelineOrder.get(i));
+                if (tag == null) continue;
+                pipelineTrack.getChildren().add(createConnectorArrow());
+                if (tag.getType() == TagType.COIL) {
+                    pipelineTrack.getChildren().add(createConveyorBlock(tag));
+                } else if (tag.getType() == TagType.DISCRETE_INPUT) {
+                    pipelineTrack.getChildren().add(createSensorBlock(tag));
+                }
+            }
+
+            // Connector arrow into the corner
+            pipelineTrack.getChildren().add(createConnectorArrow());
+
+            // 3. Corner column (Curved Conveyor + vertical downward descent into Depot)
+            VBox cornerColumn = new VBox(8);
+            cornerColumn.setAlignment(Pos.TOP_CENTER);
+
+            // Curved Conveyor Block
+            ModbusTag curvedTag = tagManager.findTagById(pipelineOrder.get(curvedIndex));
+            cornerColumn.getChildren().add(createConveyorBlock(curvedTag));
+
+            // Any stations after the curve flow vertically downward
+            for (int i = curvedIndex + 1; i < pipelineOrder.size(); i++) {
+                ModbusTag tag = tagManager.findTagById(pipelineOrder.get(i));
+                if (tag == null) continue;
+                cornerColumn.getChildren().add(createDownwardConnectorArrow());
+                if (tag.getType() == TagType.COIL) {
+                    cornerColumn.getChildren().add(createConveyorBlock(tag));
+                } else if (tag.getType() == TagType.DISCRETE_INPUT) {
+                    cornerColumn.getChildren().add(createSensorBlock(tag));
+                }
+            }
+
+            // Downward arrow into Depot
+            cornerColumn.getChildren().add(createDownwardConnectorArrow());
+            cornerColumn.getChildren().add(createDepotTerminal());
+
+            // Add corner column to horizontal track
+            pipelineTrack.getChildren().add(cornerColumn);
+        }
 
         updateMimicLineStatus();
+    }
+
+    private Node createDownwardConnectorArrow() {
+        VBox box = new VBox(1);
+        box.setAlignment(Pos.CENTER);
+        box.setPrefHeight(26);
+        Label line = new Label("│");
+        line.getStyleClass().add("pipeline-downward-arrow");
+        Label arrow = new Label("▼");
+        arrow.getStyleClass().add("pipeline-downward-arrow");
+        box.getChildren().addAll(line, arrow);
+        return box;
     }
 
     private Node createInfeedTerminal() {
@@ -533,11 +663,14 @@ public class MainAppController implements Initializable {
     private Node createDepotTerminal() {
         VBox box = new VBox(4);
         box.getStyleClass().add("pipeline-terminal");
+        box.setMinWidth(110);
+        box.setMaxWidth(130);
+        box.setAlignment(Pos.CENTER);
         Label icon = new Label("📦");
         icon.setStyle("-fx-font-size: 20px;");
         Label lbl = new Label("DEPOT");
         lbl.getStyleClass().add("pipeline-terminal-label");
-        Label sub = new Label("Outfeed Area");
+        Label sub = new Label("Outfeed Chute");
         sub.getStyleClass().add("pipeline-terminal-sub");
         box.getChildren().addAll(icon, lbl, sub);
         return box;
@@ -550,6 +683,7 @@ public class MainAppController implements Initializable {
     }
 
     private Node createConveyorBlock(ModbusTag tag) {
+        boolean isCurved = isCurvedConveyor(tag);
         VBox block = new VBox(8);
         block.getStyleClass().add("pipeline-block");
         if (tag.isActive()) {
@@ -567,13 +701,17 @@ public class MainAppController implements Initializable {
         nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #1e293b;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        Label badge = new Label("Coil " + tag.getAddress());
-        badge.getStyleClass().add("tag-badge");
+        Label badge = new Label(isCurved ? "Coil " + tag.getAddress() + " (90° CW)" : "Coil " + tag.getAddress());
+        badge.getStyleClass().add(isCurved ? "pipeline-corner-tag" : "tag-badge");
         topRow.getChildren().addAll(grip, nameLbl, spacer, badge);
 
         // Animated Belt Canvas
-        Canvas beltCanvas = new Canvas(195, 32);
-        drawConveyorBelt(beltCanvas, tag.isActive(), beltOffset);
+        Canvas beltCanvas = new Canvas(195, isCurved ? 50 : 32);
+        if (isCurved) {
+            drawCurvedConveyorBelt(beltCanvas, tag.isActive(), beltOffset);
+        } else {
+            drawConveyorBelt(beltCanvas, tag.isActive(), beltOffset);
+        }
 
         // Status row
         HBox statusRow = new HBox(8);
@@ -825,7 +963,11 @@ public class MainAppController implements Initializable {
                 ref.block.getStyleClass().remove("pipeline-block-running");
             }
 
-            drawConveyorBelt(ref.beltCanvas, running, beltOffset);
+            if (isCurvedConveyor(tag)) {
+                drawCurvedConveyorBelt(ref.beltCanvas, running, beltOffset);
+            } else {
+                drawConveyorBelt(ref.beltCanvas, running, beltOffset);
+            }
         }
 
         boolean anyRunning = tagManager.getActuatorTags().stream().anyMatch(ModbusTag::isActive);
