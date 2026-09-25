@@ -702,8 +702,11 @@ public class MainAppController implements Initializable {
         actuatorRefs.clear();
         sensorRefs.clear();
 
-        for (int r = 0; r < FloorLayoutService.GRID_ROWS; r++) {
-            for (int c = 0; c < FloorLayoutService.GRID_COLS; c++) {
+        int totalRows = floorLayoutService.getGridRows();
+        int totalCols = floorLayoutService.getGridCols();
+
+        for (int r = 0; r < totalRows; r++) {
+            for (int c = 0; c < totalCols; c++) {
                 FloorCellPlacement placement = floorLayoutService.findPlacement(r, c);
                 Node cellNode;
                 if (placement != null) {
@@ -715,21 +718,115 @@ public class MainAppController implements Initializable {
             }
         }
 
+        if (isDesignMode) {
+            // Right edge: Column expansion strip
+            VBox colControls = new VBox(6);
+            colControls.setAlignment(Pos.CENTER);
+            colControls.setStyle("-fx-padding: 4px;");
+
+            Button addColBtn = new Button("➕\nC\nO\nL");
+            addColBtn.getStyleClass().add("grid-edge-col-btn");
+            addColBtn.setTooltip(new Tooltip("Add Column (Expand Factory Floor)"));
+            addColBtn.setOnAction(e -> handleExpandColumn());
+            colControls.getChildren().add(addColBtn);
+
+            if (floorLayoutService.isColEmpty(totalCols - 1) && totalCols > 1) {
+                Button removeColBtn = new Button("➖\nC\nO\nL");
+                removeColBtn.getStyleClass().addAll("grid-edge-col-btn", "grid-edge-sub-btn");
+                removeColBtn.setTooltip(new Tooltip("Remove Empty Column " + totalCols));
+                removeColBtn.setOnAction(e -> handleShrinkColumn());
+                colControls.getChildren().add(removeColBtn);
+            }
+
+            floorGridPane.add(colControls, totalCols, 0, 1, Math.max(1, totalRows));
+
+            // Bottom edge: Row expansion strip
+            HBox rowControls = new HBox(8);
+            rowControls.setAlignment(Pos.CENTER);
+            rowControls.setStyle("-fx-padding: 4px;");
+
+            Button addRowBtn = new Button("➕ Add Row");
+            addRowBtn.getStyleClass().add("grid-edge-row-btn");
+            addRowBtn.setTooltip(new Tooltip("Add Row (Expand Factory Floor)"));
+            addRowBtn.setOnAction(e -> handleExpandRow());
+            rowControls.getChildren().add(addRowBtn);
+
+            if (floorLayoutService.isRowEmpty(totalRows - 1) && totalRows > 1) {
+                Button removeRowBtn = new Button("➖ Remove Row " + totalRows);
+                removeRowBtn.getStyleClass().addAll("grid-edge-row-btn", "grid-edge-sub-btn");
+                removeRowBtn.setTooltip(new Tooltip("Remove Empty Row " + totalRows));
+                removeRowBtn.setOnAction(e -> handleShrinkRow());
+                rowControls.getChildren().add(removeRowBtn);
+            }
+
+            floorGridPane.add(rowControls, 0, totalRows, Math.max(1, totalCols), 1);
+        }
+
         updateMimicLineStatus();
     }
 
+    @FXML
+    private void handleExpandColumn() {
+        floorLayoutService.addCol();
+        floorLayoutService.saveToFile();
+        renderFloorGrid();
+        log("[SCADA STUDIO] Expanded factory floor columns to " + floorLayoutService.getGridCols() + ".");
+    }
+
+    @FXML
+    private void handleShrinkColumn() {
+        int curCols = floorLayoutService.getGridCols();
+        if (curCols <= 1) {
+            showAlert("Grid Limit", "Factory floor grid must have at least 1 column.");
+            return;
+        }
+        boolean ok = floorLayoutService.removeCol();
+        if (ok) {
+            floorLayoutService.saveToFile();
+            renderFloorGrid();
+            log("[SCADA STUDIO] Reduced factory floor columns to " + floorLayoutService.getGridCols() + ".");
+        } else {
+            showAlert("Cannot Remove Column", "Column " + curCols + " contains active equipment. Remove or relocate machines first.");
+        }
+    }
+
+    @FXML
+    private void handleExpandRow() {
+        floorLayoutService.addRow();
+        floorLayoutService.saveToFile();
+        renderFloorGrid();
+        log("[SCADA STUDIO] Expanded factory floor rows to " + floorLayoutService.getGridRows() + ".");
+    }
+
+    @FXML
+    private void handleShrinkRow() {
+        int curRows = floorLayoutService.getGridRows();
+        if (curRows <= 1) {
+            showAlert("Grid Limit", "Factory floor grid must have at least 1 row.");
+            return;
+        }
+        boolean ok = floorLayoutService.removeRow();
+        if (ok) {
+            floorLayoutService.saveToFile();
+            renderFloorGrid();
+            log("[SCADA STUDIO] Reduced factory floor rows to " + floorLayoutService.getGridRows() + ".");
+        } else {
+            showAlert("Cannot Remove Row", "Row " + curRows + " contains active equipment. Remove or relocate machines first.");
+        }
+    }
+
     private Node createEmptyDesignCell(int row, int col) {
-        VBox cell = new VBox(6);
+        VBox cell = new VBox(2);
         cell.getStyleClass().add("floor-cell-empty-design");
 
         Label icon = new Label("➕");
-        icon.setStyle("-fx-font-size: 16px; -fx-text-fill: #94a3b8;");
+        icon.setStyle("-fx-font-size: 14px; -fx-text-fill: #94a3b8;");
 
-        Label label = new Label("Add Equipment");
-        label.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+        Label label = new Label("Add Machine");
+        label.setStyle("-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
 
-        Label coord = new Label("Slot [" + (row + 1) + "," + (col + 1) + "]");
-        coord.setStyle("-fx-font-size: 9px; -fx-text-fill: #94a3b8;");
+        Label coord = new Label("[" + (row + 1) + "," + (col + 1) + "]");
+        coord.setStyle("-fx-font-size: 8px; -fx-text-fill: #94a3b8;");
 
         cell.getChildren().addAll(icon, label, coord);
         cell.setOnMouseClicked(e -> openEquipmentPickerDialog(row, col));
@@ -743,22 +840,22 @@ public class MainAppController implements Initializable {
     }
 
     private Node createDesignCell(FloorCellPlacement placement) {
-        VBox block = new VBox(4);
+        VBox block = new VBox(3);
         block.getStyleClass().add("pipeline-block");
-        block.setMinWidth(155);
-        block.setMaxWidth(165);
-        block.setMinHeight(118);
-        block.setMaxHeight(118);
+        block.setMinWidth(118);
+        block.setMaxWidth(122);
+        block.setMinHeight(84);
+        block.setMaxHeight(84);
 
         // Header Row: Icon, Name, Rotate [↻], Delete [🗑]
-        HBox topRow = new HBox(4);
+        HBox topRow = new HBox(3);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         Label iconLbl = new Label(placement.getAssetType().getIcon());
-        iconLbl.setStyle("-fx-font-size: 11px;");
+        iconLbl.setStyle("-fx-font-size: 10px;");
 
         Label nameLbl = new Label(getPlacementTitle(placement));
-        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #1e293b;");
+        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 9px; -fx-text-fill: #1e293b;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -782,8 +879,8 @@ public class MainAppController implements Initializable {
 
         topRow.getChildren().addAll(iconLbl, nameLbl, spacer, rotateBtn, deleteBtn);
 
-        // Static Preview Canvas
-        Canvas canvas = new Canvas(145, 36);
+        // Static Preview Canvas (108x22)
+        Canvas canvas = new Canvas(108, 22);
         drawPreviewForPlacement(canvas, placement);
 
         // Info / Direction Row
@@ -798,7 +895,7 @@ public class MainAppController implements Initializable {
 
         Label tagBadge = new Label(getPlacementTagBadge(placement));
         tagBadge.getStyleClass().add("tag-badge");
-        tagBadge.setStyle("-fx-font-size: 9px; -fx-padding: 1 4;");
+        tagBadge.setStyle("-fx-font-size: 8px; -fx-padding: 1 3;");
 
         bottomRow.getChildren().addAll(dirBadge, spacer2, tagBadge);
 
@@ -811,51 +908,54 @@ public class MainAppController implements Initializable {
             case INFEED -> {
                 VBox box = new VBox(2);
                 box.getStyleClass().add("pipeline-terminal");
-                box.setMinWidth(155);
-                box.setMaxWidth(165);
-                box.setMinHeight(118);
-                box.setMaxHeight(118);
+                box.setMinWidth(118);
+                box.setMaxWidth(122);
+                box.setMinHeight(84);
+                box.setMaxHeight(84);
                 box.setAlignment(Pos.CENTER);
                 Label icon = new Label("📥");
-                icon.setStyle("-fx-font-size: 22px;");
+                icon.setStyle("-fx-font-size: 18px;");
                 Label lbl = new Label("INFEED");
                 lbl.getStyleClass().add("pipeline-terminal-label");
                 Label sub = new Label("Entry (" + placement.getDirection().getLabel() + ")");
                 sub.getStyleClass().add("pipeline-terminal-sub");
                 box.getChildren().addAll(icon, lbl, sub);
+                box.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
                 return box;
             }
             case DEPOT -> {
                 VBox box = new VBox(2);
                 box.getStyleClass().add("pipeline-terminal");
-                box.setMinWidth(155);
-                box.setMaxWidth(165);
-                box.setMinHeight(118);
-                box.setMaxHeight(118);
+                box.setMinWidth(118);
+                box.setMaxWidth(122);
+                box.setMinHeight(84);
+                box.setMaxHeight(84);
                 box.setAlignment(Pos.CENTER);
                 Label icon = new Label("📦");
-                icon.setStyle("-fx-font-size: 22px;");
+                icon.setStyle("-fx-font-size: 18px;");
                 Label lbl = new Label("DEPOT");
                 lbl.getStyleClass().add("pipeline-terminal-label");
                 Label sub = new Label("Outfeed (" + placement.getDirection().getLabel() + ")");
                 sub.getStyleClass().add("pipeline-terminal-sub");
                 box.getChildren().addAll(icon, lbl, sub);
+                box.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
                 return box;
             }
             case BRIDGE -> {
-                VBox box = new VBox(4);
+                VBox box = new VBox(2);
                 box.getStyleClass().add("pipeline-block");
-                box.setMinWidth(155);
-                box.setMaxWidth(165);
-                box.setMinHeight(118);
-                box.setMaxHeight(118);
+                box.setMinWidth(118);
+                box.setMaxWidth(122);
+                box.setMinHeight(84);
+                box.setMaxHeight(84);
                 box.setAlignment(Pos.CENTER);
                 Label arrow = new Label(getBridgeArrowForDirection(placement.getDirection()));
                 arrow.getStyleClass().add("pipeline-connector-label");
-                arrow.setStyle("-fx-font-size: 20px; -fx-text-fill: #7a0c1e;");
+                arrow.setStyle("-fx-font-size: 18px; -fx-text-fill: #7a0c1e;");
                 Label lbl = new Label("Conveyor Bridge");
-                lbl.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+                lbl.setStyle("-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 box.getChildren().addAll(arrow, lbl);
+                box.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
                 return box;
             }
             case CONVEYOR, CURVED_CONVEYOR -> {
@@ -877,88 +977,84 @@ public class MainAppController implements Initializable {
     }
 
     private Node createMissingTagCell(FloorCellPlacement placement) {
-        VBox box = new VBox(4);
+        VBox box = new VBox(2);
         box.getStyleClass().add("pipeline-block");
-        box.setMinWidth(155);
-        box.setMaxWidth(165);
-        box.setMinHeight(118);
-        box.setMaxHeight(118);
+        box.setMinWidth(118);
+        box.setMaxWidth(122);
+        box.setMinHeight(84);
+        box.setMaxHeight(84);
         box.setAlignment(Pos.CENTER);
         Label icon = new Label("⚠️");
-        icon.setStyle("-fx-font-size: 20px;");
+        icon.setStyle("-fx-font-size: 16px;");
         Label lbl = new Label(placement.getAssetType().getDisplayName());
-        lbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #991b1b;");
+        lbl.setStyle("-fx-font-weight: bold; -fx-font-size: 9px; -fx-text-fill: #991b1b;");
         Label sub = new Label("Unassigned Tag");
-        sub.setStyle("-fx-font-size: 9px; -fx-text-fill: #64748b;");
+        sub.setStyle("-fx-font-size: 8px; -fx-text-fill: #64748b;");
         box.getChildren().addAll(icon, lbl, sub);
+        box.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
         return box;
     }
 
     private Node createOperationalConveyorBlock(ModbusTag tag, FloorCellPlacement placement) {
         boolean isCurved = (placement.getAssetType() == AssetType.CURVED_CONVEYOR) || isCurvedConveyor(tag);
-        VBox block = new VBox(5);
+        VBox block = new VBox(3);
         block.getStyleClass().add("pipeline-block");
         if (tag.isActive()) {
             block.getStyleClass().add("pipeline-block-running");
         }
-        block.setMinWidth(155);
-        block.setMaxWidth(165);
-        block.setMinHeight(118);
-        block.setMaxHeight(118);
+        block.setMinWidth(118);
+        block.setMaxWidth(122);
+        block.setMinHeight(84);
+        block.setMaxHeight(84);
 
-        // Header row
+        // Header row: icon, name, badge
         HBox topRow = new HBox(4);
         topRow.setAlignment(Pos.CENTER_LEFT);
         Label icon = new Label(isCurved ? "↷" : "⚙️");
-        icon.setStyle("-fx-font-size: 11px;");
+        icon.setStyle("-fx-font-size: 10px;");
         Label nameLbl = new Label(tag.getName());
-        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #1e293b;");
+        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 9px; -fx-text-fill: #1e293b;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Label badge = new Label(isCurved ? "C" + tag.getAddress() + " (" + placement.getDirection().getLabel() + ")" : "C" + tag.getAddress());
         badge.getStyleClass().add(isCurved ? "pipeline-corner-tag" : "tag-badge");
-        badge.setStyle("-fx-font-size: 9px; -fx-padding: 1 4;");
+        badge.setStyle("-fx-font-size: 8px; -fx-padding: 1 3;");
         topRow.getChildren().addAll(icon, nameLbl, spacer, badge);
 
         // Animated Belt Canvas
-        Canvas beltCanvas = new Canvas(145, isCurved ? 40 : 22);
+        Canvas beltCanvas = new Canvas(108, isCurved ? 28 : 18);
         if (isCurved) {
             drawCurvedConveyorBelt(beltCanvas, tag.isActive(), beltOffset, placement.getDirection());
         } else {
             drawConveyorBelt(beltCanvas, tag.isActive(), beltOffset, placement.getDirection());
         }
 
-        // Status row
-        HBox statusRow = new HBox(4);
-        statusRow.setAlignment(Pos.CENTER_LEFT);
+        // Status & Symbol Control row
+        HBox bottomRow = new HBox(4);
+        bottomRow.setAlignment(Pos.CENTER_LEFT);
+
         Label statusPill = new Label(tag.isActive() ? "● RUN" : "● IDLE");
         statusPill.getStyleClass().add(tag.isActive() ? "status-pill-running" : "status-pill-stopped");
-        statusPill.setStyle("-fx-font-size: 9px; -fx-padding: 2 6;");
+        statusPill.setStyle("-fx-font-size: 8px; -fx-padding: 1 4;");
 
         Region spacer2 = new Region();
         HBox.setHgrow(spacer2, Priority.ALWAYS);
-        Label dirLbl = new Label(placement.getDirection().getLabel());
-        dirLbl.setStyle("-fx-font-size: 9px; -fx-text-fill: #64748b;");
 
-        statusRow.getChildren().addAll(statusPill, spacer2, dirLbl);
+        // Symbol-only Run/Stop button: ▶ when stopped/idle, ⏹ when running
+        Button toggleBtn = new Button(tag.isActive() ? "⏹" : "▶");
+        toggleBtn.getStyleClass().add(tag.isActive() ? "symbol-toggle-btn-stop" : "symbol-toggle-btn");
+        toggleBtn.setTooltip(new Tooltip(tag.isActive() ? "Stop Conveyor" : "Start Conveyor"));
+        toggleBtn.setOnAction(e -> {
+            e.consume(); // Prevent bubbling up to open details dialog
+            handleToggleActuator(tag);
+        });
 
-        // Controls row
-        HBox controlsRow = new HBox(4);
-        controlsRow.setAlignment(Pos.CENTER_LEFT);
+        bottomRow.getChildren().addAll(statusPill, spacer2, toggleBtn);
 
-        Button toggleBtn = new Button(tag.isActive() ? "■ STOP" : "▶ RUN");
-        toggleBtn.getStyleClass().addAll(tag.isActive() ? "btn-estop" : "btn-primary", "micro-action-btn");
-        HBox.setHgrow(toggleBtn, Priority.ALWAYS);
-        toggleBtn.setMaxWidth(Double.MAX_VALUE);
-        toggleBtn.setOnAction(e -> handleToggleActuator(tag));
+        block.getChildren().addAll(topRow, beltCanvas, bottomRow);
 
-        Button testBtn = new Button("⚡ 2s");
-        testBtn.getStyleClass().addAll("btn-secondary", "micro-action-btn");
-        testBtn.setOnAction(e -> handleQuickTestActuator(tag));
-
-        controlsRow.getChildren().addAll(toggleBtn, testBtn);
-
-        block.getChildren().addAll(topRow, beltCanvas, statusRow, controlsRow);
+        // Clicking operational card opens full diagnostics & parameters dialog
+        block.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
 
         ActuatorBlockRef ref = new ActuatorBlockRef();
         ref.block = block;
@@ -972,45 +1068,45 @@ public class MainAppController implements Initializable {
     }
 
     private Node createOperationalSensorBlock(ModbusTag tag, FloorCellPlacement placement) {
-        VBox block = new VBox(5);
+        VBox block = new VBox(3);
         block.getStyleClass().add("pipeline-block");
         if (tag.isActive()) {
             block.getStyleClass().add("pipeline-block-detected");
         }
-        block.setMinWidth(155);
-        block.setMaxWidth(165);
-        block.setMinHeight(118);
-        block.setMaxHeight(118);
+        block.setMinWidth(118);
+        block.setMaxWidth(122);
+        block.setMinHeight(84);
+        block.setMaxHeight(84);
 
         // Header row
         HBox topRow = new HBox(4);
         topRow.setAlignment(Pos.CENTER_LEFT);
         Label icon = new Label("👁️");
-        icon.setStyle("-fx-font-size: 11px;");
+        icon.setStyle("-fx-font-size: 10px;");
         Label nameLbl = new Label(tag.getName());
-        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #1e293b;");
+        nameLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 9px; -fx-text-fill: #1e293b;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Label badge = new Label("DI " + tag.getAddress());
         badge.getStyleClass().add("tag-badge");
-        badge.setStyle("-fx-font-size: 9px; -fx-padding: 1 4;");
+        badge.setStyle("-fx-font-size: 8px; -fx-padding: 1 3;");
         topRow.getChildren().addAll(icon, nameLbl, spacer, badge);
 
         // Sensor Canvas
-        Canvas sensorCanvas = new Canvas(145, 30);
+        Canvas sensorCanvas = new Canvas(108, 22);
         drawSensorVisual(sensorCanvas, tag.isActive(), placement.getDirection());
 
         // LED, Status and Detection Counter inline
-        HBox ledRow = new HBox(6);
+        HBox ledRow = new HBox(4);
         ledRow.setAlignment(Pos.CENTER_LEFT);
-        Circle led = new Circle(5);
+        Circle led = new Circle(4);
         led.getStyleClass().add(tag.isActive() ? "sensor-led-on" : "sensor-led-off");
         Label statusLbl = new Label(tag.isActive() ? "DETECTED" : "CLEAR");
-        statusLbl.setStyle(tag.isActive() ? "-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+        statusLbl.setStyle(tag.isActive() ? "-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
 
         sensorCounters.putIfAbsent(tag.getId(), 0);
         Label counterBadge = new Label("Ct: " + sensorCounters.get(tag.getId()));
-        counterBadge.setStyle("-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-background-color: #f1f5f9; -fx-padding: 2 6; -fx-background-radius: 4px;");
+        counterBadge.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-background-color: #f1f5f9; -fx-padding: 1 4; -fx-background-radius: 3px;");
 
         Region spacer2 = new Region();
         HBox.setHgrow(spacer2, Priority.ALWAYS);
@@ -1018,6 +1114,9 @@ public class MainAppController implements Initializable {
         ledRow.getChildren().addAll(led, statusLbl, spacer2, counterBadge);
 
         block.getChildren().addAll(topRow, sensorCanvas, ledRow);
+
+        // Clicking sensor card opens full diagnostics & parameters dialog
+        block.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
 
         SensorBlockRef ref = new SensorBlockRef();
         ref.block = block;
@@ -1029,6 +1128,148 @@ public class MainAppController implements Initializable {
         sensorRefs.put(tag.getId(), ref);
 
         return block;
+    }
+
+    /**
+     * Opens rich telemetry, hardware parameters, and engineering diagnostics dialog for a machine.
+     */
+    private void openEquipmentDetailsDialog(FloorCellPlacement placement) {
+        if (placement == null) return;
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Equipment Telemetry & Diagnostics");
+
+        if (floorGridPane != null && floorGridPane.getScene() != null && floorGridPane.getScene().getWindow() != null) {
+            dialog.initOwner(floorGridPane.getScene().getWindow());
+        }
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.getButtonTypes().add(ButtonType.CLOSE);
+        try {
+            dialogPane.getStylesheets().add(getClass().getResource("/com/example/kanshiwarehousemanagementsystem/css/industrial-dark.css").toExternalForm());
+        } catch (Exception ignored) {}
+        dialogPane.getStyleClass().add("equipment-details-dialog");
+
+        VBox content = new VBox(12);
+        content.setPrefWidth(420);
+
+        // Header: Icon, Name, Coordinates
+        HBox headerBox = new HBox(12);
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        Label icon = new Label(placement.getAssetType().getIcon());
+        icon.setStyle("-fx-font-size: 26px; -fx-padding: 6 10; -fx-background-color: #fee2e2; -fx-background-radius: 8px;");
+
+        VBox titleBox = new VBox(3);
+        Label titleLbl = new Label(getPlacementTitle(placement));
+        titleLbl.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        Label subLbl = new Label("Factory Floor Grid Position: Row " + (placement.getRow() + 1) + ", Column " + (placement.getCol() + 1));
+        subLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+        titleBox.getChildren().addAll(titleLbl, subLbl);
+        headerBox.getChildren().addAll(icon, titleBox);
+
+        // Telemetry Grid
+        VBox propBox = new VBox(6);
+        propBox.getStyleClass().add("telemetry-prop-box");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(8);
+
+        ModbusTag tag = placement.getTagId() != null ? tagManager.findTagById(placement.getTagId()) : null;
+
+        grid.add(new Label("Asset Type:"), 0, 0);
+        Label assetLbl = new Label(placement.getAssetType().getDisplayName());
+        assetLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        grid.add(assetLbl, 1, 0);
+
+        grid.add(new Label("Flow Direction:"), 0, 1);
+        Label dirLbl = new Label(placement.getDirection().getLabel() + " (" + placement.getDirection().name() + ")");
+        dirLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        grid.add(dirLbl, 1, 1);
+
+        grid.add(new Label("Tag ID & Binding:"), 0, 2);
+        Label tagIdLbl = new Label(tag != null ? tag.getId() + " (" + tag.getName() + ")" : "Unassigned / Passive");
+        tagIdLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #7a0c1e;");
+        grid.add(tagIdLbl, 1, 2);
+
+        grid.add(new Label("Modbus Address:"), 0, 3);
+        Label addrLbl = new Label(tag != null ? (tag.getType() == TagType.COIL ? "Coil %M" : "Discrete Input %I") + tag.getAddress() : "N/A");
+        addrLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        grid.add(addrLbl, 1, 3);
+
+        grid.add(new Label("Live Status:"), 0, 4);
+        Label stateLbl = new Label();
+        if (tag != null) {
+            if (placement.getAssetType() == AssetType.SENSOR) {
+                stateLbl.setText(tag.isActive() ? "DETECTED (HIGH)" : "CLEAR (LOW)");
+                stateLbl.setStyle(tag.isActive() ? "-fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-weight: bold; -fx-text-fill: #64748b;");
+            } else {
+                stateLbl.setText(tag.isActive() ? "RUNNING / ACTIVE" : "STOPPED / IDLE");
+                stateLbl.setStyle(tag.isActive() ? "-fx-font-weight: bold; -fx-text-fill: #15803d;" : "-fx-font-weight: bold; -fx-text-fill: #64748b;");
+            }
+        } else {
+            stateLbl.setText("PASSIVE FIXTURE");
+            stateLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #64748b;");
+        }
+        grid.add(stateLbl, 1, 4);
+
+        if (placement.getAssetType() == AssetType.SENSOR && tag != null) {
+            grid.add(new Label("Detections:"), 0, 5);
+            Label ctLbl = new Label(sensorCounters.getOrDefault(tag.getId(), 0) + " Triggers");
+            ctLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #1e293b;");
+            grid.add(ctLbl, 1, 5);
+        }
+
+        propBox.getChildren().add(grid);
+
+        // Engineering Actions Section
+        VBox diagSection = new VBox(8);
+        Label diagTitle = new Label("ENGINEERING DIAGNOSTICS & CONTROLS");
+        diagTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #7a0c1e;");
+
+        HBox actionBtns = new HBox(8);
+        actionBtns.setAlignment(Pos.CENTER_LEFT);
+
+        if (tag != null && (placement.getAssetType() == AssetType.CONVEYOR || placement.getAssetType() == AssetType.CURVED_CONVEYOR)) {
+            Button diagToggleBtn = new Button(tag.isActive() ? "⏹ Stop Machine" : "▶ Start Machine");
+            diagToggleBtn.getStyleClass().add(tag.isActive() ? "btn-estop" : "btn-primary");
+            diagToggleBtn.setOnAction(e -> {
+                handleToggleActuator(tag);
+                dialog.close();
+            });
+
+            Button pulseBtn = new Button("⚡ 2s Pulse Test");
+            pulseBtn.getStyleClass().add("btn-secondary");
+            pulseBtn.setOnAction(e -> {
+                handleQuickTestActuator(tag);
+                dialog.close();
+            });
+
+            actionBtns.getChildren().addAll(diagToggleBtn, pulseBtn);
+        } else if (tag != null && placement.getAssetType() == AssetType.SENSOR) {
+            Button resetCtBtn = new Button("↺ Reset Counter");
+            resetCtBtn.getStyleClass().add("btn-secondary");
+            resetCtBtn.setOnAction(e -> {
+                sensorCounters.put(tag.getId(), 0);
+                SensorBlockRef ref = sensorRefs.get(tag.getId());
+                if (ref != null && ref.counterLabel != null) {
+                    ref.counterLabel.setText("Ct: 0");
+                }
+                log("[SENSOR] Counter reset to 0 for " + tag.getName());
+                dialog.close();
+            });
+            actionBtns.getChildren().add(resetCtBtn);
+        } else {
+            Label passiveNotice = new Label("Passive fixture — no electrical actuation or direct I/O binding.");
+            passiveNotice.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+            actionBtns.getChildren().add(passiveNotice);
+        }
+
+        diagSection.getChildren().addAll(diagTitle, actionBtns);
+
+        content.getChildren().addAll(headerBox, new Separator(), propBox, new Separator(), diagSection);
+        dialogPane.setContent(content);
+
+        dialog.showAndWait();
     }
 
     private String getPlacementTitle(FloorCellPlacement placement) {
@@ -1070,24 +1311,24 @@ public class MainAppController implements Initializable {
                 gc.setFill(Color.web("#0f172a"));
                 gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
                 gc.setFill(Color.WHITE);
-                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-                gc.fillText("📥 ENTRY CHUTE", 25, 22);
+                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
+                gc.fillText("📥 ENTRY CHUTE", 10, 15);
             }
             case DEPOT -> {
                 GraphicsContext gc = canvas.getGraphicsContext2D();
                 gc.setFill(Color.web("#0f172a"));
                 gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
                 gc.setFill(Color.WHITE);
-                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-                gc.fillText("📦 OUTFEED DEPOT", 20, 22);
+                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
+                gc.fillText("📦 OUTFEED DEPOT", 8, 15);
             }
             case BRIDGE -> {
                 GraphicsContext gc = canvas.getGraphicsContext2D();
                 gc.setFill(Color.web("#f8fafc"));
                 gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
                 gc.setFill(Color.web("#7a0c1e"));
-                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 14));
-                gc.fillText(getBridgeArrowForDirection(placement.getDirection()), canvas.getWidth() / 2 - 10, 22);
+                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
+                gc.fillText(getBridgeArrowForDirection(placement.getDirection()), canvas.getWidth() / 2 - 8, 15);
             }
         }
     }
@@ -1259,9 +1500,10 @@ public class MainAppController implements Initializable {
             ref.statusPill.getStyleClass().removeAll("status-pill-running", "status-pill-stopped");
             ref.statusPill.getStyleClass().add(running ? "status-pill-running" : "status-pill-stopped");
 
-            ref.toggleBtn.setText(running ? "■ STOP" : "▶ RUN");
-            ref.toggleBtn.getStyleClass().removeAll("btn-primary", "btn-estop");
-            ref.toggleBtn.getStyleClass().add(running ? "btn-estop" : "btn-primary");
+            ref.toggleBtn.setText(running ? "⏹" : "▶");
+            ref.toggleBtn.getStyleClass().removeAll("symbol-toggle-btn", "symbol-toggle-btn-stop", "btn-primary", "btn-estop");
+            ref.toggleBtn.getStyleClass().add(running ? "symbol-toggle-btn-stop" : "symbol-toggle-btn");
+            ref.toggleBtn.setTooltip(new Tooltip(running ? "Stop Conveyor" : "Start Conveyor"));
 
             if (running) {
                 if (!ref.block.getStyleClass().contains("pipeline-block-running")) {

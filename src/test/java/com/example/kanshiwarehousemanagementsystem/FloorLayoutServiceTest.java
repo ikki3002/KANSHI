@@ -38,6 +38,8 @@ public class FloorLayoutServiceTest {
         List<FloorCellPlacement> list = layoutService.getAllPlacements();
         assertFalse(list.isEmpty(), "Default layout should have placements");
         assertEquals(6, list.size(), "Standard factory line has 6 cells");
+        assertEquals(4, layoutService.getGridRows());
+        assertEquals(6, layoutService.getGridCols());
 
         FloorCellPlacement infeed = layoutService.findPlacement(0, 0);
         assertNotNull(infeed);
@@ -75,5 +77,44 @@ public class FloorLayoutServiceTest {
         layoutService.saveToFile();
         FloorLayoutService reloaded = new FloorLayoutService(tempFile);
         assertNotNull(reloaded.findPlacement(2, 2));
+    }
+
+    @Test
+    void testDynamicGridDimensionExpansionAndShrinking() {
+        assertEquals(4, layoutService.getGridRows());
+        assertEquals(6, layoutService.getGridCols());
+
+        // Expand columns and rows
+        assertTrue(layoutService.addCol());
+        assertEquals(7, layoutService.getGridCols());
+
+        assertTrue(layoutService.addRow());
+        assertEquals(5, layoutService.getGridRows());
+
+        // Column 6 and Row 4 are empty, so they can be removed
+        assertTrue(layoutService.removeCol());
+        assertEquals(6, layoutService.getGridCols());
+
+        assertTrue(layoutService.removeRow());
+        assertEquals(4, layoutService.getGridRows());
+
+        // Column 5 is empty, but column 4 has placements (Curved Conveyor and Depot).
+        // Removing col 5 should succeed (leaving 5 cols: 0..4).
+        assertTrue(layoutService.removeCol());
+        assertEquals(5, layoutService.getGridCols());
+
+        // Now the last column is col 4, which has placements at (0,4) and (1,4).
+        // Removing it MUST fail to protect user equipment!
+        assertFalse(layoutService.removeCol(), "Should not remove column containing placed equipment");
+        assertEquals(5, layoutService.getGridCols());
+
+        // Test persistence of custom dimensions
+        layoutService.addCol(); // now 6
+        layoutService.addRow(); // now 5
+        layoutService.saveToFile();
+
+        FloorLayoutService reloaded = new FloorLayoutService(tempFile);
+        assertEquals(5, reloaded.getGridRows());
+        assertEquals(6, reloaded.getGridCols());
     }
 }
