@@ -26,7 +26,7 @@ public class HelloApplication extends Application {
         FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("login-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load());
 
-        // Apply dark industrial stylesheet with global Times New Roman font
+        // Apply White + Dark Red Cherry industrial stylesheet with Segoe UI typography
         URL cssResource = HelloApplication.class.getResource("css/industrial-dark.css");
         if (cssResource != null) {
             scene.getStylesheets().add(cssResource.toExternalForm());
@@ -38,6 +38,12 @@ public class HelloApplication extends Application {
         stage.setMinWidth(960);
         stage.setMinHeight(640);
         stage.setMaximized(true);
+
+        // Clean exit handler on window close
+        stage.setOnCloseRequest(event -> {
+            javafx.application.Platform.exit();
+            System.exit(0);
+        });
 
         stage.setScene(scene);
         stage.show();

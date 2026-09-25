@@ -4,13 +4,18 @@ import com.example.kanshiwarehousemanagementsystem.database.UserDao;
 import com.example.kanshiwarehousemanagementsystem.model.User;
 import com.example.kanshiwarehousemanagementsystem.service.PasswordValidator;
 import com.example.kanshiwarehousemanagementsystem.service.PasswordValidator.ValidationResult;
+import com.example.kanshiwarehousemanagementsystem.HelloApplication;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -119,9 +124,32 @@ public class LoginController implements Initializable {
         User user = userDao.authenticate(identifier, password);
         if (user != null) {
             showStatus("Welcome back, " + user.getUsername() + "!", true);
-            // Ready for subsequent Home Dashboard transition
+            navigateToMainApp(user);
         } else {
             showStatus("Invalid username/email or password.", false);
+        }
+    }
+
+    private void navigateToMainApp(User user) {
+        try {
+            Stage stage = (Stage) btnLoginSubmit.getScene().getWindow();
+            FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("main-app-view.fxml"));
+            Scene scene = new Scene(fxmlLoader.load());
+
+            URL cssResource = HelloApplication.class.getResource("css/industrial-dark.css");
+            if (cssResource != null) {
+                scene.getStylesheets().add(cssResource.toExternalForm());
+            }
+
+            MainAppController controller = fxmlLoader.getController();
+            controller.setUserSession(user);
+
+            stage.setScene(scene);
+            stage.setMaximized(true);
+        } catch (IOException e) {
+            System.err.println("Failed to navigate to main app: " + e.getMessage());
+            e.printStackTrace();
+            showStatus("Error loading main dashboard view.", false);
         }
     }
 

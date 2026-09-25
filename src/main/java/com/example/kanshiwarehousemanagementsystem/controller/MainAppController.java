@@ -1,7 +1,9 @@
 package com.example.kanshiwarehousemanagementsystem.controller;
 
+import com.example.kanshiwarehousemanagementsystem.HelloApplication;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag.TagType;
+import com.example.kanshiwarehousemanagementsystem.model.User;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.FactoryIOService;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.TagManager;
 import javafx.application.Platform;
@@ -11,8 +13,10 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -20,31 +24,36 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.net.URL;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Controller for the Factory I/O Hardware Test Station and Tag Settings.
- * Demonstrates JavaFX dynamic UI generation, multithreading, and JSON persistence.
+ * Controller for the integrated Kanshi WMS Main Application.
+ * Manages user session, SCADA hardware operations, and dynamic tag configuration.
  */
-public class HardwareTestController implements Initializable {
+public class MainAppController implements Initializable {
 
-    // Top Connection Bar
+    // Top Header & Session
+    @FXML private Label lblOperatorEmail;
+
+    // Connection Bar
     @FXML private TextField txtHost;
     @FXML private TextField txtPort;
     @FXML private Button btnConnect;
     @FXML private Circle circleStatus;
     @FXML private Label lblConnectionStatus;
-    @FXML private Label lblActiveProfile;
     @FXML private Button btnAutoTest;
     @FXML private Button btnEstop;
 
-    // Tab 1: Live Hardware
+    // Tab 1: Live Hardware Controls
     @FXML private FlowPane actuatorsContainer;
     @FXML private FlowPane sensorsContainer;
     @FXML private TextArea txtLog;
@@ -60,15 +69,13 @@ public class HardwareTestController implements Initializable {
     @FXML private TextField txtNewTagAddress;
     @FXML private ComboBox<TagType> cmbNewTagType;
 
+    private User sessionUser;
     private final TagManager tagManager = new TagManager();
     private final FactoryIOService ioService = new FactoryIOService();
     private final ObservableList<ModbusTag> tableData = FXCollections.observableArrayList();
 
-    // Map to hold references to dynamic actuator tile controls: tagId -> controls
     private final Map<String, ActuatorCardRef> actuatorRefs = new ConcurrentHashMap<>();
-    // Map to hold references to dynamic sensor tile controls: tagId -> controls
     private final Map<String, SensorCardRef> sensorRefs = new ConcurrentHashMap<>();
-    // Sensor event counters
     private final Map<String, Integer> sensorCounters = new ConcurrentHashMap<>();
 
     private static class ActuatorCardRef {
@@ -89,7 +96,49 @@ public class HardwareTestController implements Initializable {
         setupTagForm();
         refreshDynamicHardwareUI();
 
-        log("Hardware Test Station initialized. Tag profile loaded from " + tagManager.getConfigFile().getName());
+        log("[SYSTEM] Kanshi WMS Main SCADA Control Center initialized.");
+    }
+
+    /**
+     * Injects the authenticated user session into the main controller.
+     */
+    public void setUserSession(User user) {
+        this.sessionUser = user;
+        if (user != null) {
+            lblOperatorEmail.setText("👤 Operator: " + (user.getEmail() != null ? user.getEmail() : user.getUsername()));
+            log("[AUTH] Session established for user: " + user.getUsername() + " (" + user.getEmail() + ")");
+        }
+    }
+
+    @FXML
+    private void handleLogout(ActionEvent event) {
+        shutdown();
+
+        try {
+            Stage stage = (Stage) lblOperatorEmail.getScene().getWindow();
+            FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("login-view.fxml"));
+            Scene scene = new Scene(fxmlLoader.load());
+
+            URL cssResource = HelloApplication.class.getResource("css/industrial-dark.css");
+            if (cssResource != null) {
+                scene.getStylesheets().add(cssResource.toExternalForm());
+            }
+
+            stage.setScene(scene);
+            stage.setMaximized(true);
+        } catch (IOException e) {
+            System.err.println("Logout navigation failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Clean shutdown of Modbus connections and background threads.
+     */
+    public void shutdown() {
+        if (ioService != null) {
+            ioService.disconnect();
+        }
     }
 
     private void setupTagTable() {
@@ -97,7 +146,6 @@ public class HardwareTestController implements Initializable {
         colTagType.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getType().getDisplayName()));
         colTagAddress.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getAddress()));
 
-        // Delete button cell
         colTagAction.setCellFactory(param -> new TableCell<>() {
             private final Button btnDelete = new Button("Delete");
 
@@ -108,7 +156,7 @@ public class HardwareTestController implements Initializable {
                     tagManager.removeTag(tag.getId());
                     loadTableData();
                     refreshDynamicHardwareUI();
-                    log("Removed tag: " + tag.getName());
+                    log("[TAG MANAGER] Removed tag: " + tag.getName());
                 });
             }
 
@@ -132,16 +180,13 @@ public class HardwareTestController implements Initializable {
         tableTags.setItems(tableData);
     }
 
-    /**
-     * Dynamically builds actuator tiles and sensor indicator cards based on tagManager.
-     */
     public void refreshDynamicHardwareUI() {
         actuatorsContainer.getChildren().clear();
         sensorsContainer.getChildren().clear();
         actuatorRefs.clear();
         sensorRefs.clear();
 
-        // 1. Build Actuator Cards (Coils)
+        // 1. Build Actuators (Coils)
         List<ModbusTag> actuators = tagManager.getActuatorTags();
         for (ModbusTag tag : actuators) {
             VBox card = new VBox(10);
@@ -179,7 +224,7 @@ public class HardwareTestController implements Initializable {
             actuatorRefs.put(tag.getId(), ref);
         }
 
-        // 2. Build Sensor Cards (Discrete Inputs)
+        // 2. Build Sensors (Discrete Inputs)
         List<ModbusTag> sensors = tagManager.getSensorTags();
         for (ModbusTag tag : sensors) {
             VBox card = new VBox(10);
@@ -295,7 +340,7 @@ public class HardwareTestController implements Initializable {
                         btnConnect.setText("Disconnect");
                         log("[SUCCESS] Connected to Factory I/O Modbus TCP/IP Server at " + host + ":" + port);
 
-                        // Start dynamic background sensor polling (Week 4 Concurrency)
+                        // Start real-time background sensor polling
                         ioService.startDynamicSensorPolling(tagManager.getSensorTags(), (tag, active) -> {
                             Platform.runLater(() -> {
                                 updateSensorTileUI(tag, active);
@@ -308,7 +353,7 @@ public class HardwareTestController implements Initializable {
                         circleStatus.setFill(Color.web("#ef4444"));
                         lblConnectionStatus.setText("FAILED");
                         log("[ERROR] Connection failed: " + e.getMessage());
-                        showAlert("Connection Error", "Could not connect to " + host + ":" + port + "\n\nMake sure Factory I/O driver is set to Modbus TCP/IP Server and scene is running.");
+                        showAlert("Connection Error", "Could not connect to " + host + ":" + port + "\n\nEnsure Factory I/O driver is set to Modbus TCP/IP Server and scene is running.");
                     });
                 }
             }).start();

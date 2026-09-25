@@ -8,7 +8,7 @@
 | :--- | :--- | :--- | :--- | :---: | :--- |
 | **Week 1** | **Java Basics & Core OOP** | Compilation (`javac`/`java`), data types, control flow, methods, classes, encapsulation, inheritance | Model classes (`User`, `Product`, `StockTransaction`), `PasswordValidator` | `[x]` | `model/`, `service/` |
 | **Week 2** | **Git & Version Control** | `git init`, staging, commits, branches, `.gitignore`, GitHub repo | Version control history, clean commits per feature | `[ ]` | Git repository |
-| **Week 3** | **Desktop GUI with JavaFX** | Stages, Scenes, Panes, Controls, Event handling, CSS styling, Canvas graphics | **Login & Registration Portal**, **Dark Industrial Theme**, **Times New Roman** | `[x]` | `view/`, `controller/` |
+| **Week 3** | **Desktop GUI with JavaFX** | Stages, Scenes, Panes, Controls, Event handling, CSS styling, Canvas graphics | **Login & Registration Portal**, **Main SCADA Station**, **White + Dark Red Cherry**, **Segoe UI** | `[x]` | `view/`, `controller/` |
 | **Week 4** | **Multithreading & Concurrency** | `Thread`, `Runnable`, `Platform.runLater()`, `ScheduledExecutorService`, synchronization | Pure Java Modbus TCP client & FactoryIOService background polling engine | `[x]` | `service/modbus/` |
 | **Week 5** | **Lab Milestone / Review** | Weeks 1-4 consolidation and quiz preparation | Code audit and integration checks | `[ ]` | Milestone audit |
 | **Week 6** | **Relational DB (SQLite + JavaFX)** | JDBC driver, `Connection`, `PreparedStatement`, CRUD, `TableView` binding | Persistent SQLite database for Users, initial credentials seeding, registration | `[x]` | `database/`, `dao/` |
