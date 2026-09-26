@@ -1,7 +1,12 @@
 package com.example.kanshiwarehousemanagementsystem.database;
 
 import com.example.kanshiwarehousemanagementsystem.model.Product;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -114,6 +119,168 @@ public class InventoryDao {
             return rows > 0;
         } catch (SQLException e) {
             System.err.println("Failed to insert product: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Counts products whose stock level is at or below the warning threshold.
+     */
+    public int getLowStockCount(int threshold) {
+        String sql = "SELECT COUNT(*) AS low_count FROM inventory WHERE quantity <= ?;";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, threshold);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("low_count");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to count low stock products: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * Counts total distinct product SKUs in the catalog.
+     */
+    public int getDistinctProductCount() {
+        String sql = "SELECT COUNT(DISTINCT sku) AS sku_count FROM inventory;";
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            if (rs.next()) {
+                return rs.getInt("sku_count");
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to count distinct SKUs: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * Retrieves current quantity for a specific SKU.
+     */
+    public int getStockQuantity(String sku) {
+        String sql = "SELECT quantity FROM inventory WHERE sku = ?;";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, sku);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("quantity");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to get stock for SKU " + sku + ": " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * Updates an existing product in the SQLite inventory ledger.
+     */
+    public boolean updateProduct(Product p) {
+        String sql = "UPDATE inventory SET name = ?, category = ?, quantity = ?, unit_price = ?, location = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, p.getName());
+            pstmt.setString(2, p.getCategory());
+            pstmt.setInt(3, p.getQuantity());
+            pstmt.setDouble(4, p.getUnitPrice());
+            pstmt.setString(5, p.getLocation());
+            pstmt.setInt(6, p.getId());
+
+            int rows = pstmt.executeUpdate();
+            return rows > 0;
+        } catch (SQLException e) {
+            System.err.println("Failed to update product ID " + p.getId() + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Deletes a product from the inventory ledger by ID.
+     */
+    public boolean deleteProduct(int id) {
+        String sql = "DELETE FROM inventory WHERE id = ?;";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, id);
+            int rows = pstmt.executeUpdate();
+            return rows > 0;
+        } catch (SQLException e) {
+            System.err.println("Failed to delete product ID " + id + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Checks if a SKU is unique across all products (excluding the specified ID during edits).
+     */
+    public boolean isSkuUnique(String sku, int excludeId) {
+        String sql = "SELECT COUNT(*) AS c FROM inventory WHERE sku = ? AND id != ?;";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, sku);
+            pstmt.setInt(2, excludeId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("c") == 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to check SKU uniqueness: " + e.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * Finds a single product by SKU.
+     */
+    public Product findProductBySku(String sku) {
+        String sql = "SELECT id, sku, name, category, quantity, unit_price, location FROM inventory WHERE sku = ?;";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, sku);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Product(
+                            rs.getInt("id"),
+                            rs.getString("sku"),
+                            rs.getString("name"),
+                            rs.getString("category"),
+                            rs.getInt("quantity"),
+                            rs.getDouble("unit_price"),
+                            rs.getString("location")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to find product by SKU: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Exports the complete inventory list to a formatted JSON file (Week 7 syllabus).
+     */
+    public boolean exportInventoryToJson(File destinationFile) {
+        List<Product> products = getAllProducts();
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        try (FileWriter writer = new FileWriter(destinationFile)) {
+            gson.toJson(products, writer);
+            return true;
+        } catch (IOException e) {
+            System.err.println("Failed to export inventory to JSON: " + e.getMessage());
             return false;
         }
     }

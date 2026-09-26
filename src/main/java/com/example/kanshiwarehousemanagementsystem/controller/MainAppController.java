@@ -4,6 +4,7 @@ import com.example.kanshiwarehousemanagementsystem.HelloApplication;
 import com.example.kanshiwarehousemanagementsystem.database.InventoryDao;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag.TagType;
+import com.example.kanshiwarehousemanagementsystem.model.Product;
 import com.example.kanshiwarehousemanagementsystem.model.User;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.FactoryIOService;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.TagManager;
@@ -11,10 +12,13 @@ import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -43,9 +47,11 @@ import javafx.scene.shape.ArcType;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -57,6 +63,7 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -96,11 +103,15 @@ public class MainAppController implements Initializable {
     @FXML private VBox paneFinance;
     @FXML private VBox paneTags;
 
-    // Level 1 KPI Overview Labels
+    // Level 1 KPI Overview Labels & Badges
     @FXML private Label lblKpiValuation;
     @FXML private Label lblKpiInventory;
     @FXML private Label lblKpiLineState;
     @FXML private Label lblKpiPackageCount;
+    @FXML private Label lblKpiSkuCount;
+    @FXML private Label lblKpiActiveEqCount;
+    @FXML private Circle circleKpiLineDot;
+    @FXML private Label lblKpiLowStockBadge;
 
     // Connection Bar (SCADA View)
     @FXML private TextField txtHost;
@@ -118,8 +129,12 @@ public class MainAppController implements Initializable {
     @FXML private HBox boxDesignModeBanner;
     @FXML private TextArea txtLog;
 
-    // Overview Dashboard Stream
+    // Overview Dashboard Stream & Filter Buttons
     @FXML private TextArea txtAuditStream;
+    @FXML private Button btnFilterAll;
+    @FXML private Button btnFilterOt;
+    @FXML private Button btnFilterIt;
+    @FXML private Button btnFilterSys;
 
     // Tag Settings
     @FXML private TableView<ModbusTag> tableTags;
@@ -131,6 +146,25 @@ public class MainAppController implements Initializable {
     @FXML private TextField txtNewTagName;
     @FXML private TextField txtNewTagAddress;
     @FXML private ComboBox<TagType> cmbNewTagType;
+
+    // Level 2B Inventory Ledger FXML Controls
+    @FXML private Label lblInvLedgerValuation;
+    @FXML private Label lblInvLedgerTotalUnits;
+    @FXML private TextField txtInventorySearch;
+    @FXML private ComboBox<String> cmbCategoryFilter;
+    @FXML private TableView<Product> tableInventory;
+    @FXML private TableColumn<Product, String> colInvSku;
+    @FXML private TableColumn<Product, String> colInvName;
+    @FXML private TableColumn<Product, String> colInvCategory;
+    @FXML private TableColumn<Product, Number> colInvQuantity;
+    @FXML private TableColumn<Product, Number> colInvUnitPrice;
+    @FXML private TableColumn<Product, Number> colInvTotalValue;
+    @FXML private TableColumn<Product, String> colInvLocation;
+    @FXML private TableColumn<Product, Void> colInvActions;
+    @FXML private Label lblInventoryRowCount;
+
+    private final ObservableList<Product> inventoryData = FXCollections.observableArrayList();
+    private FilteredList<Product> filteredInventoryData;
 
     private User sessionUser;
     private final TagManager tagManager = new TagManager();
@@ -177,6 +211,7 @@ public class MainAppController implements Initializable {
         initClock();
         setupTagTable();
         setupTagForm();
+        setupInventoryLedger();
         refreshDynamicHardwareUI();
         refreshKpiMetrics();
         initMimicAnimation();
@@ -911,6 +946,491 @@ public class MainAppController implements Initializable {
     private void loadTableData() {
         tableData.setAll(tagManager.getAllTags());
         tableTags.setItems(tableData);
+    }
+
+    // =========================================================================
+    // Level 2B: IT Warehouse Inventory Stock Ledger Implementation (Module 4)
+    // =========================================================================
+
+    private void setupInventoryLedger() {
+        if (tableInventory == null) return;
+
+        // 1. Column Value Factories
+        colInvSku.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getSku()));
+        colInvName.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
+        colInvCategory.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCategory()));
+        colInvQuantity.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getQuantity()));
+        colInvUnitPrice.setCellValueFactory(cellData -> new SimpleDoubleProperty(cellData.getValue().getUnitPrice()));
+        colInvTotalValue.setCellValueFactory(cellData -> new SimpleDoubleProperty(cellData.getValue().getTotalValue()));
+        colInvLocation.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getLocation()));
+
+        // 2. Custom Column Cell Renderers
+        colInvSku.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    Label badge = new Label(item);
+                    badge.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-weight: bold; -fx-text-fill: #7a0c1e; -fx-background-color: #fee2e2; -fx-padding: 3 8; -fx-background-radius: 4px;");
+                    setGraphic(badge);
+                    setText(null);
+                }
+            }
+        });
+
+        colInvCategory.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    Label pill = new Label(item);
+                    pill.getStyleClass().add("tag-badge");
+                    pill.setStyle("-fx-font-size: 11px; -fx-padding: 3 8; -fx-background-radius: 12px;");
+                    setGraphic(pill);
+                    setText(null);
+                }
+            }
+        });
+
+        colInvQuantity.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    int qty = item.intValue();
+                    Label pill = new Label(qty + (qty <= 15 ? " (LOW)" : ""));
+                    if (qty <= 15) {
+                        pill.setStyle("-fx-font-weight: bold; -fx-text-fill: #991b1b; -fx-background-color: #fee2e2; -fx-padding: 3 8; -fx-background-radius: 4px;");
+                    } else {
+                        pill.setStyle("-fx-font-weight: bold; -fx-text-fill: #15803d; -fx-background-color: #dcfce7; -fx-padding: 3 8; -fx-background-radius: 4px;");
+                    }
+                    setGraphic(pill);
+                    setText(null);
+                }
+            }
+        });
+
+        colInvUnitPrice.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : String.format("$%.2f", item.doubleValue()));
+                setStyle("-fx-alignment: CENTER-RIGHT; -fx-padding: 0 10; -fx-font-size: 12px;");
+            }
+        });
+
+        colInvTotalValue.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : String.format("$%.2f", item.doubleValue()));
+                setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-text-fill: #0f172a; -fx-padding: 0 10; -fx-font-size: 12px;");
+            }
+        });
+
+        colInvActions.setCellFactory(param -> new TableCell<>() {
+            private final Button btnEdit = new Button("✏️");
+            private final Button btnDelete = new Button("🗑");
+            private final HBox pane = new HBox(6, btnEdit, btnDelete);
+
+            {
+                pane.setAlignment(Pos.CENTER);
+                btnEdit.getStyleClass().add("cell-tool-btn");
+                btnEdit.setTooltip(new Tooltip("Edit Product Details"));
+                btnEdit.setOnAction(e -> {
+                    Product p = getTableView().getItems().get(getIndex());
+                    openEditProductDialog(p);
+                });
+
+                btnDelete.getStyleClass().add("cell-tool-btn-danger");
+                btnDelete.setTooltip(new Tooltip("Delete Product from Ledger"));
+                btnDelete.setOnAction(e -> {
+                    Product p = getTableView().getItems().get(getIndex());
+                    handleDeleteProduct(p);
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : pane);
+            }
+        });
+
+        // 3. Category Filter Dropdown
+        cmbCategoryFilter.setItems(FXCollections.observableArrayList(
+                "All Categories", "Packaging", "Material Handling", "Automation Parts", "Spares"
+        ));
+        cmbCategoryFilter.getSelectionModel().selectFirst();
+
+        // 4. Live Search and Filter Chain
+        filteredInventoryData = new FilteredList<>(inventoryData, p -> true);
+
+        txtInventorySearch.textProperty().addListener((obs, oldVal, newVal) -> applyInventoryFilter());
+        cmbCategoryFilter.valueProperty().addListener((obs, oldVal, newVal) -> applyInventoryFilter());
+
+        SortedList<Product> sortedList = new SortedList<>(filteredInventoryData);
+        sortedList.comparatorProperty().bind(tableInventory.comparatorProperty());
+        tableInventory.setItems(sortedList);
+
+        loadInventoryData();
+    }
+
+    private void applyInventoryFilter() {
+        String query = txtInventorySearch.getText() != null ? txtInventorySearch.getText().trim().toLowerCase() : "";
+        String cat = cmbCategoryFilter.getValue();
+        boolean filterCategory = cat != null && !"All Categories".equalsIgnoreCase(cat);
+
+        filteredInventoryData.setPredicate(p -> {
+            if (p == null) return false;
+            boolean matchesCat = !filterCategory || (p.getCategory() != null && p.getCategory().equalsIgnoreCase(cat));
+            if (!matchesCat) return false;
+
+            if (query.isEmpty()) return true;
+            boolean matchesSku = p.getSku() != null && p.getSku().toLowerCase().contains(query);
+            boolean matchesName = p.getName() != null && p.getName().toLowerCase().contains(query);
+            boolean matchesLoc = p.getLocation() != null && p.getLocation().toLowerCase().contains(query);
+            return matchesSku || matchesName || matchesLoc;
+        });
+
+        if (lblInventoryRowCount != null) {
+            lblInventoryRowCount.setText("Showing " + filteredInventoryData.size() + " of " + inventoryData.size() + " products");
+        }
+    }
+
+    public void loadInventoryData() {
+        List<Product> products = inventoryDao.getAllProducts();
+        inventoryData.setAll(products);
+
+        int totalUnits = inventoryDao.getTotalStockCount();
+        double totalValuation = inventoryDao.getTotalValuation();
+
+        if (lblInvLedgerTotalUnits != null) {
+            lblInvLedgerTotalUnits.setText(String.format("%,d Units", totalUnits));
+        }
+        if (lblInvLedgerValuation != null) {
+            lblInvLedgerValuation.setText(String.format("$%,.2f", totalValuation));
+        }
+        if (lblInventoryRowCount != null) {
+            lblInventoryRowCount.setText("Showing " + (filteredInventoryData != null ? filteredInventoryData.size() : products.size()) + " of " + products.size() + " products");
+        }
+
+        refreshKpiMetrics();
+    }
+
+    @FXML
+    private void handleRefreshInventory(ActionEvent event) {
+        loadInventoryData();
+        log("[INVENTORY] Refreshed stock ledger from SQLite.");
+        logAudit("IT-STOCK", "Stock ledger reloaded from SQLite database.");
+    }
+
+    @FXML
+    private void handleOpenAddProduct(ActionEvent event) {
+        Dialog<Product> dialog = new Dialog<>();
+        dialog.setTitle("Add New Warehouse Product");
+        dialog.setHeaderText("Register an incoming product SKU into SQLite inventory.");
+        if (mainContentPane != null && mainContentPane.getScene() != null && mainContentPane.getScene().getWindow() != null) {
+            dialog.initOwner(mainContentPane.getScene().getWindow());
+        }
+
+        ButtonType saveBtnType = new ButtonType("Save Product", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveBtnType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setStyle("-fx-padding: 20px;");
+
+        TextField txtSku = new TextField();
+        txtSku.setPromptText("e.g. BOX-LRG-103");
+        TextField txtName = new TextField();
+        txtName.setPromptText("e.g. Extra Large Shipping Crate");
+        ComboBox<String> cmbCat = new ComboBox<>(FXCollections.observableArrayList("Packaging", "Material Handling", "Automation Parts", "Spares"));
+        cmbCat.getSelectionModel().selectFirst();
+        TextField txtQty = new TextField("50");
+        TextField txtPrice = new TextField("25.00");
+        TextField txtLocation = new TextField();
+        txtLocation.setPromptText("e.g. Aisle B-03");
+
+        grid.add(new Label("SKU Code:"), 0, 0);
+        grid.add(txtSku, 1, 0);
+        grid.add(new Label("Product Name:"), 0, 1);
+        grid.add(txtName, 1, 1);
+        grid.add(new Label("Category:"), 0, 2);
+        grid.add(cmbCat, 1, 2);
+        grid.add(new Label("Initial Quantity:"), 0, 3);
+        grid.add(txtQty, 1, 3);
+        grid.add(new Label("Unit Price ($):"), 0, 4);
+        grid.add(txtPrice, 1, 4);
+        grid.add(new Label("Bin Location:"), 0, 5);
+        grid.add(txtLocation, 1, 5);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(btn -> {
+            if (btn == saveBtnType) {
+                String sku = txtSku.getText().trim();
+                String name = txtName.getText().trim();
+                String cat = cmbCat.getValue();
+                String loc = txtLocation.getText().trim();
+                int qty;
+                double price;
+
+                if (sku.isEmpty() || name.isEmpty() || loc.isEmpty()) {
+                    showAlert("Validation Error", "All fields are required.");
+                    return null;
+                }
+                if (!inventoryDao.isSkuUnique(sku, 0)) {
+                    showAlert("SKU Exists", "A product with SKU '" + sku + "' already exists in SQLite.");
+                    return null;
+                }
+                try {
+                    qty = Integer.parseInt(txtQty.getText().trim());
+                    price = Double.parseDouble(txtPrice.getText().trim());
+                    if (qty < 0 || price < 0) throw new NumberFormatException();
+                } catch (NumberFormatException e) {
+                    showAlert("Number Error", "Quantity must be integer >= 0 and price must be a valid positive number.");
+                    return null;
+                }
+                return new Product(sku, name, cat, qty, price, loc);
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(p -> {
+            boolean ok = inventoryDao.addProduct(p);
+            if (ok) {
+                loadInventoryData();
+                log("[INVENTORY] Added new product: " + p.getSku() + " - " + p.getName());
+                logAudit("IT-STOCK", "Product registered: " + p.getSku() + " (" + p.getName() + "), Qty: " + p.getQuantity() + ", Price: $" + p.getUnitPrice());
+            } else {
+                showAlert("Database Error", "Failed to add product into SQLite.");
+            }
+        });
+    }
+
+    private void openEditProductDialog(Product product) {
+        if (product == null) return;
+        Dialog<Product> dialog = new Dialog<>();
+        dialog.setTitle("Edit Product - " + product.getSku());
+        dialog.setHeaderText("Update details for product SKU: " + product.getSku());
+        if (mainContentPane != null && mainContentPane.getScene() != null && mainContentPane.getScene().getWindow() != null) {
+            dialog.initOwner(mainContentPane.getScene().getWindow());
+        }
+
+        ButtonType updateBtnType = new ButtonType("Update Product", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(updateBtnType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setStyle("-fx-padding: 20px;");
+
+        TextField txtSku = new TextField(product.getSku());
+        txtSku.setEditable(false);
+        txtSku.setStyle("-fx-background-color: #f1f5f9;");
+
+        TextField txtName = new TextField(product.getName());
+        ComboBox<String> cmbCat = new ComboBox<>(FXCollections.observableArrayList("Packaging", "Material Handling", "Automation Parts", "Spares"));
+        cmbCat.setValue(product.getCategory());
+        TextField txtQty = new TextField(String.valueOf(product.getQuantity()));
+        TextField txtPrice = new TextField(String.valueOf(product.getUnitPrice()));
+        TextField txtLocation = new TextField(product.getLocation());
+
+        grid.add(new Label("SKU Code (Fixed):"), 0, 0);
+        grid.add(txtSku, 1, 0);
+        grid.add(new Label("Product Name:"), 0, 1);
+        grid.add(txtName, 1, 1);
+        grid.add(new Label("Category:"), 0, 2);
+        grid.add(cmbCat, 1, 2);
+        grid.add(new Label("Quantity on Hand:"), 0, 3);
+        grid.add(txtQty, 1, 3);
+        grid.add(new Label("Unit Price ($):"), 0, 4);
+        grid.add(txtPrice, 1, 4);
+        grid.add(new Label("Bin Location:"), 0, 5);
+        grid.add(txtLocation, 1, 5);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(btn -> {
+            if (btn == updateBtnType) {
+                String name = txtName.getText().trim();
+                String cat = cmbCat.getValue();
+                String loc = txtLocation.getText().trim();
+                int qty;
+                double price;
+
+                if (name.isEmpty() || loc.isEmpty()) {
+                    showAlert("Validation Error", "Name and Location are required.");
+                    return null;
+                }
+                try {
+                    qty = Integer.parseInt(txtQty.getText().trim());
+                    price = Double.parseDouble(txtPrice.getText().trim());
+                    if (qty < 0 || price < 0) throw new NumberFormatException();
+                } catch (NumberFormatException e) {
+                    showAlert("Number Error", "Quantity must be integer >= 0 and price must be a valid positive number.");
+                    return null;
+                }
+                product.setName(name);
+                product.setCategory(cat);
+                product.setQuantity(qty);
+                product.setUnitPrice(price);
+                product.setLocation(loc);
+                return product;
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(p -> {
+            boolean ok = inventoryDao.updateProduct(p);
+            if (ok) {
+                loadInventoryData();
+                log("[INVENTORY] Updated product: " + p.getSku() + " (" + p.getName() + ")");
+                logAudit("IT-STOCK", "Product updated: " + p.getSku() + " -> Qty: " + p.getQuantity() + ", Price: $" + p.getUnitPrice() + ", Loc: " + p.getLocation());
+            } else {
+                showAlert("Database Error", "Failed to update product in SQLite.");
+            }
+        });
+    }
+
+    @FXML
+    private void handleOpenStockAdjustment(ActionEvent event) {
+        List<Product> products = inventoryDao.getAllProducts();
+        if (products.isEmpty()) {
+            showAlert("No Products", "No inventory products found to adjust.");
+            return;
+        }
+
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Stock Adjustment & Reconciliation");
+        dialog.setHeaderText("Manually adjust physical stock counts (audit reconciliation, delivery, or damage).");
+        if (mainContentPane != null && mainContentPane.getScene() != null && mainContentPane.getScene().getWindow() != null) {
+            dialog.initOwner(mainContentPane.getScene().getWindow());
+        }
+
+        ButtonType applyBtnType = new ButtonType("Apply Adjustment", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(applyBtnType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setStyle("-fx-padding: 20px;");
+
+        ComboBox<Product> cmbProduct = new ComboBox<>(FXCollections.observableArrayList(products));
+        cmbProduct.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Product item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : item.getSku() + " - " + item.getName() + " (Current: " + item.getQuantity() + ")");
+            }
+        });
+        cmbProduct.setButtonCell(cmbProduct.getCellFactory().call(null));
+        cmbProduct.getSelectionModel().selectFirst();
+
+        ComboBox<String> cmbType = new ComboBox<>(FXCollections.observableArrayList(
+                "[+] Inbound Delivery / Add Units",
+                "[-] Outbound Dispatch / Deduct Units",
+                "[-] Damage Write-Off / Deduct Units"
+        ));
+        cmbType.getSelectionModel().selectFirst();
+
+        TextField txtDelta = new TextField("10");
+        TextField txtReason = new TextField("Physical Inventory Reconciliation");
+
+        grid.add(new Label("Select Product SKU:"), 0, 0);
+        grid.add(cmbProduct, 1, 0);
+        grid.add(new Label("Adjustment Type:"), 0, 1);
+        grid.add(cmbType, 1, 1);
+        grid.add(new Label("Units to Adjust:"), 0, 2);
+        grid.add(txtDelta, 1, 2);
+        grid.add(new Label("Reason / Audit Note:"), 0, 3);
+        grid.add(txtReason, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(btn -> {
+            if (btn == applyBtnType) {
+                Product selected = cmbProduct.getValue();
+                if (selected == null) return null;
+                int amount;
+                try {
+                    amount = Integer.parseInt(txtDelta.getText().trim());
+                    if (amount <= 0) throw new NumberFormatException();
+                } catch (NumberFormatException e) {
+                    showAlert("Input Error", "Adjustment quantity must be a positive integer.");
+                    return null;
+                }
+
+                int signedDelta = cmbType.getValue().startsWith("[+]") ? amount : -amount;
+                boolean ok = inventoryDao.updateStockDelta(selected.getSku(), signedDelta);
+                if (ok) {
+                    loadInventoryData();
+                    int newStock = inventoryDao.getStockQuantity(selected.getSku());
+                    log("[INVENTORY] Adjusted stock for " + selected.getSku() + ": " + (signedDelta >= 0 ? "+" : "") + signedDelta + " units (New total: " + newStock + ")");
+                    logAudit("IT-STOCK", "Stock adjustment on " + selected.getSku() + ": " + (signedDelta >= 0 ? "+" : "") + signedDelta + " (" + txtReason.getText().trim() + ", Total: " + newStock + ")");
+                } else {
+                    showAlert("Database Error", "Failed to update stock in SQLite.");
+                }
+            }
+            return null;
+        });
+
+        dialog.showAndWait();
+    }
+
+    private void handleDeleteProduct(Product product) {
+        if (product == null) return;
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Delete Product Confirmation");
+        alert.setHeaderText("Remove product from inventory ledger?");
+        alert.setContentText("Are you sure you want to permanently delete:\n\n" +
+                product.getSku() + " - " + product.getName() + "\nCurrent Stock: " + product.getQuantity() + " Units\n\nThis cannot be undone.");
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                boolean ok = inventoryDao.deleteProduct(product.getId());
+                if (ok) {
+                    loadInventoryData();
+                    log("[INVENTORY] Deleted product: " + product.getSku() + " - " + product.getName());
+                    logAudit("IT-STOCK", "Product deleted from SQLite: " + product.getSku() + " (" + product.getName() + ")");
+                } else {
+                    showAlert("Delete Error", "Failed to delete product from database.");
+                }
+            }
+        });
+    }
+
+    @FXML
+    private void handleExportInventoryJson(ActionEvent event) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export Warehouse Inventory to JSON");
+        fileChooser.setInitialFileName("kanshi_inventory_export.json");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files (*.json)", "*.json"));
+
+        Stage stage = (Stage) tableInventory.getScene().getWindow();
+        File file = fileChooser.showSaveDialog(stage);
+
+        if (file != null) {
+            boolean ok = inventoryDao.exportInventoryToJson(file);
+            if (ok) {
+                showAlert("Export Successful", "Successfully exported inventory catalog to:\n" + file.getAbsolutePath());
+                log("[INVENTORY] Exported " + inventoryData.size() + " inventory records to JSON: " + file.getName());
+                logAudit("SYS", "Warehouse inventory catalog exported to JSON: " + file.getName());
+            } else {
+                showAlert("Export Failed", "Could not export inventory data to the specified file.");
+            }
+        }
     }
 
     public void refreshDynamicHardwareUI() {
@@ -1800,13 +2320,29 @@ public class MainAppController implements Initializable {
             }
         }
 
-        boolean anyRunning = tagManager.getActuatorTags().stream().anyMatch(ModbusTag::isActive);
+        long runningCount = tagManager.getActuatorTags().stream().filter(ModbusTag::isActive).count();
+        int totalActuators = tagManager.getActuatorTags().size();
+        if (lblKpiActiveEqCount != null) {
+            lblKpiActiveEqCount.setText(runningCount + "/" + totalActuators + " Active");
+        }
+
+        boolean anyRunning = runningCount > 0;
         if (anyRunning) {
-            lblKpiLineState.setText("RUNNING");
-            lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
+            if (lblKpiLineState != null) {
+                lblKpiLineState.setText("RUNNING");
+                lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
+            }
+            if (circleKpiLineDot != null) {
+                circleKpiLineDot.setFill(Color.web("#22c55e"));
+            }
         } else if (ioService.isConnected()) {
-            lblKpiLineState.setText("IDLE");
-            lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #64748b;");
+            if (lblKpiLineState != null) {
+                lblKpiLineState.setText("IDLE");
+                lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #64748b;");
+            }
+            if (circleKpiLineDot != null) {
+                circleKpiLineDot.setFill(Color.web("#94a3b8"));
+            }
         }
 
         updateMimicLineStatus();
@@ -1831,7 +2367,23 @@ public class MainAppController implements Initializable {
                     ref.counterLabel.setText("Ct: " + count);
                 }
                 int total = totalDetectedPackages.incrementAndGet();
-                lblKpiPackageCount.setText(total + " Pcs");
+                if (lblKpiPackageCount != null) {
+                    lblKpiPackageCount.setText(total + " Pcs");
+                }
+
+                // IT-OT Convergence Bridge: Optical sensor detection auto-increments SQLite inventory
+                new Thread(() -> {
+                    String targetSku = "BOX-SML-101";
+                    boolean updated = inventoryDao.updateStockDelta(targetSku, 1);
+                    int currentStock = inventoryDao.getStockQuantity(targetSku);
+                    Platform.runLater(() -> {
+                        logAudit("OT", "Optical sensor " + tag.getName() + " triggered: package transferred to infeed chute.");
+                        if (updated) {
+                            logAudit("IT", "SQLite inventory auto-incremented: SKU " + targetSku + " (+1 unit, Total: " + currentStock + ").");
+                        }
+                        refreshKpiMetrics();
+                    });
+                }).start();
             } else {
                 ref.block.getStyleClass().remove("pipeline-block-detected");
             }
@@ -2037,11 +2589,89 @@ public class MainAppController implements Initializable {
         logAudit("IT-STOCK", "Dashboard KPIs refreshed from SQLite inventory database.");
     }
 
+    private static class AuditRecord {
+        final String timestamp;
+        final String category;
+        final String message;
+
+        AuditRecord(String timestamp, String category, String message) {
+            this.timestamp = timestamp;
+            this.category = category;
+            this.message = message;
+        }
+
+        String getFormattedLine() {
+            return "[" + timestamp + "] [" + category + "] " + message + "\n";
+        }
+    }
+
+    private final List<AuditRecord> auditRecords = new CopyOnWriteArrayList<>();
+    private String currentAuditFilter = "ALL";
+
     @FXML
     private void handleClearAuditStream(ActionEvent event) {
+        auditRecords.clear();
         if (txtAuditStream != null) {
             txtAuditStream.clear();
         }
+    }
+
+    @FXML
+    private void handleFilterAuditAll(ActionEvent event) {
+        currentAuditFilter = "ALL";
+        setAuditFilterStyle(btnFilterAll);
+        renderFilteredAuditLog();
+    }
+
+    @FXML
+    private void handleFilterAuditOt(ActionEvent event) {
+        currentAuditFilter = "OT";
+        setAuditFilterStyle(btnFilterOt);
+        renderFilteredAuditLog();
+    }
+
+    @FXML
+    private void handleFilterAuditIt(ActionEvent event) {
+        currentAuditFilter = "IT";
+        setAuditFilterStyle(btnFilterIt);
+        renderFilteredAuditLog();
+    }
+
+    @FXML
+    private void handleFilterAuditSys(ActionEvent event) {
+        currentAuditFilter = "SYS";
+        setAuditFilterStyle(btnFilterSys);
+        renderFilteredAuditLog();
+    }
+
+    private void setAuditFilterStyle(Button activeBtn) {
+        Button[] btns = {btnFilterAll, btnFilterOt, btnFilterIt, btnFilterSys};
+        for (Button b : btns) {
+            if (b != null) {
+                b.getStyleClass().removeAll("filter-chip-active", "filter-chip");
+                b.getStyleClass().add(b == activeBtn ? "filter-chip-active" : "filter-chip");
+            }
+        }
+    }
+
+    private boolean shouldDisplayInFilter(String category) {
+        if ("ALL".equalsIgnoreCase(currentAuditFilter)) return true;
+        if ("OT".equalsIgnoreCase(currentAuditFilter) && category.toUpperCase().contains("OT")) return true;
+        if ("IT".equalsIgnoreCase(currentAuditFilter) && (category.toUpperCase().contains("IT") || category.toUpperCase().contains("AUTH"))) return true;
+        if ("SYS".equalsIgnoreCase(currentAuditFilter) && (category.toUpperCase().contains("SYS") || category.toUpperCase().contains("TAG"))) return true;
+        return false;
+    }
+
+    private void renderFilteredAuditLog() {
+        if (txtAuditStream == null) return;
+        StringBuilder sb = new StringBuilder();
+        for (AuditRecord r : auditRecords) {
+            if (shouldDisplayInFilter(r.category)) {
+                sb.append(r.getFormattedLine());
+            }
+        }
+        txtAuditStream.setText(sb.toString());
+        txtAuditStream.positionCaret(txtAuditStream.getText().length());
     }
 
     /**
@@ -2050,11 +2680,34 @@ public class MainAppController implements Initializable {
     public void refreshKpiMetrics() {
         int totalUnits = inventoryDao.getTotalStockCount();
         double totalValuation = inventoryDao.getTotalValuation();
+        int distinctSkus = inventoryDao.getDistinctProductCount();
+        int lowStockCount = inventoryDao.getLowStockCount(15);
+
         if (lblKpiInventory != null) {
             lblKpiInventory.setText(String.format("%,d Units", totalUnits));
         }
         if (lblKpiValuation != null) {
             lblKpiValuation.setText(String.format("$%,.2f", totalValuation));
+        }
+        if (lblKpiSkuCount != null) {
+            lblKpiSkuCount.setText(distinctSkus + " Active SKUs");
+        }
+        if (lblKpiLowStockBadge != null) {
+            if (lowStockCount > 0) {
+                lblKpiLowStockBadge.setText("⚠️ " + lowStockCount + " Low Stock");
+                lblKpiLowStockBadge.getStyleClass().removeAll("kpi-mini-badge-green", "kpi-mini-badge-red");
+                lblKpiLowStockBadge.getStyleClass().add("kpi-mini-badge-red");
+            } else {
+                lblKpiLowStockBadge.setText("Stock Normal");
+                lblKpiLowStockBadge.getStyleClass().removeAll("kpi-mini-badge-green", "kpi-mini-badge-red");
+                lblKpiLowStockBadge.getStyleClass().add("kpi-mini-badge-green");
+            }
+        }
+
+        long runningCount = tagManager.getActuatorTags().stream().filter(ModbusTag::isActive).count();
+        int totalActuators = tagManager.getActuatorTags().size();
+        if (lblKpiActiveEqCount != null) {
+            lblKpiActiveEqCount.setText(runningCount + "/" + totalActuators + " Active");
         }
     }
 
@@ -2063,10 +2716,13 @@ public class MainAppController implements Initializable {
      */
     public void logAudit(String category, String message) {
         String timestamp = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-        String entry = "[" + timestamp + "] [" + category + "] " + message + "\n";
+        AuditRecord record = new AuditRecord(timestamp, category, message);
+        auditRecords.add(record);
+
         Platform.runLater(() -> {
-            if (txtAuditStream != null) {
-                txtAuditStream.appendText(entry);
+            if (txtAuditStream != null && shouldDisplayInFilter(category)) {
+                txtAuditStream.appendText(record.getFormattedLine());
+                txtAuditStream.positionCaret(txtAuditStream.getText().length());
             }
         });
     }
