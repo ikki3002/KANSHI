@@ -410,16 +410,85 @@
             </VBox>
 
             <!-- ============================================================= -->
-            <!-- VIEW 4: LEVEL 2C FINANCE & INVOICING (Module 6 Ready)          -->
+            <!-- VIEW 4: LEVEL 2C FINANCE & INVOICING (Module 6)                -->
             <!-- ============================================================= -->
-            <VBox fx:id="paneFinance" visible="false" managed="false" spacing="20" style="-fx-padding: 24px;">
-                <VBox spacing="6" style="-fx-background-color: #ffffff; -fx-padding: 20px 24px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
-                    <Label text="Financial Valuation &amp; Billing (Level 2C)" styleClass="station-title" style="-fx-font-size: 18px;" />
-                    <Label text="Automated warehouse valuation calculations, customer order billing, and invoice ledger." styleClass="station-subtitle" />
-                </VBox>
-                <VBox alignment="CENTER" spacing="12" style="-fx-background-color: #ffffff; -fx-padding: 40px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;" VBox.vgrow="ALWAYS">
-                    <Label text="💰 Finance Module (Step 6 of Roadmap)" styleClass="station-title" style="-fx-font-size: 16px; -fx-text-fill: #7a0c1e;" />
-                    <Label text="Module 6 will connect inventory prices to calculate live total valuation and generate customer invoices." styleClass="station-subtitle" />
+            <VBox fx:id="paneFinance" visible="false" managed="false" spacing="16" style="-fx-padding: 20px 24px;" VBox.vgrow="ALWAYS">
+                <!-- Header & Commercial Stat Strip -->
+                <HBox alignment="CENTER_LEFT" spacing="16" style="-fx-background-color: #ffffff; -fx-padding: 16px 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+                    <VBox spacing="3" HBox.hgrow="ALWAYS">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Label text="💰 Commercial Invoicing &amp; Financial Valuation (Level 2C)" styleClass="station-title" style="-fx-font-size: 17px;" />
+                            <Label text="SQLITE RELATIONAL (FK)" styleClass="badge-live-system" />
+                        </HBox>
+                        <Label text="Customer billing, automated multi-item order dispatches, sales tax, and commercial ledger." styleClass="station-subtitle" />
+                    </VBox>
+                    <HBox alignment="CENTER" spacing="14">
+                        <VBox alignment="CENTER_RIGHT" spacing="2">
+                            <Label text="TOTAL INVOICED REVENUE" styleClass="field-label" style="-fx-font-size: 9px;" />
+                            <Label fx:id="lblFinanceTotalRevenue" text="\$0.00" styleClass="portal-brand" style="-fx-font-size: 18px; -fx-text-fill: #15803d;" />
+                        </VBox>
+                        <Separator orientation="VERTICAL" />
+                        <VBox alignment="CENTER_RIGHT" spacing="2">
+                            <Label text="PAID ORDERS" styleClass="field-label" style="-fx-font-size: 9px;" />
+                            <Label fx:id="lblFinancePaidCount" text="0 Paid" styleClass="portal-brand" style="-fx-font-size: 18px;" />
+                        </VBox>
+                        <Separator orientation="VERTICAL" />
+                        <VBox alignment="CENTER_RIGHT" spacing="2">
+                            <Label text="PENDING ORDERS" styleClass="field-label" style="-fx-font-size: 9px;" />
+                            <Label fx:id="lblFinancePendingCount" text="0 Pending" styleClass="portal-brand" style="-fx-font-size: 18px; -fx-text-fill: #b45309;" />
+                        </VBox>
+                        <Separator orientation="VERTICAL" />
+                        <VBox alignment="CENTER_RIGHT" spacing="2">
+                            <Label text="WAREHOUSE ASSET WORTH" styleClass="field-label" style="-fx-font-size: 9px;" />
+                            <Label fx:id="lblFinanceCatalogValuation" text="\$0.00" styleClass="portal-brand" style="-fx-font-size: 18px; -fx-text-fill: #7a0c1e;" />
+                        </VBox>
+                    </HBox>
+                </HBox>
+
+                <!-- Search, Filter & Action Toolbar -->
+                <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: #ffffff; -fx-padding: 12px 18px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+                    <Label text="🔍" style="-fx-font-size: 14px;" />
+                    <TextField fx:id="txtFinanceSearch" promptText="Search by Invoice # or Customer name..." prefWidth="300" styleClass="industrial-input" />
+
+                    <Label text="Status:" styleClass="field-label" style="-fx-font-size: 12px;">
+                        <HBox.margin>
+                            <Insets left="8" />
+                        </HBox.margin>
+                    </Label>
+                    <ComboBox fx:id="cmbFinanceStatusFilter" prefWidth="160" styleClass="industrial-input" />
+
+                    <Region HBox.hgrow="ALWAYS" />
+
+                    <Button text="+ Create Invoice" onAction="#handleOpenCreateInvoice" styleClass="btn-primary" style="-fx-font-size: 12px; -fx-padding: 6 14;" />
+                    <Button text="💾 Export JSON" onAction="#handleExportInvoicesJson" styleClass="btn-secondary" style="-fx-font-size: 12px; -fx-padding: 6 12;" />
+                    <Button text="↺" onAction="#handleRefreshFinance" styleClass="btn-secondary" style="-fx-font-size: 12px; -fx-padding: 6 10;">
+                        <tooltip>
+                            <Tooltip text="Refresh Invoices from SQLite" />
+                        </tooltip>
+                    </Button>
+                </HBox>
+
+                <!-- TableView of Invoices -->
+                <VBox spacing="8" style="-fx-background-color: #ffffff; -fx-padding: 16px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;" VBox.vgrow="ALWAYS">
+                    <TableView fx:id="tableInvoices" VBox.vgrow="ALWAYS" styleClass="table-view">
+                        <columns>
+                            <TableColumn fx:id="colInvoiceNumber" text="Invoice #" prefWidth="140" />
+                            <TableColumn fx:id="colInvoiceCustomer" text="Customer Name" prefWidth="220" />
+                            <TableColumn fx:id="colInvoiceUserId" text="Operator ID" prefWidth="100" />
+                            <TableColumn fx:id="colInvoiceDate" text="Date &amp; Time" prefWidth="160" />
+                            <TableColumn fx:id="colInvoiceStatus" text="Status" prefWidth="120" />
+                            <TableColumn fx:id="colInvoiceItemsCount" text="Line Items" prefWidth="110" />
+                            <TableColumn fx:id="colInvoiceTotal" text="Total Amount" prefWidth="130" />
+                            <TableColumn fx:id="colInvoiceActions" text="Actions" prefWidth="170" />
+                        </columns>
+                    </TableView>
+
+                    <!-- Table Footer Status Strip -->
+                    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 4 6;">
+                        <Label fx:id="lblFinanceRowCount" text="Showing 0 invoices" styleClass="station-subtitle" style="-fx-font-size: 11px; -fx-font-weight: 600;" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label text="Database: SQLite (kanshi.db) • Tables: invoices ➔ invoice_items (Foreign Key)" styleClass="station-subtitle" style="-fx-font-size: 10px;" />
+                    </HBox>
                 </VBox>
             </VBox>
 

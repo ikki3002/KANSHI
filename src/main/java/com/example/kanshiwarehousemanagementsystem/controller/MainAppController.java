@@ -5,6 +5,9 @@ import com.example.kanshiwarehousemanagementsystem.concurrency.ConveyorProducerS
 import com.example.kanshiwarehousemanagementsystem.concurrency.IntakeConsumerService;
 import com.example.kanshiwarehousemanagementsystem.concurrency.WarehouseBuffer;
 import com.example.kanshiwarehousemanagementsystem.database.InventoryDao;
+import com.example.kanshiwarehousemanagementsystem.database.InvoiceDao;
+import com.example.kanshiwarehousemanagementsystem.model.Invoice;
+import com.example.kanshiwarehousemanagementsystem.model.InvoiceItem;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag.TagType;
 import com.example.kanshiwarehousemanagementsystem.model.PackagePayload;
@@ -25,6 +28,7 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.event.ActionEvent;
+import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -55,8 +59,11 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -168,6 +175,28 @@ public class MainAppController implements Initializable {
     @FXML private TableColumn<Product, Void> colInvActions;
     @FXML private Label lblInventoryRowCount;
 
+    // Level 2C Finance & Invoicing FXML Controls
+    @FXML private Label lblFinanceTotalRevenue;
+    @FXML private Label lblFinancePaidCount;
+    @FXML private Label lblFinancePendingCount;
+    @FXML private Label lblFinanceCatalogValuation;
+    @FXML private TextField txtFinanceSearch;
+    @FXML private ComboBox<String> cmbFinanceStatusFilter;
+    @FXML private TableView<Invoice> tableInvoices;
+    @FXML private TableColumn<Invoice, String> colInvoiceNumber;
+    @FXML private TableColumn<Invoice, String> colInvoiceCustomer;
+    @FXML private TableColumn<Invoice, Number> colInvoiceUserId;
+    @FXML private TableColumn<Invoice, String> colInvoiceDate;
+    @FXML private TableColumn<Invoice, String> colInvoiceStatus;
+    @FXML private TableColumn<Invoice, Number> colInvoiceItemsCount;
+    @FXML private TableColumn<Invoice, Number> colInvoiceTotal;
+    @FXML private TableColumn<Invoice, Void> colInvoiceActions;
+    @FXML private Label lblFinanceRowCount;
+
+    private final InvoiceDao invoiceDao = new InvoiceDao();
+    private final ObservableList<Invoice> invoiceData = FXCollections.observableArrayList();
+    private FilteredList<Invoice> filteredInvoiceData;
+
     // Producer-Consumer Concurrency Telemetry
     @FXML private Label lblBufferUsage;
     @FXML private Label lblProducerStatus;
@@ -227,6 +256,7 @@ public class MainAppController implements Initializable {
         setupTagTable();
         setupTagForm();
         setupInventoryLedger();
+        setupFinanceWorkspace();
         setupProducerConsumerEngine();
         refreshDynamicHardwareUI();
         refreshKpiMetrics();
@@ -823,27 +853,28 @@ public class MainAppController implements Initializable {
     }
 
     @FXML
-    private void handleNavDashboard(ActionEvent event) {
+    private void handleNavDashboard(Event event) {
         activateView(paneDashboard, btnNavDashboard);
     }
 
     @FXML
-    private void handleNavScada(ActionEvent event) {
+    private void handleNavScada(Event event) {
         activateView(paneScada, btnNavScada);
     }
 
     @FXML
-    private void handleNavInventory(ActionEvent event) {
+    private void handleNavInventory(Event event) {
         activateView(paneInventory, btnNavInventory);
     }
 
     @FXML
-    private void handleNavFinance(ActionEvent event) {
+    private void handleNavFinance(Event event) {
         activateView(paneFinance, btnNavFinance);
+        loadInvoiceData();
     }
 
     @FXML
-    private void handleNavTags(ActionEvent event) {
+    private void handleNavTags(Event event) {
         activateView(paneTags, btnNavTags);
     }
 
@@ -1528,6 +1559,680 @@ public class MainAppController implements Initializable {
                 logAudit("SYS", "Warehouse inventory catalog exported to JSON: " + file.getName());
             } else {
                 showAlert("Export Failed", "Could not export inventory data to the specified file.");
+            }
+        }
+    }
+
+    // =========================================================================
+    // Level 2C: Financial Valuation & Commercial Invoicing (Module 6)
+    // =========================================================================
+
+    private void setupFinanceWorkspace() {
+        if (tableInvoices == null) return;
+
+        // 1. Column Value Factories
+        colInvoiceNumber.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getInvoiceNumber()));
+        colInvoiceCustomer.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getCustomerName()));
+        colInvoiceUserId.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getUserId()));
+        colInvoiceDate.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getCreatedAt() != null ? c.getValue().getCreatedAt() : "-"));
+        colInvoiceStatus.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getStatus()));
+        colInvoiceItemsCount.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getItems() != null ? c.getValue().getItems().size() : 0));
+        colInvoiceTotal.setCellValueFactory(c -> new SimpleDoubleProperty(c.getValue().getTotalAmount()));
+
+        // 2. Custom Column Cell Renderers
+        colInvoiceNumber.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    Label badge = new Label(item);
+                    badge.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-weight: bold; -fx-text-fill: #7a0c1e; -fx-background-color: #fee2e2; -fx-padding: 3 8; -fx-background-radius: 4px;");
+                    setGraphic(badge);
+                    setText(null);
+                }
+            }
+        });
+
+        colInvoiceStatus.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    Label badge = new Label(item);
+                    if ("PAID".equalsIgnoreCase(item)) {
+                        badge.setStyle("-fx-font-weight: bold; -fx-text-fill: #15803d; -fx-background-color: #dcfce7; -fx-padding: 3 8; -fx-background-radius: 12px;");
+                    } else if ("PENDING".equalsIgnoreCase(item)) {
+                        badge.setStyle("-fx-font-weight: bold; -fx-text-fill: #b45309; -fx-background-color: #fef3c7; -fx-padding: 3 8; -fx-background-radius: 12px;");
+                    } else {
+                        badge.setStyle("-fx-font-weight: bold; -fx-text-fill: #991b1b; -fx-background-color: #fee2e2; -fx-padding: 3 8; -fx-background-radius: 12px;");
+                    }
+                    setGraphic(badge);
+                    setText(null);
+                }
+            }
+        });
+
+        colInvoiceUserId.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText("OP-" + item.intValue());
+                    setStyle("-fx-alignment: CENTER; -fx-font-family: 'Consolas', monospace; -fx-text-fill: #64748b;");
+                }
+            }
+        });
+
+        colInvoiceItemsCount.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.intValue() + " items");
+                    setStyle("-fx-alignment: CENTER; -fx-font-size: 11px; -fx-text-fill: #475569;");
+                }
+            }
+        });
+
+        colInvoiceTotal.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : String.format("$%,.2f", item.doubleValue()));
+                setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-text-fill: #0f172a; -fx-padding: 0 10; -fx-font-size: 12px;");
+            }
+        });
+
+        colInvoiceActions.setCellFactory(param -> new TableCell<>() {
+            private final Button btnReceipt = new Button("🧾");
+            private final Button btnStatus = new Button("🔄");
+            private final Button btnDelete = new Button("🗑");
+            private final HBox pane = new HBox(6, btnReceipt, btnStatus, btnDelete);
+
+            {
+                pane.setAlignment(Pos.CENTER);
+                btnReceipt.getStyleClass().add("cell-tool-btn");
+                btnReceipt.setTooltip(new Tooltip("View Commercial Receipt / Order Breakdown"));
+                btnReceipt.setOnAction(e -> {
+                    Invoice inv = getTableView().getItems().get(getIndex());
+                    openInvoiceReceiptDialog(inv);
+                });
+
+                btnStatus.getStyleClass().add("cell-tool-btn");
+                btnStatus.setTooltip(new Tooltip("Toggle Payment Status (PAID / PENDING)"));
+                btnStatus.setOnAction(e -> {
+                    Invoice inv = getTableView().getItems().get(getIndex());
+                    handleToggleInvoiceStatus(inv);
+                });
+
+                btnDelete.getStyleClass().add("cell-tool-btn-danger");
+                btnDelete.setTooltip(new Tooltip("Delete Invoice (Cascades to Line Items)"));
+                btnDelete.setOnAction(e -> {
+                    Invoice inv = getTableView().getItems().get(getIndex());
+                    handleDeleteInvoice(inv);
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : pane);
+            }
+        });
+
+        // 3. Status Filter Dropdown
+        cmbFinanceStatusFilter.setItems(FXCollections.observableArrayList(
+                "All Statuses", "PAID", "PENDING", "CANCELLED"
+        ));
+        cmbFinanceStatusFilter.getSelectionModel().selectFirst();
+
+        // 4. Live Search and Filter Chain
+        filteredInvoiceData = new FilteredList<>(invoiceData, inv -> true);
+        txtFinanceSearch.textProperty().addListener((obs, oldVal, newVal) -> applyInvoiceFilter());
+        cmbFinanceStatusFilter.valueProperty().addListener((obs, oldVal, newVal) -> applyInvoiceFilter());
+
+        SortedList<Invoice> sortedList = new SortedList<>(filteredInvoiceData);
+        sortedList.comparatorProperty().bind(tableInvoices.comparatorProperty());
+        tableInvoices.setItems(sortedList);
+
+        loadInvoiceData();
+    }
+
+    private void applyInvoiceFilter() {
+        String query = txtFinanceSearch.getText() != null ? txtFinanceSearch.getText().trim().toLowerCase() : "";
+        String status = cmbFinanceStatusFilter.getValue();
+        boolean filterStatus = status != null && !"All Statuses".equalsIgnoreCase(status);
+
+        filteredInvoiceData.setPredicate(inv -> {
+            if (inv == null) return false;
+            boolean matchesStatus = !filterStatus || (inv.getStatus() != null && inv.getStatus().equalsIgnoreCase(status));
+            if (!matchesStatus) return false;
+
+            if (query.isEmpty()) return true;
+            boolean matchesNum = inv.getInvoiceNumber() != null && inv.getInvoiceNumber().toLowerCase().contains(query);
+            boolean matchesCust = inv.getCustomerName() != null && inv.getCustomerName().toLowerCase().contains(query);
+            return matchesNum || matchesCust;
+        });
+
+        if (lblFinanceRowCount != null) {
+            lblFinanceRowCount.setText("Showing " + filteredInvoiceData.size() + " of " + invoiceData.size() + " invoices");
+        }
+    }
+
+    public void loadInvoiceData() {
+        List<Invoice> invoices = invoiceDao.getAll();
+        for (Invoice inv : invoices) {
+            inv.setItems(invoiceDao.getItemsForInvoice(inv.getId()));
+        }
+        invoiceData.setAll(invoices);
+
+        double totalRevenue = 0.0;
+        int paidCount = 0;
+        int pendingCount = 0;
+
+        for (Invoice inv : invoices) {
+            if ("PAID".equalsIgnoreCase(inv.getStatus())) {
+                totalRevenue += inv.getTotalAmount();
+                paidCount++;
+            } else if ("PENDING".equalsIgnoreCase(inv.getStatus())) {
+                pendingCount++;
+            }
+        }
+
+        double catalogValuation = inventoryDao.getTotalValuation();
+
+        if (lblFinanceTotalRevenue != null) {
+            lblFinanceTotalRevenue.setText(String.format("$%,.2f", totalRevenue));
+        }
+        if (lblFinancePaidCount != null) {
+            lblFinancePaidCount.setText(paidCount + " Paid");
+        }
+        if (lblFinancePendingCount != null) {
+            lblFinancePendingCount.setText(pendingCount + " Pending");
+        }
+        if (lblFinanceCatalogValuation != null) {
+            lblFinanceCatalogValuation.setText(String.format("$%,.2f", catalogValuation));
+        }
+        if (lblFinanceRowCount != null) {
+            lblFinanceRowCount.setText("Showing " + (filteredInvoiceData != null ? filteredInvoiceData.size() : invoices.size()) + " of " + invoices.size() + " invoices");
+        }
+    }
+
+    @FXML
+    private void handleRefreshFinance(ActionEvent event) {
+        loadInvoiceData();
+        log("[FINANCE] Refreshed invoice ledger from SQLite.");
+        logAudit("FINANCE", "Financial invoices and revenue statistics reloaded from SQLite database.");
+    }
+
+    private void handleToggleInvoiceStatus(Invoice invoice) {
+        if (invoice == null) return;
+        String newStatus = "PAID".equalsIgnoreCase(invoice.getStatus()) ? "PENDING" : "PAID";
+        invoice.setStatus(newStatus);
+        boolean ok = invoiceDao.update(invoice);
+        if (ok) {
+            loadInvoiceData();
+            log("[FINANCE] Invoice " + invoice.getInvoiceNumber() + " status updated to " + newStatus);
+            logAudit("FINANCE", "Invoice " + invoice.getInvoiceNumber() + " payment status marked as " + newStatus);
+        } else {
+            showAlert("Update Failed", "Could not update invoice status in database.");
+        }
+    }
+
+    private void handleDeleteInvoice(Invoice invoice) {
+        if (invoice == null) return;
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirm Invoice Deletion");
+        alert.setHeaderText("Delete Invoice: " + invoice.getInvoiceNumber());
+        alert.setContentText("Are you sure you want to permanently delete this commercial invoice?\n\n" +
+                "Referential Integrity Notice: Associated line items in 'invoice_items' will be automatically deleted via SQLite ON DELETE CASCADE.");
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                boolean ok = invoiceDao.delete(invoice.getId());
+                if (ok) {
+                    loadInvoiceData();
+                    log("[FINANCE] Deleted invoice: " + invoice.getInvoiceNumber());
+                    logAudit("FINANCE", "Invoice deleted from SQLite: " + invoice.getInvoiceNumber() + " (Cascade to invoice_items)");
+                } else {
+                    showAlert("Delete Error", "Failed to delete invoice from database.");
+                }
+            }
+        });
+    }
+
+    @FXML
+    private void handleOpenCreateInvoice(ActionEvent event) {
+        List<Product> products = inventoryDao.getAllProducts();
+        if (products.isEmpty()) {
+            showAlert("No Products", "No inventory products are available in SQLite to build an invoice. Please add products first.");
+            return;
+        }
+
+        Dialog<Invoice> dialog = new Dialog<>();
+        dialog.setTitle("Create Commercial Invoice & Order Booking");
+        dialog.setHeaderText("Issue a commercial sales invoice with multi-item inventory stock deduction.");
+        if (mainContentPane != null && mainContentPane.getScene() != null && mainContentPane.getScene().getWindow() != null) {
+            dialog.initOwner(mainContentPane.getScene().getWindow());
+        }
+
+        ButtonType bookBtnType = new ButtonType("Book & Process Invoice", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(bookBtnType, ButtonType.CANCEL);
+        dialog.getDialogPane().setPrefWidth(650);
+
+        VBox contentBox = new VBox(14);
+        contentBox.setStyle("-fx-padding: 20px;");
+
+        // 1. Customer & Order Header Grid
+        GridPane headerGrid = new GridPane();
+        headerGrid.setHgap(12);
+        headerGrid.setVgap(10);
+
+        String autoInvNumber = "INV-2026-" + String.format("%04d", (int)(Math.random() * 9000 + 1000));
+        TextField txtInvNumber = new TextField(autoInvNumber);
+        txtInvNumber.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-weight: bold;");
+
+        TextField txtCustomer = new TextField();
+        txtCustomer.setPromptText("e.g. Apex Industrial Solutions Ltd.");
+
+        ComboBox<String> cmbStatus = new ComboBox<>(FXCollections.observableArrayList("PAID", "PENDING"));
+        cmbStatus.getSelectionModel().selectFirst();
+
+        headerGrid.add(new Label("Invoice Number:"), 0, 0);
+        headerGrid.add(txtInvNumber, 1, 0);
+        headerGrid.add(new Label("Payment Status:"), 2, 0);
+        headerGrid.add(cmbStatus, 3, 0);
+
+        headerGrid.add(new Label("Customer Name:"), 0, 1);
+        headerGrid.add(txtCustomer, 1, 1, 3, 1);
+
+        // 2. Line Item Builder Strip
+        VBox builderBox = new VBox(8);
+        builderBox.setStyle("-fx-background-color: #f8fafc; -fx-padding: 12px; -fx-background-radius: 6px; -fx-border-color: #e2e8f0; -fx-border-radius: 6px;");
+
+        Label lblBuilderTitle = new Label("Add Inventory Products to Invoice");
+        lblBuilderTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-font-size: 12px;");
+
+        HBox itemAddBar = new HBox(10);
+        itemAddBar.setAlignment(Pos.CENTER_LEFT);
+
+        ComboBox<Product> cmbProductPicker = new ComboBox<>(FXCollections.observableArrayList(products));
+        cmbProductPicker.setPrefWidth(300);
+        cmbProductPicker.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Product item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.getSku() + " — " + item.getName() + " ($" + String.format("%.2f", item.getUnitPrice()) + " | Stock: " + item.getQuantity() + ")");
+                }
+            }
+        });
+        cmbProductPicker.setButtonCell(cmbProductPicker.getCellFactory().call(null));
+        cmbProductPicker.getSelectionModel().selectFirst();
+
+        Spinner<Integer> spinnerQty = new Spinner<>(1, 1000, 1);
+        spinnerQty.setPrefWidth(90);
+        spinnerQty.setEditable(true);
+
+        Button btnAddItem = new Button("+ Add Line Item");
+        btnAddItem.getStyleClass().add("btn-primary");
+        btnAddItem.setStyle("-fx-font-size: 11px; -fx-padding: 6 12;");
+
+        itemAddBar.getChildren().addAll(new Label("Product:"), cmbProductPicker, new Label("Qty:"), spinnerQty, btnAddItem);
+        builderBox.getChildren().addAll(lblBuilderTitle, itemAddBar);
+
+        // 3. Draft Line Items Table
+        ObservableList<InvoiceItem> draftItems = FXCollections.observableArrayList();
+        TableView<InvoiceItem> tableDraftItems = new TableView<>(draftItems);
+        tableDraftItems.setPrefHeight(160);
+        tableDraftItems.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        TableColumn<InvoiceItem, String> colDraftSku = new TableColumn<>("SKU");
+        colDraftSku.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getProductSku()));
+        colDraftSku.setPrefWidth(100);
+
+        TableColumn<InvoiceItem, String> colDraftName = new TableColumn<>("Product");
+        colDraftName.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getProductName()));
+        colDraftName.setPrefWidth(180);
+
+        TableColumn<InvoiceItem, Number> colDraftQty = new TableColumn<>("Qty");
+        colDraftQty.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getQuantity()));
+        colDraftQty.setPrefWidth(60);
+
+        TableColumn<InvoiceItem, Number> colDraftPrice = new TableColumn<>("Unit Price");
+        colDraftPrice.setCellValueFactory(c -> new SimpleDoubleProperty(c.getValue().getUnitPrice()));
+        colDraftPrice.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : String.format("$%.2f", item.doubleValue()));
+                setStyle("-fx-alignment: CENTER-RIGHT;");
+            }
+        });
+        colDraftPrice.setPrefWidth(80);
+
+        TableColumn<InvoiceItem, Number> colDraftSubtotal = new TableColumn<>("Subtotal");
+        colDraftSubtotal.setCellValueFactory(c -> new SimpleDoubleProperty(c.getValue().getSubtotal()));
+        colDraftSubtotal.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : String.format("$%.2f", item.doubleValue()));
+                setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold;");
+            }
+        });
+        colDraftSubtotal.setPrefWidth(90);
+
+        TableColumn<InvoiceItem, Void> colDraftRemove = new TableColumn<>("");
+        colDraftRemove.setPrefWidth(45);
+        colDraftRemove.setCellFactory(col -> new TableCell<>() {
+            private final Button btnRemove = new Button("✕");
+            {
+                btnRemove.setStyle("-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-font-size: 10px; -fx-padding: 3 6; -fx-cursor: hand; -fx-background-radius: 4px;");
+                btnRemove.setOnAction(e -> {
+                    InvoiceItem item = getTableView().getItems().get(getIndex());
+                    draftItems.remove(item);
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : btnRemove);
+            }
+        });
+
+        tableDraftItems.getColumns().addAll(colDraftSku, colDraftName, colDraftQty, colDraftPrice, colDraftSubtotal, colDraftRemove);
+
+        // 4. Financial Calculation Summary Bar
+        HBox summaryBox = new HBox(20);
+        summaryBox.setAlignment(Pos.CENTER_RIGHT);
+        summaryBox.setStyle("-fx-background-color: #f1f5f9; -fx-padding: 10px 14px; -fx-background-radius: 6px;");
+
+        Label lblSubtotalVal = new Label("$0.00");
+        lblSubtotalVal.setStyle("-fx-font-weight: bold;");
+        Label lblTaxVal = new Label("$0.00");
+        lblTaxVal.setStyle("-fx-font-weight: bold;");
+        Label lblTotalVal = new Label("$0.00");
+        lblTotalVal.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #7a0c1e;");
+
+        summaryBox.getChildren().addAll(
+                new Label("Items Subtotal:"), lblSubtotalVal,
+                new Label("Tax (5%):"), lblTaxVal,
+                new Label("Grand Total:"), lblTotalVal
+        );
+
+        Runnable updateSummary = () -> {
+            double sub = draftItems.stream().mapToDouble(InvoiceItem::getSubtotal).sum();
+            double tax = sub * 0.05;
+            double tot = sub + tax;
+            lblSubtotalVal.setText(String.format("$%.2f", sub));
+            lblTaxVal.setText(String.format("$%.2f", tax));
+            lblTotalVal.setText(String.format("$%.2f", tot));
+        };
+
+        draftItems.addListener((javafx.collections.ListChangeListener<InvoiceItem>) c -> updateSummary.run());
+
+        btnAddItem.setOnAction(e -> {
+            Product selected = cmbProductPicker.getValue();
+            if (selected == null) return;
+            int qty = spinnerQty.getValue();
+            if (qty <= 0) {
+                showAlert("Invalid Quantity", "Quantity must be greater than zero.");
+                return;
+            }
+
+            int existingDraftQty = draftItems.stream()
+                    .filter(it -> it.getProductId() == selected.getId())
+                    .mapToInt(InvoiceItem::getQuantity)
+                    .sum();
+
+            if (existingDraftQty + qty > selected.getQuantity()) {
+                showAlert("Insufficient Stock", "Cannot add " + qty + " units of " + selected.getSku() +
+                        ". Total requested (" + (existingDraftQty + qty) + ") exceeds available warehouse stock (" + selected.getQuantity() + ").");
+                return;
+            }
+
+            boolean aggregated = false;
+            for (int i = 0; i < draftItems.size(); i++) {
+                InvoiceItem it = draftItems.get(i);
+                if (it.getProductId() == selected.getId()) {
+                    it.setQuantity(it.getQuantity() + qty);
+                    draftItems.set(i, it);
+                    aggregated = true;
+                    break;
+                }
+            }
+
+            if (!aggregated) {
+                InvoiceItem newItem = new InvoiceItem(selected.getId(), selected.getSku(), selected.getName(), qty, selected.getUnitPrice());
+                draftItems.add(newItem);
+            }
+            updateSummary.run();
+        });
+
+        contentBox.getChildren().addAll(headerGrid, builderBox, new Label("Draft Invoice Line Items:"), tableDraftItems, summaryBox);
+        dialog.getDialogPane().setContent(contentBox);
+
+        dialog.setResultConverter(btn -> {
+            if (btn == bookBtnType) {
+                String invNum = txtInvNumber.getText().trim();
+                String customer = txtCustomer.getText().trim();
+                String status = cmbStatus.getValue();
+
+                if (invNum.isEmpty() || customer.isEmpty()) {
+                    showAlert("Validation Error", "Invoice Number and Customer Name are required.");
+                    return null;
+                }
+
+                if (draftItems.isEmpty()) {
+                    showAlert("Validation Error", "Please add at least one line item to the invoice.");
+                    return null;
+                }
+
+                for (InvoiceItem item : draftItems) {
+                    Product currentDbProduct = inventoryDao.getById(item.getProductId());
+                    if (currentDbProduct == null || currentDbProduct.getQuantity() < item.getQuantity()) {
+                        showAlert("Stock Conflict", "Insufficient stock for " + item.getProductSku() +
+                                ". Available in DB: " + (currentDbProduct != null ? currentDbProduct.getQuantity() : 0));
+                        return null;
+                    }
+                }
+
+                double sub = draftItems.stream().mapToDouble(InvoiceItem::getSubtotal).sum();
+                double grandTotal = sub * 1.05;
+
+                int opUserId = (sessionUser != null && sessionUser.getId() > 0) ? sessionUser.getId() : 1;
+                Invoice newInvoice = new Invoice(invNum, opUserId, customer, grandTotal, status);
+                for (InvoiceItem it : draftItems) {
+                    newInvoice.addItem(it);
+                }
+                return newInvoice;
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(inv -> {
+            boolean ok = invoiceDao.add(inv);
+            if (ok) {
+                for (InvoiceItem it : inv.getItems()) {
+                    inventoryDao.updateStockDelta(it.getProductSku(), -it.getQuantity());
+                }
+
+                loadInvoiceData();
+                loadInventoryData();
+
+                log("[FINANCE] Booked invoice " + inv.getInvoiceNumber() + " ($" + String.format("%.2f", inv.getTotalAmount()) + ") for " + inv.getCustomerName());
+                logAudit("FINANCE", "Invoice booked: " + inv.getInvoiceNumber() + " | Customer: " + inv.getCustomerName() +
+                        " | Total: $" + String.format("%.2f", inv.getTotalAmount()) + " | Stock deducted for " + inv.getItems().size() + " items.");
+
+                openInvoiceReceiptDialog(inv);
+            } else {
+                showAlert("Transaction Failed", "Could not record invoice into SQLite database. Transaction was rolled back.");
+            }
+        });
+    }
+
+    private void openInvoiceReceiptDialog(Invoice invoice) {
+        if (invoice == null) return;
+
+        if (invoice.getItems() == null || invoice.getItems().isEmpty()) {
+            invoice.setItems(invoiceDao.getItemsForInvoice(invoice.getId()));
+        }
+
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Commercial Invoice Receipt — " + invoice.getInvoiceNumber());
+        if (mainContentPane != null && mainContentPane.getScene() != null && mainContentPane.getScene().getWindow() != null) {
+            dialog.initOwner(mainContentPane.getScene().getWindow());
+        }
+
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().setPrefWidth(550);
+
+        VBox receipt = new VBox(12);
+        receipt.setStyle("-fx-background-color: #ffffff; -fx-padding: 24px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;");
+
+        HBox topRow = new HBox(10);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox brandBox = new VBox(2);
+        Label lblBrand = new Label("KANSHI WMS");
+        lblBrand.setStyle("-fx-font-family: 'Segoe UI', sans-serif; -fx-font-weight: 900; -fx-font-size: 18px; -fx-text-fill: #7a0c1e;");
+        Label lblSubtitle = new Label("Commercial Logistics & Warehouse Distribution");
+        lblSubtitle.setStyle("-fx-font-size: 10px; -fx-text-fill: #64748b;");
+        brandBox.getChildren().addAll(lblBrand, lblSubtitle);
+
+        Region spacer = new Region();
+
+        VBox invMetaBox = new VBox(2);
+        invMetaBox.setAlignment(Pos.CENTER_RIGHT);
+        Label lblInvNo = new Label(invoice.getInvoiceNumber());
+        lblInvNo.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #1e293b;");
+        Label lblDate = new Label(invoice.getCreatedAt() != null && !invoice.getCreatedAt().isEmpty() ? invoice.getCreatedAt() : LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        lblDate.setStyle("-fx-font-size: 10px; -fx-text-fill: #64748b;");
+        invMetaBox.getChildren().addAll(lblInvNo, lblDate);
+
+        topRow.getChildren().addAll(brandBox, spacer, invMetaBox);
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Separator sep1 = new Separator();
+
+        GridPane infoGrid = new GridPane();
+        infoGrid.setHgap(16);
+        infoGrid.setVgap(6);
+
+        Label lblCustTitle = new Label("Billed To:");
+        lblCustTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #64748b;");
+        Label lblCustName = new Label(invoice.getCustomerName());
+        lblCustName.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #0f172a;");
+
+        Label lblStatusTitle = new Label("Payment Status:");
+        lblStatusTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #64748b;");
+        Label lblStatusBadge = new Label(invoice.getStatus());
+        if ("PAID".equalsIgnoreCase(invoice.getStatus())) {
+            lblStatusBadge.setStyle("-fx-background-color: #dcfce7; -fx-text-fill: #15803d; -fx-font-weight: bold; -fx-padding: 3 8; -fx-background-radius: 10px; -fx-font-size: 11px;");
+        } else {
+            lblStatusBadge.setStyle("-fx-background-color: #fef3c7; -fx-text-fill: #b45309; -fx-font-weight: bold; -fx-padding: 3 8; -fx-background-radius: 10px; -fx-font-size: 11px;");
+        }
+
+        infoGrid.add(lblCustTitle, 0, 0);
+        infoGrid.add(lblCustName, 0, 1);
+        infoGrid.add(lblStatusTitle, 1, 0);
+        infoGrid.add(lblStatusBadge, 1, 1);
+
+        Separator sep2 = new Separator();
+
+        VBox itemsBox = new VBox(6);
+        HBox headerRow = new HBox(8);
+        headerRow.setStyle("-fx-background-color: #f8fafc; -fx-padding: 6 10; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1 0;");
+        Label hSku = new Label("SKU"); hSku.setPrefWidth(100); hSku.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #64748b;");
+        Label hDesc = new Label("DESCRIPTION"); hDesc.setPrefWidth(200); hDesc.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #64748b;");
+        Label hQty = new Label("QTY"); hQty.setPrefWidth(50); hQty.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #64748b; -fx-alignment: CENTER-RIGHT;");
+        Label hPrice = new Label("PRICE"); hPrice.setPrefWidth(70); hPrice.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #64748b; -fx-alignment: CENTER-RIGHT;");
+        Label hSub = new Label("AMOUNT"); hSub.setPrefWidth(80); hSub.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #64748b; -fx-alignment: CENTER-RIGHT;");
+        headerRow.getChildren().addAll(hSku, hDesc, hQty, hPrice, hSub);
+        itemsBox.getChildren().add(headerRow);
+
+        double itemsSubtotal = 0.0;
+        if (invoice.getItems() != null) {
+            for (InvoiceItem item : invoice.getItems()) {
+                itemsSubtotal += item.getSubtotal();
+                HBox row = new HBox(8);
+                row.setStyle("-fx-padding: 6 10; -fx-border-color: #f1f5f9; -fx-border-width: 0 0 1 0;");
+                Label rSku = new Label(item.getProductSku()); rSku.setPrefWidth(100); rSku.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;");
+                Label rDesc = new Label(item.getProductName()); rDesc.setPrefWidth(200); rDesc.setStyle("-fx-font-size: 11px;");
+                Label rQty = new Label(String.valueOf(item.getQuantity())); rQty.setPrefWidth(50); rQty.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-size: 11px;");
+                Label rPrice = new Label(String.format("$%.2f", item.getUnitPrice())); rPrice.setPrefWidth(70); rPrice.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-size: 11px;");
+                Label rSub = new Label(String.format("$%.2f", item.getSubtotal())); rSub.setPrefWidth(80); rSub.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-font-size: 11px;");
+                row.getChildren().addAll(rSku, rDesc, rQty, rPrice, rSub);
+                itemsBox.getChildren().add(row);
+            }
+        }
+
+        Separator sep3 = new Separator();
+
+        VBox totalsBox = new VBox(4);
+        totalsBox.setAlignment(Pos.CENTER_RIGHT);
+
+        double tax = itemsSubtotal * 0.05;
+        double grandTotal = invoice.getTotalAmount();
+
+        HBox rowSub = new HBox(20, new Label("Subtotal:"), new Label(String.format("$%,.2f", itemsSubtotal)));
+        rowSub.setAlignment(Pos.CENTER_RIGHT);
+        HBox rowTax = new HBox(20, new Label("Estimated Tax (5%):"), new Label(String.format("$%,.2f", tax)));
+        rowTax.setAlignment(Pos.CENTER_RIGHT);
+        HBox rowTot = new HBox(20, new Label("Grand Total:"), new Label(String.format("$%,.2f", grandTotal)));
+        rowTot.setAlignment(Pos.CENTER_RIGHT);
+        rowTot.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #7a0c1e;");
+
+        totalsBox.getChildren().addAll(rowSub, rowTax, rowTot);
+
+        receipt.getChildren().addAll(topRow, sep1, infoGrid, sep2, itemsBox, sep3, totalsBox);
+        dialog.getDialogPane().setContent(receipt);
+        dialog.showAndWait();
+    }
+
+    @FXML
+    private void handleExportInvoicesJson(ActionEvent event) {
+        if (invoiceData.isEmpty()) {
+            showAlert("No Invoices", "There are no invoices to export.");
+            return;
+        }
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export Commercial Invoices to JSON");
+        fileChooser.setInitialFileName("kanshi_invoices_export.json");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files (*.json)", "*.json"));
+
+        Stage stage = (Stage) tableInvoices.getScene().getWindow();
+        File file = fileChooser.showSaveDialog(stage);
+
+        if (file != null) {
+            for (Invoice inv : invoiceData) {
+                if (inv.getItems() == null || inv.getItems().isEmpty()) {
+                    inv.setItems(invoiceDao.getItemsForInvoice(inv.getId()));
+                }
+            }
+
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            try (FileWriter writer = new FileWriter(file)) {
+                gson.toJson(invoiceData, writer);
+                showAlert("Export Successful", "Successfully exported " + invoiceData.size() + " invoices to:\n" + file.getAbsolutePath());
+                log("[FINANCE] Exported " + invoiceData.size() + " invoices to JSON: " + file.getName());
+                logAudit("SYS", "Commercial invoice records exported to JSON: " + file.getName());
+            } catch (IOException e) {
+                showAlert("Export Failed", "Error writing to JSON file: " + e.getMessage());
             }
         }
     }
@@ -2756,7 +3461,7 @@ public class MainAppController implements Initializable {
     private boolean shouldDisplayInFilter(String category) {
         if ("ALL".equalsIgnoreCase(currentAuditFilter)) return true;
         if ("OT".equalsIgnoreCase(currentAuditFilter) && category.toUpperCase().contains("OT")) return true;
-        if ("IT".equalsIgnoreCase(currentAuditFilter) && (category.toUpperCase().contains("IT") || category.toUpperCase().contains("AUTH"))) return true;
+        if ("IT".equalsIgnoreCase(currentAuditFilter) && (category.toUpperCase().contains("IT") || category.toUpperCase().contains("AUTH") || category.toUpperCase().contains("FINANCE"))) return true;
         if ("SYS".equalsIgnoreCase(currentAuditFilter) && (category.toUpperCase().contains("SYS") || category.toUpperCase().contains("TAG"))) return true;
         return false;
     }
