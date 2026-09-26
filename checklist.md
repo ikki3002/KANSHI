@@ -8,14 +8,14 @@ This document tracks all 8 evaluation criteria specified by the course instructo
 
 | # | Evaluation Requirement | Status | Key Code Location |
 | :---: | :--- | :---: | :--- |
-| **1** | **Version Control** (Git & GitHub usage) | 🟡 **Needs Push** | Git log (17 commits since Sept 21) • Remote: `ikki3002/KANSHI` |
-| **2** | **Advanced OOP Concepts** (Interfaces, Abstract Classes) | 🔴 **Needs Code** | Concrete classes exist; Needs explicit `interface` & `abstract class` |
+| **1** | **Version Control** (Git & GitHub usage) | 🟡 **Needs Push** | Git log (18 commits since Sept 21) • Remote: `ikki3002/KANSHI` |
+| **2** | **Advanced OOP Concepts** (Interfaces, Abstract Classes) | 🟢 **DONE (100%)** | `CrudDao<T>`, `BaseDao<T>`, `IndustrialDevice`, `AbstractWarehouseActuator`, `BeltConveyorDevice` |
 | **3** | **JavaFX UI Design** (Layout panes, controls) | 🟢 **DONE (100%)** | `main-app-view.fxml`, `login-view.fxml`, `industrial-dark.css` |
 | **4** | **Layout Responsiveness** (Dynamic sizing & constraints) | 🟢 **DONE (100%)** | Responsive constraints, `HBox.hgrow`, `VBox.vgrow`, collapsible rail |
-| **5** | **Concurrency** (Multi-threading & Thread Pools) | 🟢 **DONE (100%)** | `ModbusService.java` (`ScheduledExecutorService`, `Platform.runLater`) |
-| **6** | **Database Integration** (SQLite tables & relationships) | 🟡 **Partial** | `DatabaseManager.java` (`users`, `inventory` exist; Needs FK relation) |
-| **7** | **Data Manipulation** (Complete CRUD operations) | 🟢 **DONE (100%)** | `InventoryDao.java`, `MainAppController.java`, `InventoryDaoTest.java` |
-| **8** | **Networking & Data Parsing** (HTTP JSON REST API) | 🔴 **Needs Code** | Planned for Module 6 (`ExchangeRateService` via `HttpClient` + Gson) |
+| **5** | **Concurrency** (Multi-threading & Thread Pools) | 🟢 **DONE (100%)** | `WarehouseBuffer<T>` (Producer-Consumer), `ScheduledExecutorService`, `Platform.runLater` |
+| **6** | **Database Integration** (SQLite tables & relationships) | 🟢 **DONE (100%)** | `PRAGMA foreign_keys = ON;`, `invoices` & `invoice_items` with `FOREIGN KEY` & cascade |
+| **7** | **Data Manipulation** (Complete CRUD operations) | 🟢 **DONE (100%)** | `InventoryDao.java`, `InvoiceDao.java`, `UserDao.java`, TableView CRUD modals |
+| **8** | **Networking & Data Parsing** (HTTP JSON REST API) | 🔴 **Deferred** | (Skipped per user request; local JSON parsing active via Gson) |
 
 ---
 
@@ -36,43 +36,28 @@ This document tracks all 8 evaluation criteria specified by the course instructo
      ```bash
      git push -u origin homepage
      ```
-  2. **September 6th Submission Verification**:
-     - Check whether your initial GitHub repository creation date or idea submission was logged around September 6th on GitHub, or if you need an initial project documentation commit backdated to September 6th.
 
 ---
 
 ### 2. Advanced OOP Concepts
 > *"Show the implementation of advanced Object-Oriented Programming techniques in your project (e.g., Classes, Interfaces, Abstract Classes, etc)."*
 
-- **Status**: 🔴 **Action Needed (Quick Implementation)**
-- **What is Done**:
-  - Encapsulated Domain Models: `Product.java`, `User.java`, `Tag.java`.
-  - Service and Controller Architecture: `ModbusService`, `FloorLayoutService`, `MainAppController`.
-  - Inheritance from JavaFX framework classes (`Application`, `Initializable`, etc.).
-- **What is Left**:
-  - **No explicit user-defined `interface` exists yet.**
-  - **No explicit user-defined `abstract class` exists yet.**
-- **Action Plan to achieve 100%**:
-  1. Define a generic DAO interface:
-     ```java
-     public interface CrudDao<T> {
-         List<T> getAll();
-         boolean add(T entity);
-         boolean update(T entity);
-         boolean delete(int id);
-     }
-     ```
-  2. Define an abstract base class:
-     ```java
-     public abstract class BaseDao<T> implements CrudDao<T> {
-         protected Connection getConnection() throws SQLException {
-             return DatabaseManager.getConnection();
-         }
-         public abstract T mapResultSet(ResultSet rs) throws SQLException;
-     }
-     ```
-  3. Define an `Actuator` / `IndustrialDevice` interface for the SCADA subsystem (`Conveyor`, `Sensor`, `Pusher`).
-  4. Make `InventoryDao` and `UserDao` extend `BaseDao<T>`.
+- **Status**: 🟢 **100% Complete & Verified**
+- **Where to Show the Teacher**:
+  1. **Generic Interface (`CrudDao<T>`)**:
+     - File: `src/main/java/com/example/kanshiwarehousemanagementsystem/database/CrudDao.java`
+     - Demonstrates type-safe generic contract for all database entities (`getAll()`, `getById()`, `add()`, `update()`, `delete()`).
+  2. **Abstract Base Class with Template Method (`BaseDao<T>`)**:
+     - File: `src/main/java/com/example/kanshiwarehousemanagementsystem/database/BaseDao.java`
+     - Implements `CrudDao<T>`, encapsulates connection management and transaction rollbacks (`rollbackQuietly`), and defines the abstract template method `protected abstract T mapResultSet(ResultSet rs)`.
+  3. **Polymorphic DAOs**:
+     - `InventoryDao extends BaseDao<Product>`
+     - `UserDao extends BaseDao<User>`
+     - `InvoiceDao extends BaseDao<Invoice>`
+  4. **Industrial Device Hierarchy**:
+     - Interface: `IndustrialDevice.java` (`getDeviceId()`, `getName()`, `isOperational()`, `reset()`).
+     - Abstract Class: `AbstractWarehouseActuator.java` (`start()`, `stop()`, `isRunning()`).
+     - Concrete Classes: `BeltConveyorDevice.java` and `OpticalSensorDevice.java`.
 
 ---
 
@@ -118,63 +103,41 @@ This document tracks all 8 evaluation criteria specified by the course instructo
 
 ---
 
-### 5. Concurrency & Multi-Threading
+### 5. Concurrency & Multi-Threading (Producer-Consumer)
 > *"Show where you implemented Multi-threading and Thread Pools within the project."*
 
-- **Status**: 🟢 **100% Complete & Verified**
+- **Status**: 🟢 **100% Complete & Verified (26/26 Unit Tests Passing)**
 - **Where to Show the Teacher**:
-  1. **Thread Pool Implementation**:
-     - File: `src/main/java/com/example/kanshiwarehousemanagementsystem/service/ModbusService.java`
-     - Code: `Executors.newSingleThreadScheduledExecutor(...)` creates a dedicated background thread pool.
-  2. **Periodic High-Frequency Polling**:
-     - The scheduled executor runs the `pollCycle()` task continuously every **100 milliseconds** (`scheduleAtFixedRate`) without blocking the main UI thread.
+  1. **The Classical Producer-Consumer Pattern**:
+     - **Bounded Buffer**: `WarehouseBuffer<T>` (`src/main/.../concurrency/WarehouseBuffer.java`) with fair `ReentrantLock` and `Condition` variables (`notFull`, `notEmpty`).
+     - **Producer Thread**: `ConveyorProducerService` enqueuing incoming package items and blocking when the buffer is full.
+     - **Consumer Thread**: `IntakeConsumerService` running on a background worker thread, blocking when the buffer is empty, consuming packages, updating SQLite stock, and marshaling UI updates.
+     - **Live UI Buffer Gauge**: Visual widget on the Executive Dashboard (`Queue Capacity: X / 10 Packages`) with real-time producer and consumer state badges.
+  2. **Thread Pools & Scheduled Executors**:
+     - `ModbusService.java`: `Executors.newSingleThreadScheduledExecutor(...)` running continuous 100ms hardware polling cycles.
   3. **JavaFX Thread Safety (Thread Marshaling)**:
-     - Uses `Platform.runLater(() -> { ... })` whenever sensor updates, heartbeat states, or auto-incrementing stock events are sent from the background worker to the JavaFX Application Thread.
-  4. **Clean Concurrency Lifecycle**:
-     - Graceful shutdown of thread pool on window close (`service.shutdown()`, `awaitTermination()`).
+     - All background thread mutations safely dispatch to the UI thread via `Platform.runLater(...)`.
+  4. **Automated Verification**:
+     - `ProducerConsumerTest.java` verifies FIFO queueing, producer blocking on full buffer, consumer blocking on empty buffer, and 50-item concurrent throughput without deadlocks.
 
 ---
 
-### 6. Database Integration & Relational Tables
+### 6. Database Integration & Relational Tables (Foreign Keys)
 > *"Present your SQLite database setup, including table structures and how relationships between tables were established."*
 
-- **Status**: 🟡 **Partially Complete / Action Needed**
-- **What is Done**:
-  - SQLite database `kanshi.db` connected via JDBC in `DatabaseManager.java`.
-  - `users` table: User authentication with encrypted passwords and timestamping.
-  - `inventory` table: Catalog ledger tracking SKU, product name, category, quantity, unit price, bin location.
-  - Parameterized SQL execution using `PreparedStatement` to prevent SQL Injection.
-- **What is Left**:
-  - **Foreign Key Table Relationships**:
-    Currently, `users` and `inventory` operate as independent tables.
-    The teacher explicitly asked: *"how relationships between tables were established"*.
-- **Action Plan to achieve 100%**:
-  In **Module 6 (Finance & Invoicing)**, create two relational tables with Foreign Keys:
-  1. `invoices` Table:
-     ```sql
-     CREATE TABLE invoices (
-         id INTEGER PRIMARY KEY AUTOINCREMENT,
-         invoice_number TEXT UNIQUE NOT NULL,
-         user_id INTEGER NOT NULL,
-         total_amount REAL NOT NULL,
-         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-     );
-     ```
-  2. `invoice_items` Table (Many-to-Many Bridge Table):
-     ```sql
-     CREATE TABLE invoice_items (
-         id INTEGER PRIMARY KEY AUTOINCREMENT,
-         invoice_id INTEGER NOT NULL,
-         product_id INTEGER NOT NULL,
-         quantity INTEGER NOT NULL,
-         unit_price REAL NOT NULL,
-         subtotal REAL NOT NULL,
-         FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
-         FOREIGN KEY (product_id) REFERENCES inventory(id) ON DELETE RESTRICT
-     );
-     ```
-  This creates a classic **1-to-Many** (`users` ➔ `invoices`) and **Many-to-Many** (`invoices` ➔ `invoice_items` ➔ `inventory`) relational schema.
+- **Status**: 🟢 **100% Complete & Verified**
+- **Where to Show the Teacher**:
+  1. **Referential Integrity Enforcement**:
+     - `DatabaseManager.getConnection()` executes `PRAGMA foreign_keys = ON;` on every SQLite connection.
+  2. **Relational Schema**:
+     - **1-to-Many**: `users` (id) ➔ `invoices` (user_id REFERENCES users(id) ON DELETE CASCADE).
+     - **Many-to-Many Line Items Bridge**: `invoice_items` linking `invoices` (invoice_id FK) and `inventory` (product_id FK).
+  3. **ACID Transaction Management**:
+     - `InvoiceDao.add(Invoice)` manages multi-table atomic transactions with `conn.setAutoCommit(false)`, batch insertion of line items, and rollback on error.
+  4. **Multi-Table Relational JOINs**:
+     - `InvoiceDao.getItemsForInvoice(id)` joins `invoice_items` with `inventory` to dynamically populate product names and SKUs.
+  5. **Automated Verification**:
+     - `DatabaseRelationshipTest.java` verifies multi-table JOINs, cascading deletion of line items when an invoice is deleted, and rejection of foreign key violations.
 
 ---
 
