@@ -1,15 +1,20 @@
 package com.example.kanshiwarehousemanagementsystem.controller;
 
 import com.example.kanshiwarehousemanagementsystem.HelloApplication;
+import com.example.kanshiwarehousemanagementsystem.concurrency.ConveyorProducerService;
+import com.example.kanshiwarehousemanagementsystem.concurrency.IntakeConsumerService;
+import com.example.kanshiwarehousemanagementsystem.concurrency.WarehouseBuffer;
 import com.example.kanshiwarehousemanagementsystem.database.InventoryDao;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag;
 import com.example.kanshiwarehousemanagementsystem.model.ModbusTag.TagType;
+import com.example.kanshiwarehousemanagementsystem.model.PackagePayload;
 import com.example.kanshiwarehousemanagementsystem.model.Product;
 import com.example.kanshiwarehousemanagementsystem.model.User;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.FactoryIOService;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.TagManager;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -163,6 +168,16 @@ public class MainAppController implements Initializable {
     @FXML private TableColumn<Product, Void> colInvActions;
     @FXML private Label lblInventoryRowCount;
 
+    // Producer-Consumer Concurrency Telemetry
+    @FXML private Label lblBufferUsage;
+    @FXML private Label lblProducerStatus;
+    @FXML private Label lblConsumerStatus;
+    @FXML private HBox boxBufferVisualSlots;
+
+    private WarehouseBuffer<PackagePayload> warehouseBuffer;
+    private ConveyorProducerService producerService;
+    private IntakeConsumerService consumerService;
+
     private final ObservableList<Product> inventoryData = FXCollections.observableArrayList();
     private FilteredList<Product> filteredInventoryData;
 
@@ -212,6 +227,7 @@ public class MainAppController implements Initializable {
         setupTagTable();
         setupTagForm();
         setupInventoryLedger();
+        setupProducerConsumerEngine();
         refreshDynamicHardwareUI();
         refreshKpiMetrics();
         initMimicAnimation();
@@ -905,6 +921,89 @@ public class MainAppController implements Initializable {
         if (ioService != null) {
             ioService.disconnect();
         }
+        if (consumerService != null) {
+            consumerService.stop();
+        }
+        if (producerService != null) {
+            producerService.shutdown();
+        }
+    }
+
+    /**
+     * Initializes the thread-safe Producer-Consumer intake buffer and background services.
+     */
+    private void setupProducerConsumerEngine() {
+        this.warehouseBuffer = new WarehouseBuffer<>(10);
+        this.warehouseBuffer.setChangeListener((currentSize, capacity) -> {
+            Platform.runLater(() -> updateBufferVisuals(currentSize, capacity));
+        });
+
+        this.producerService = new ConveyorProducerService(this.warehouseBuffer);
+
+        this.consumerService = new IntakeConsumerService(this.warehouseBuffer, this.inventoryDao, (pkg, newStock) -> {
+            Platform.runLater(() -> {
+                if (lblConsumerStatus != null) {
+                    lblConsumerStatus.setText("CONSUMER: INGESTED " + pkg.getTrackingId());
+                    lblConsumerStatus.setStyle("-fx-background-color: #dcfce7; -fx-text-fill: #15803d; -fx-font-size: 10px;");
+                }
+                logAudit("IT", "📦 Buffer Consumer: Stored " + pkg.getTrackingId() + " (" + pkg.getSku() + ") -> SQLite Stock: " + newStock);
+                refreshKpiMetrics();
+                loadInventoryData();
+
+                PauseTransition pt = new PauseTransition(Duration.millis(1200));
+                pt.setOnFinished(e -> {
+                    if (lblConsumerStatus != null) {
+                        lblConsumerStatus.setText("CONSUMER: LISTENING");
+                        lblConsumerStatus.setStyle("-fx-background-color: #dbeafe; -fx-text-fill: #1d4ed8; -fx-font-size: 10px;");
+                    }
+                });
+                pt.play();
+            });
+        });
+
+        this.consumerService.start();
+        updateBufferVisuals(0, 10);
+    }
+
+    private void updateBufferVisuals(int currentSize, int capacity) {
+        if (lblBufferUsage != null) {
+            int percent = (int) Math.round((currentSize * 100.0) / capacity);
+            lblBufferUsage.setText(String.format("Queue Capacity: %d / %d Packages (%d%% Full)", currentSize, capacity, percent));
+        }
+        if (boxBufferVisualSlots != null) {
+            boxBufferVisualSlots.getChildren().clear();
+            for (int i = 0; i < capacity; i++) {
+                Region slot = new Region();
+                slot.setPrefWidth(24);
+                slot.setPrefHeight(14);
+                if (i < currentSize) {
+                    slot.setStyle("-fx-background-color: #7a0c1e; -fx-background-radius: 3px;");
+                } else {
+                    slot.setStyle("-fx-background-color: #f1f5f9; -fx-background-radius: 3px; -fx-border-color: #cbd5e1; -fx-border-radius: 3px;");
+                }
+                boxBufferVisualSlots.getChildren().add(slot);
+            }
+        }
+    }
+
+    @FXML
+    private void handleTriggerProducerBatch(ActionEvent event) {
+        if (producerService == null) return;
+        if (lblProducerStatus != null) {
+            lblProducerStatus.setText("PRODUCER: BATCH +5");
+            lblProducerStatus.setStyle("-fx-background-color: #fee2e2; -fx-text-fill: #b91c1c; -fx-font-size: 10px;");
+        }
+        producerService.produceBatchAsync(5, "BOX-SML-101", "Standard Cardboard Box (Small)");
+        logAudit("OT", "🏭 Conveyor Producer: Enqueued batch of 5 boxes into WarehouseBuffer (capacity 10)");
+
+        PauseTransition pt = new PauseTransition(Duration.millis(1500));
+        pt.setOnFinished(e -> {
+            if (lblProducerStatus != null) {
+                lblProducerStatus.setText("PRODUCER: IDLE");
+                lblProducerStatus.setStyle("-fx-font-size: 10px;");
+            }
+        });
+        pt.play();
     }
 
     private void setupTagTable() {

@@ -6,12 +6,92 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Data Access Object (DAO) for User authentication and registration.
- * Implements industry-standard identifier lookup (Username or Email).
+ * Implements industry-standard identifier lookup (Username or Email)
+ * and Advanced OOP (Inheriting from BaseDao<User> and implementing CrudDao<User>).
  */
-public class UserDao {
+public class UserDao extends BaseDao<User> {
+
+    @Override
+    protected User mapResultSet(ResultSet rs) throws SQLException {
+        return new User(
+                rs.getInt("id"),
+                rs.getString("email"),
+                rs.getString("username"),
+                rs.getString("created_at")
+        );
+    }
+
+    @Override
+    public List<User> getAll() {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT id, email, username, created_at FROM users ORDER BY username ASC;";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                users.add(mapResultSet(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to fetch all users: " + e.getMessage());
+        }
+        return users;
+    }
+
+    @Override
+    public User getById(int id) {
+        String sql = "SELECT id, email, username, created_at FROM users WHERE id = ?;";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSet(rs);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to fetch user by ID: " + e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public boolean add(User entity) {
+        return register(entity.getEmail(), entity.getUsername(), "Default@123");
+    }
+
+    @Override
+    public boolean update(User entity) {
+        String sql = "UPDATE users SET email = ?, username = ? WHERE id = ?;";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, entity.getEmail());
+            pstmt.setString(2, entity.getUsername());
+            pstmt.setInt(3, entity.getId());
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Failed to update user: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean delete(int id) {
+        String sql = "DELETE FROM users WHERE id = ?;";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Failed to delete user: " + e.getMessage());
+            return false;
+        }
+    }
 
     /**
      * Authenticates a user by either Username or Email along with their password.
@@ -20,7 +100,7 @@ public class UserDao {
         String sql = "SELECT id, email, username, created_at FROM users " +
                 "WHERE (LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)) AND password = ?";
 
-        try (Connection conn = DatabaseManager.getConnection();
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, identifier);
@@ -29,12 +109,7 @@ public class UserDao {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    return new User(
-                            rs.getInt("id"),
-                            rs.getString("email"),
-                            rs.getString("username"),
-                            rs.getString("created_at")
-                    );
+                    return mapResultSet(rs);
                 }
             }
         } catch (SQLException e) {

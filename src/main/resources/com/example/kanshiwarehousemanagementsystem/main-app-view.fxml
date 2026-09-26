@@ -173,6 +173,31 @@
                         </VBox>
                     </HBox>
 
+                    <!-- Producer-Consumer Concurrency Telemetry Card -->
+                    <HBox alignment="CENTER_LEFT" spacing="16" style="-fx-background-color: #ffffff; -fx-padding: 14px 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+                        <VBox spacing="3" prefWidth="300">
+                            <HBox alignment="CENTER_LEFT" spacing="8">
+                                <Label text="⚡ Thread-Safe Intake Queue" styleClass="station-title" style="-fx-font-size: 15px;" />
+                                <Label text="PRODUCER-CONSUMER" styleClass="kpi-mini-badge-blue" />
+                            </HBox>
+                            <Label text="Bounded WarehouseBuffer (ReentrantLock &amp; Conditions)" styleClass="station-subtitle" style="-fx-font-size: 11px;" />
+                        </VBox>
+
+                        <Separator orientation="VERTICAL" />
+
+                        <VBox spacing="6" HBox.hgrow="ALWAYS">
+                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                <Label fx:id="lblBufferUsage" text="Queue Capacity: 0 / 10 Packages (0% Full)" styleClass="field-label" style="-fx-font-size: 12px;" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Label fx:id="lblProducerStatus" text="PRODUCER: IDLE" styleClass="badge-live-system" style="-fx-font-size: 10px;" />
+                                <Label fx:id="lblConsumerStatus" text="CONSUMER: LISTENING" styleClass="badge-live-system" style="-fx-background-color: #dbeafe; -fx-text-fill: #1d4ed8; -fx-font-size: 10px;" />
+                            </HBox>
+                            <HBox fx:id="boxBufferVisualSlots" spacing="6" alignment="CENTER_LEFT" style="-fx-padding: 2 0;" />
+                        </VBox>
+
+                        <Button text="📦 Ingest Batch (+5)" onAction="#handleTriggerProducerBatch" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 6 12;" />
+                    </HBox>
+
                     <!-- Module Quick-Navigation Gateways (Full 4-Card Hub) -->
                     <Label text="Operational Workspaces (Level 2 Quick Access)" styleClass="station-title" style="-fx-font-size: 15px;" />
                     <HBox spacing="16">

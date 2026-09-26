@@ -13,9 +13,60 @@ import java.util.List;
 
 /**
  * Data Access Object (DAO) for warehouse inventory operations.
- * Demonstrates Week 6 Relational DB CRUD, PreparedStatement parameterization, and SQL aggregation.
+ * Demonstrates Week 6 Relational DB CRUD, PreparedStatement parameterization, SQL aggregation,
+ * and Advanced OOP (Inheriting from BaseDao<Product> and implementing CrudDao<Product>).
  */
-public class InventoryDao {
+public class InventoryDao extends BaseDao<Product> {
+
+    @Override
+    protected Product mapResultSet(ResultSet rs) throws SQLException {
+        return new Product(
+                rs.getInt("id"),
+                rs.getString("sku"),
+                rs.getString("name"),
+                rs.getString("category"),
+                rs.getInt("quantity"),
+                rs.getDouble("unit_price"),
+                rs.getString("location")
+        );
+    }
+
+    @Override
+    public List<Product> getAll() {
+        return getAllProducts();
+    }
+
+    @Override
+    public Product getById(int id) {
+        String sql = "SELECT id, sku, name, category, quantity, unit_price, location FROM inventory WHERE id = ?;";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSet(rs);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to fetch product by id " + id + ": " + e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public boolean add(Product entity) {
+        return addProduct(entity);
+    }
+
+    @Override
+    public boolean update(Product entity) {
+        return updateProduct(entity);
+    }
+
+    @Override
+    public boolean delete(int id) {
+        return deleteProduct(id);
+    }
 
     /**
      * Retrieves all products stored in the SQLite inventory ledger.
@@ -24,21 +75,12 @@ public class InventoryDao {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT id, sku, name, category, quantity, unit_price, location FROM inventory ORDER BY name ASC;";
 
-        try (Connection conn = DatabaseManager.getConnection();
+        try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                Product p = new Product(
-                        rs.getInt("id"),
-                        rs.getString("sku"),
-                        rs.getString("name"),
-                        rs.getString("category"),
-                        rs.getInt("quantity"),
-                        rs.getDouble("unit_price"),
-                        rs.getString("location")
-                );
-                products.add(p);
+                products.add(mapResultSet(rs));
             }
         } catch (SQLException e) {
             System.err.println("Failed to fetch inventory products: " + e.getMessage());
@@ -253,15 +295,7 @@ public class InventoryDao {
             pstmt.setString(1, sku);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    return new Product(
-                            rs.getInt("id"),
-                            rs.getString("sku"),
-                            rs.getString("name"),
-                            rs.getString("category"),
-                            rs.getInt("quantity"),
-                            rs.getDouble("unit_price"),
-                            rs.getString("location")
-                    );
+                    return mapResultSet(rs);
                 }
             }
         } catch (SQLException e) {
