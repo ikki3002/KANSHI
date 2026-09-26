@@ -1,0 +1,67 @@
+{
+  "gridRows": 15,
+  "gridCols": 20,
+  "placements": [
+    {
+      "row": 1,
+      "col": 0,
+      "assetType": "INFEED",
+      "direction": "EAST"
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "assetType": "CONVEYOR",
+      "tagId": "coil_0",
+      "direction": "EAST"
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "assetType": "CONVEYOR",
+      "tagId": "coil_1",
+      "direction": "SOUTH"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "assetType": "CURVED_CONVEYOR",
+      "tagId": "coil_2",
+      "direction": "EAST"
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "assetType": "SENSOR",
+      "tagId": "input_0",
+      "direction": "EAST"
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "assetType": "DEPOT",
+      "direction": "EAST"
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "assetType": "CONVEYOR",
+      "tagId": "tag_coil_5_1c2b",
+      "direction": "EAST"
+    },
+    {
+      "row": 0,
+      "col": 5,
+      "assetType": "CONVEYOR",
+      "tagId": "tag_coil_4_0592",
+      "direction": "EAST"
+    },
+    {
+      "row": 0,
+      "col": 6,
+      "assetType": "CONVEYOR",
+      "tagId": "tag_coil_3_eb49",
+      "direction": "EAST"
+    }
+  ]
+}

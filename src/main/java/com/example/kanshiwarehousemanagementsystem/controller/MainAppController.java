@@ -233,69 +233,124 @@ public class MainAppController implements Initializable {
 
     /**
      * Draws animated 90-degree curved roller belt markings for corner conveyor blocks.
+     * Canvas is 108 x 54px. Pivot is placed at a canvas corner so the arc sweeps
+     * across the full visible area without clipping.
+     *
+     * Direction semantics (which corner the pivot sits at):
+     *   EAST  (→ then ↓) : pivot bottom-left  (0, h)   arc sweeps 0→90°
+     *   WEST  (← then ↑) : pivot top-right    (w, 0)   arc sweeps 180→270°
+     *   SOUTH (↓ then →) : pivot top-left     (0, 0)   arc sweeps 270→360° (same as EAST visually flipped)
+     *   NORTH (↑ then ←) : pivot bottom-right (w, h)   arc sweeps 90→180°
      */
     private void drawCurvedConveyorBelt(Canvas canvas, boolean running, double offset, Direction dir) {
         if (canvas == null) return;
         GraphicsContext gc = canvas.getGraphicsContext2D();
-        double w = canvas.getWidth();
-        double h = canvas.getHeight();
+        double w = canvas.getWidth();   // 108
+        double h = canvas.getHeight();  // 54
 
-        // 1. Background
+        // --- 1. Background ---
         gc.setFill(running ? Color.web("#f0fdf4") : Color.web("#f8fafc"));
         gc.fillRect(0, 0, w, h);
 
-        // 2. Chassis outer border
+        // --- 2. Chassis border ---
         gc.setStroke(running ? Color.web("#22c55e") : Color.web("#cbd5e1"));
         gc.setLineWidth(running ? 1.8 : 1.0);
         gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
 
-        double pivotX = 8;
-        double pivotY = h - 4;
+        // --- 3. Choose pivot corner and arc sweep based on direction ---
+        Direction d = (dir != null) ? dir : Direction.EAST;
+        double pivotX, pivotY;
+        double arcStartDeg;
 
-        // 3. Curved Rails (Arc)
-        gc.setStroke(running ? Color.web("#15803d") : Color.web("#64748b"));
-        gc.setLineWidth(running ? 3.0 : 2.5);
-        gc.strokeArc(pivotX - 86, pivotY - 86, 172, 172, 270, 90, ArcType.OPEN);
-        gc.strokeArc(pivotX - 32, pivotY - 32, 64, 64, 270, 90, ArcType.OPEN);
-
-        if (running) {
-            gc.setStroke(Color.web("#4ade80"));
-            gc.setLineWidth(1.2);
-            gc.strokeArc(pivotX - 88, pivotY - 88, 176, 176, 270, 90, ArcType.OPEN);
+        switch (d) {
+            case WEST -> {
+                pivotX = w; pivotY = 0;     // top-right corner
+                arcStartDeg = 180;
+            }
+            case SOUTH -> {
+                pivotX = 0;  pivotY = 0;    // top-left corner
+                arcStartDeg = 270;
+            }
+            case NORTH -> {
+                pivotX = w; pivotY = h;     // bottom-right corner
+                arcStartDeg = 90;
+            }
+            default -> {                    // EAST: bottom-left
+                pivotX = 0;  pivotY = h;
+                arcStartDeg = 0;
+            }
         }
 
-        // 4. Moving Radial Rollers
-        double step = 14.0;
-        double startAngle = 274 + (running ? (offset % step) : 0);
-        for (double angle = startAngle; angle < 360; angle += step) {
-            double rad = Math.toRadians(angle);
-            double x1 = pivotX + 34 * Math.cos(rad);
-            double y1 = pivotY - 34 * Math.sin(rad);
-            double x2 = pivotX + 84 * Math.cos(rad);
-            double y2 = pivotY - 84 * Math.sin(rad);
+        // Radii chosen so arcs stay within the 108×54 canvas:
+        //   inner rail ≈ h/2 - 4 = ~23px from pivot
+        //   outer rail ≈ h - 4   = ~50px from pivot
+        double rInner = h / 2.0 - 3;   // ~24
+        double rOuter = h - 4;         // ~50
 
-            gc.setStroke(running ? Color.web("#94a3b8") : Color.web("#cbd5e1"));
-            gc.setLineWidth(running ? 2.4 : 1.8);
+        // --- 4. Draw the two belt rails (arcs) ---
+        Color railColor = running ? Color.web("#15803d") : Color.web("#64748b");
+        gc.setStroke(railColor);
+        gc.setLineWidth(running ? 2.8 : 2.0);
+
+        // strokeArc(x, y, w, h, startAngle, arcExtent, arcType)
+        // JavaFX arc: x,y is top-left of bounding box; angle 0 = 3 o'clock, CCW positive.
+        // We sweep +90° for all orientations; the pivot corner placement provides the rotation.
+        gc.strokeArc(pivotX - rOuter, pivotY - rOuter, rOuter * 2, rOuter * 2, arcStartDeg, 90, ArcType.OPEN);
+        gc.strokeArc(pivotX - rInner, pivotY - rInner, rInner * 2, rInner * 2, arcStartDeg, 90, ArcType.OPEN);
+
+        if (running) {
+            // Bright glow highlight just outside the outer rail
+            gc.setStroke(Color.web("#4ade80"));
+            gc.setLineWidth(1.0);
+            double rGlow = rOuter + 2;
+            gc.strokeArc(pivotX - rGlow, pivotY - rGlow, rGlow * 2, rGlow * 2, arcStartDeg, 90, ArcType.OPEN);
+        }
+
+        // --- 5. Radial rollers between the two rails ---
+        double rollerStep = 12.0;  // degrees between each roller
+        // Animate by advancing the start angle with belt offset
+        double animShift = running ? (offset / 18.0 * rollerStep) % rollerStep : 0;
+        double endAngle = arcStartDeg + 90;
+
+        gc.setStroke(running ? Color.web("#94a3b8") : Color.web("#cbd5e1"));
+        gc.setLineWidth(running ? 2.0 : 1.5);
+
+        for (double angleDeg = arcStartDeg + animShift; angleDeg < endAngle; angleDeg += rollerStep) {
+            double rad = Math.toRadians(angleDeg);
+            double cosA = Math.cos(rad);
+            double sinA = Math.sin(rad);
+            // JavaFX y-axis is inverted vs math: subtract sin
+            double x1 = pivotX + rInner * cosA;
+            double y1 = pivotY - rInner * sinA;
+            double x2 = pivotX + rOuter * cosA;
+            double y2 = pivotY - rOuter * sinA;
             gc.strokeLine(x1, y1, x2, y2);
         }
 
-        // 5. Curved Center Flow Marker
+        // --- 6. Center-line flow indicator arc ---
+        double rMid = (rInner + rOuter) / 2.0;
         if (running) {
             gc.setStroke(Color.web("#22c55e"));
-            gc.setLineWidth(2.2);
-            gc.strokeArc(pivotX - 58, pivotY - 58, 116, 116, 282, 66, ArcType.OPEN);
-
-            gc.setFill(Color.web("#15803d"));
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 11));
-            gc.fillText("↷ 90°", w - 42, 20);
+            gc.setLineWidth(2.0);
+            // Draw a shorter highlighted segment that advances with offset
+            double flowStart = arcStartDeg + (offset % 30);
+            if (flowStart > endAngle) flowStart = arcStartDeg;
+            double flowSweep = Math.min(28, endAngle - flowStart);
+            gc.strokeArc(pivotX - rMid, pivotY - rMid, rMid * 2, rMid * 2, flowStart, flowSweep, ArcType.OPEN);
         } else {
             gc.setStroke(Color.web("#94a3b8"));
-            gc.setLineWidth(1.4);
-            gc.strokeArc(pivotX - 58, pivotY - 58, 116, 116, 282, 66, ArcType.OPEN);
+            gc.setLineWidth(1.2);
+            gc.strokeArc(pivotX - rMid, pivotY - rMid, rMid * 2, rMid * 2, arcStartDeg, 90, ArcType.OPEN);
+        }
 
-            gc.setFill(Color.web("#64748b"));
-            gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
-            gc.fillText("↷ Corner", w - 48, 20);
+        // --- 7. Corner label ---
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
+        if (running) {
+            gc.setFill(Color.web("#15803d"));
+            gc.fillText("↷ 90°", 4, 12);
+        } else {
+            gc.setFill(Color.web("#94a3b8"));
+            gc.fillText("CORNER", 3, 12);
         }
     }
 

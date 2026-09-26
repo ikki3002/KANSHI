@@ -22,5 +22,23 @@
     "name": "Vision Sensor 0",
     "address": 0,
     "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "tag_coil_3_eb49",
+    "name": "Pause",
+    "address": 3,
+    "type": "COIL"
+  },
+  {
+    "id": "tag_coil_4_0592",
+    "name": "Reset",
+    "address": 4,
+    "type": "COIL"
+  },
+  {
+    "id": "tag_coil_5_1c2b",
+    "name": "Run",
+    "address": 5,
+    "type": "COIL"
   }
 ]
