@@ -784,15 +784,18 @@ public class MainAppController implements Initializable {
     // Navigation Rail View Switcher (Level 1 <-> Level 2 Workspaces) & Sidebar Toggle
     // =========================================================================
 
+    private static final String NAV_ACTIVE_STYLE = "-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-background-radius: 10px; -fx-font-weight: bold; -fx-font-size: 13px; -fx-padding: 10 14; -fx-cursor: hand;";
+    private static final String NAV_INACTIVE_STYLE = "-fx-background-color: transparent; -fx-text-fill: #4b5563; -fx-background-radius: 10px; -fx-font-weight: 500; -fx-font-size: 13px; -fx-padding: 10 14; -fx-cursor: hand;";
+
     @FXML
     private void handleToggleSidebar(ActionEvent event) {
         if (navRail == null) return;
         isSidebarCollapsed = !isSidebarCollapsed;
 
         if (isSidebarCollapsed) {
-            navRail.setPrefWidth(64);
-            navRail.setMinWidth(64);
-            navRail.setMaxWidth(64);
+            navRail.setPrefWidth(68);
+            navRail.setMinWidth(68);
+            navRail.setMaxWidth(68);
 
             if (lblNavCatCore != null) { lblNavCatCore.setVisible(false); lblNavCatCore.setManaged(false); }
             if (lblNavCatWorkspaces != null) { lblNavCatWorkspaces.setVisible(false); lblNavCatWorkspaces.setManaged(false); }
@@ -800,15 +803,15 @@ public class MainAppController implements Initializable {
             if (navRailFooter != null) { navRailFooter.setVisible(false); navRailFooter.setManaged(false); }
 
             btnNavDashboard.setText("📊");
-            btnNavDashboard.setTooltip(new Tooltip("Overview Dashboard"));
+            btnNavDashboard.setTooltip(new Tooltip("Dashboard"));
             btnNavScada.setText("🏭");
-            btnNavScada.setTooltip(new Tooltip("OT SCADA Station"));
+            btnNavScada.setTooltip(new Tooltip("SCADA Station"));
             btnNavInventory.setText("📦");
             btnNavInventory.setTooltip(new Tooltip("Inventory Ledger"));
             btnNavFinance.setText("💰");
             btnNavFinance.setTooltip(new Tooltip("Finance & Invoicing"));
             btnNavTags.setText("⚙️");
-            btnNavTags.setTooltip(new Tooltip("Hardware Tag Profiler"));
+            btnNavTags.setTooltip(new Tooltip("Settings / Tags"));
 
             btnNavDashboard.setAlignment(Pos.CENTER);
             btnNavScada.setAlignment(Pos.CENTER);
@@ -820,24 +823,24 @@ public class MainAppController implements Initializable {
                 btnToggleSidebar.setText("▶");
             }
         } else {
-            navRail.setPrefWidth(230);
-            navRail.setMinWidth(230);
-            navRail.setMaxWidth(230);
+            navRail.setPrefWidth(240);
+            navRail.setMinWidth(240);
+            navRail.setMaxWidth(240);
 
             if (lblNavCatCore != null) { lblNavCatCore.setVisible(true); lblNavCatCore.setManaged(true); }
             if (lblNavCatWorkspaces != null) { lblNavCatWorkspaces.setVisible(true); lblNavCatWorkspaces.setManaged(true); }
             if (lblNavCatSystem != null) { lblNavCatSystem.setVisible(true); lblNavCatSystem.setManaged(true); }
             if (navRailFooter != null) { navRailFooter.setVisible(true); navRailFooter.setManaged(true); }
 
-            btnNavDashboard.setText("📊 Overview Dashboard");
+            btnNavDashboard.setText("📊 Dashboard");
             btnNavDashboard.setTooltip(null);
-            btnNavScada.setText("🏭 OT SCADA Station");
+            btnNavScada.setText("🏭 SCADA Station");
             btnNavScada.setTooltip(null);
             btnNavInventory.setText("📦 Inventory Ledger");
             btnNavInventory.setTooltip(null);
             btnNavFinance.setText("💰 Finance & Invoicing");
             btnNavFinance.setTooltip(null);
-            btnNavTags.setText("⚙️ Hardware Tag Profiler");
+            btnNavTags.setText("⚙️ Settings / Tags");
             btnNavTags.setTooltip(null);
 
             btnNavDashboard.setAlignment(Pos.CENTER_LEFT);
@@ -893,14 +896,16 @@ public class MainAppController implements Initializable {
         activePane.setVisible(true);
         activePane.setManaged(true);
 
-        btnNavDashboard.getStyleClass().remove("active");
-        btnNavScada.getStyleClass().remove("active");
-        btnNavInventory.getStyleClass().remove("active");
-        btnNavFinance.getStyleClass().remove("active");
-        btnNavTags.getStyleClass().remove("active");
-
-        if (!activeBtn.getStyleClass().contains("active")) {
-            activeBtn.getStyleClass().add("active");
+        Button[] navButtons = {btnNavDashboard, btnNavScada, btnNavInventory, btnNavFinance, btnNavTags};
+        for (Button btn : navButtons) {
+            if (btn != null) {
+                String align = isSidebarCollapsed ? "-fx-alignment: CENTER;" : "-fx-alignment: CENTER_LEFT;";
+                if (btn == activeBtn) {
+                    btn.setStyle(NAV_ACTIVE_STYLE + " " + align);
+                } else {
+                    btn.setStyle(NAV_INACTIVE_STYLE + " " + align);
+                }
+            }
         }
     }
 
@@ -925,11 +930,6 @@ public class MainAppController implements Initializable {
             Stage stage = (Stage) lblOperatorEmail.getScene().getWindow();
             FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("login-view.fxml"));
             Scene scene = new Scene(fxmlLoader.load());
-
-            URL cssResource = HelloApplication.class.getResource("css/industrial-dark.css");
-            if (cssResource != null) {
-                scene.getStylesheets().add(cssResource.toExternalForm());
-            }
 
             stage.setScene(scene);
             stage.setMaximized(true);
@@ -1046,7 +1046,7 @@ public class MainAppController implements Initializable {
             private final Button btnDelete = new Button("Delete");
 
             {
-                btnDelete.getStyleClass().add("btn-danger");
+                btnDelete.setStyle("-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 10; -fx-cursor: hand;");
                 btnDelete.setOnAction(e -> {
                     ModbusTag tag = getTableView().getItems().get(getIndex());
                     tagManager.removeTag(tag.getId());
@@ -1120,8 +1120,7 @@ public class MainAppController implements Initializable {
                     setText(null);
                 } else {
                     Label pill = new Label(item);
-                    pill.getStyleClass().add("tag-badge");
-                    pill.setStyle("-fx-font-size: 11px; -fx-padding: 3 8; -fx-background-radius: 12px;");
+                    pill.setStyle("-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 10; -fx-background-radius: 999px;");
                     setGraphic(pill);
                     setText(null);
                 }
@@ -1174,14 +1173,14 @@ public class MainAppController implements Initializable {
 
             {
                 pane.setAlignment(Pos.CENTER);
-                btnEdit.getStyleClass().add("cell-tool-btn");
+                btnEdit.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-padding: 3 8; -fx-cursor: hand;");
                 btnEdit.setTooltip(new Tooltip("Edit Product Details"));
                 btnEdit.setOnAction(e -> {
                     Product p = getTableView().getItems().get(getIndex());
                     openEditProductDialog(p);
                 });
 
-                btnDelete.getStyleClass().add("cell-tool-btn-danger");
+                btnDelete.setStyle("-fx-background-color: #fee2e2; -fx-border-color: #fca5a5; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #991b1b; -fx-font-size: 11px; -fx-padding: 3 8; -fx-cursor: hand;");
                 btnDelete.setTooltip(new Tooltip("Delete Product from Ledger"));
                 btnDelete.setOnAction(e -> {
                     Product p = getTableView().getItems().get(getIndex());
@@ -1661,21 +1660,21 @@ public class MainAppController implements Initializable {
 
             {
                 pane.setAlignment(Pos.CENTER);
-                btnReceipt.getStyleClass().add("cell-tool-btn");
+                btnReceipt.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-padding: 3 8; -fx-cursor: hand;");
                 btnReceipt.setTooltip(new Tooltip("View Commercial Receipt / Order Breakdown"));
                 btnReceipt.setOnAction(e -> {
                     Invoice inv = getTableView().getItems().get(getIndex());
                     openInvoiceReceiptDialog(inv);
                 });
 
-                btnStatus.getStyleClass().add("cell-tool-btn");
+                btnStatus.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-padding: 3 8; -fx-cursor: hand;");
                 btnStatus.setTooltip(new Tooltip("Toggle Payment Status (PAID / PENDING)"));
                 btnStatus.setOnAction(e -> {
                     Invoice inv = getTableView().getItems().get(getIndex());
                     handleToggleInvoiceStatus(inv);
                 });
 
-                btnDelete.getStyleClass().add("cell-tool-btn-danger");
+                btnDelete.setStyle("-fx-background-color: #fee2e2; -fx-border-color: #fca5a5; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #991b1b; -fx-font-size: 11px; -fx-padding: 3 8; -fx-cursor: hand;");
                 btnDelete.setTooltip(new Tooltip("Delete Invoice (Cascades to Line Items)"));
                 btnDelete.setOnAction(e -> {
                     Invoice inv = getTableView().getItems().get(getIndex());
@@ -1887,8 +1886,7 @@ public class MainAppController implements Initializable {
         spinnerQty.setEditable(true);
 
         Button btnAddItem = new Button("+ Add Line Item");
-        btnAddItem.getStyleClass().add("btn-primary");
-        btnAddItem.setStyle("-fx-font-size: 11px; -fx-padding: 6 12;");
+        btnAddItem.setStyle("-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
 
         itemAddBar.getChildren().addAll(new Label("Product:"), cmbProductPicker, new Label("Qty:"), spinnerQty, btnAddItem);
         builderBox.getChildren().addAll(lblBuilderTitle, itemAddBar);
@@ -2246,8 +2244,7 @@ public class MainAppController implements Initializable {
         isDesignMode = !isDesignMode;
         if (isDesignMode) {
             btnToggleDesignMode.setText("💾 Done & Lock Layout");
-            btnToggleDesignMode.getStyleClass().removeAll("btn-secondary");
-            btnToggleDesignMode.getStyleClass().add("btn-primary");
+            btnToggleDesignMode.setStyle("-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
             boxDesignModeBanner.setVisible(true);
             boxDesignModeBanner.setManaged(true);
             lblFloorStudioSubtitle.setText("LAYOUT STUDIO ACTIVE: Click [+] on an empty cell to add equipment, [↻] to rotate flow direction, or [🗑] to remove.");
@@ -2255,8 +2252,7 @@ public class MainAppController implements Initializable {
         } else {
             floorLayoutService.saveToFile();
             btnToggleDesignMode.setText("✏️ Edit Floor Layout");
-            btnToggleDesignMode.getStyleClass().removeAll("btn-primary");
-            btnToggleDesignMode.getStyleClass().add("btn-secondary");
+            btnToggleDesignMode.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
             boxDesignModeBanner.setVisible(false);
             boxDesignModeBanner.setManaged(false);
             lblFloorStudioSubtitle.setText("Live operational SCADA mimic. Toggle Edit Mode to place and orient machines on the factory floor grid.");
@@ -2304,14 +2300,14 @@ public class MainAppController implements Initializable {
             colControls.setStyle("-fx-padding: 4px;");
 
             Button addColBtn = new Button("➕\nC\nO\nL");
-            addColBtn.getStyleClass().add("grid-edge-col-btn");
+            addColBtn.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #bbf7d0; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-text-fill: #166534; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 8 6;");
             addColBtn.setTooltip(new Tooltip("Add Column (Expand Factory Floor)"));
             addColBtn.setOnAction(e -> handleExpandColumn());
             colControls.getChildren().add(addColBtn);
 
             if (floorLayoutService.isColEmpty(totalCols - 1) && totalCols > 1) {
                 Button removeColBtn = new Button("➖\nC\nO\nL");
-                removeColBtn.getStyleClass().addAll("grid-edge-col-btn", "grid-edge-sub-btn");
+                removeColBtn.setStyle("-fx-background-color: #fee2e2; -fx-border-color: #fca5a5; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-text-fill: #991b1b; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 8 6;");
                 removeColBtn.setTooltip(new Tooltip("Remove Empty Column " + totalCols));
                 removeColBtn.setOnAction(e -> handleShrinkColumn());
                 colControls.getChildren().add(removeColBtn);
@@ -2325,14 +2321,14 @@ public class MainAppController implements Initializable {
             rowControls.setStyle("-fx-padding: 4px;");
 
             Button addRowBtn = new Button("➕ Add Row");
-            addRowBtn.getStyleClass().add("grid-edge-row-btn");
+            addRowBtn.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #bbf7d0; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-text-fill: #166534; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 6 12;");
             addRowBtn.setTooltip(new Tooltip("Add Row (Expand Factory Floor)"));
             addRowBtn.setOnAction(e -> handleExpandRow());
             rowControls.getChildren().add(addRowBtn);
 
             if (floorLayoutService.isRowEmpty(totalRows - 1) && totalRows > 1) {
                 Button removeRowBtn = new Button("➖ Remove Row " + totalRows);
-                removeRowBtn.getStyleClass().addAll("grid-edge-row-btn", "grid-edge-sub-btn");
+                removeRowBtn.setStyle("-fx-background-color: #fee2e2; -fx-border-color: #fca5a5; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-text-fill: #991b1b; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 6 12;");
                 removeRowBtn.setTooltip(new Tooltip("Remove Empty Row " + totalRows));
                 removeRowBtn.setOnAction(e -> handleShrinkRow());
                 rowControls.getChildren().add(removeRowBtn);
@@ -2396,7 +2392,7 @@ public class MainAppController implements Initializable {
 
     private Node createEmptyDesignCell(int row, int col) {
         VBox cell = new VBox(2);
-        cell.getStyleClass().add("floor-cell-empty-design");
+        cell.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #cbd5e1; -fx-border-style: dashed; -fx-border-width: 1.5; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-alignment: CENTER; -fx-cursor: hand; -fx-min-width: 120px; -fx-min-height: 84px;");
 
         Label icon = new Label("➕");
         icon.setStyle("-fx-font-size: 14px; -fx-text-fill: #94a3b8;");
@@ -2414,13 +2410,13 @@ public class MainAppController implements Initializable {
 
     private Node createEmptyOperationalCell() {
         Region empty = new Region();
-        empty.getStyleClass().add("floor-cell-empty-operational");
+        empty.setStyle("-fx-background-color: transparent; -fx-min-width: 120px; -fx-min-height: 84px;");
         return empty;
     }
 
     private Node createDesignCell(FloorCellPlacement placement) {
         VBox block = new VBox(3);
-        block.getStyleClass().add("pipeline-block");
+        block.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
         block.setMinWidth(118);
         block.setMaxWidth(122);
         block.setMinHeight(84);
@@ -2439,7 +2435,7 @@ public class MainAppController implements Initializable {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button rotateBtn = new Button("↻");
-        rotateBtn.getStyleClass().add("cell-tool-btn");
+        rotateBtn.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-padding: 2 6; -fx-cursor: hand;");
         rotateBtn.setTooltip(new Tooltip("Rotate 90° (" + placement.getDirection().getLabel() + ")"));
         rotateBtn.setOnAction(e -> {
             placement.rotate();
@@ -2448,7 +2444,7 @@ public class MainAppController implements Initializable {
         });
 
         Button deleteBtn = new Button("🗑");
-        deleteBtn.getStyleClass().add("cell-tool-btn-danger");
+        deleteBtn.setStyle("-fx-background-color: #fee2e2; -fx-border-color: #fca5a5; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #991b1b; -fx-font-size: 10px; -fx-padding: 2 6; -fx-cursor: hand;");
         deleteBtn.setTooltip(new Tooltip("Remove from Floor"));
         deleteBtn.setOnAction(e -> {
             floorLayoutService.removePlacement(placement.getRow(), placement.getCol());
@@ -2467,14 +2463,13 @@ public class MainAppController implements Initializable {
         bottomRow.setAlignment(Pos.CENTER_LEFT);
 
         Label dirBadge = new Label(placement.getDirection().getLabel());
-        dirBadge.getStyleClass().add("cell-direction-badge");
+        dirBadge.setStyle("-fx-background-color: #f1f5f9; -fx-text-fill: #475569; -fx-font-size: 8px; -fx-font-weight: bold; -fx-padding: 1 5; -fx-background-radius: 4px;");
 
         Region spacer2 = new Region();
         HBox.setHgrow(spacer2, Priority.ALWAYS);
 
         Label tagBadge = new Label(getPlacementTagBadge(placement));
-        tagBadge.getStyleClass().add("tag-badge");
-        tagBadge.setStyle("-fx-font-size: 8px; -fx-padding: 1 3;");
+        tagBadge.setStyle("-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-font-size: 8px; -fx-font-weight: bold; -fx-padding: 1 5; -fx-background-radius: 4px;");
 
         bottomRow.getChildren().addAll(dirBadge, spacer2, tagBadge);
 
@@ -2486,22 +2481,22 @@ public class MainAppController implements Initializable {
         switch (placement.getAssetType()) {
             case INFEED -> {
                 VBox box = new VBox(2);
-                box.getStyleClass().add("pipeline-block");
+                box.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
                 box.setMinWidth(118);
                 box.setMaxWidth(122);
                 box.setMinHeight(84);
                 box.setMaxHeight(84);
 
                 HBox microTopBar = new HBox(4);
-                microTopBar.getStyleClass().add("card-micro-bar");
+                microTopBar.setStyle("-fx-padding: 0 0 2 0;");
                 Label icon = new Label("📥");
                 icon.setStyle("-fx-font-size: 10px;");
                 Label lbl = new Label("ENTRY");
-                lbl.getStyleClass().add("micro-dir-arrow");
+                lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 Region spacer = new Region();
                 HBox.setHgrow(spacer, Priority.ALWAYS);
                 Label dir = new Label(getBridgeArrowForDirection(placement.getDirection()));
-                dir.getStyleClass().add("micro-dir-arrow");
+                dir.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 microTopBar.getChildren().addAll(icon, lbl, spacer, dir);
 
                 Canvas canvas = new Canvas(108, 54);
@@ -2514,22 +2509,22 @@ public class MainAppController implements Initializable {
             }
             case DEPOT -> {
                 VBox box = new VBox(2);
-                box.getStyleClass().add("pipeline-block");
+                box.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
                 box.setMinWidth(118);
                 box.setMaxWidth(122);
                 box.setMinHeight(84);
                 box.setMaxHeight(84);
 
                 HBox microTopBar = new HBox(4);
-                microTopBar.getStyleClass().add("card-micro-bar");
+                microTopBar.setStyle("-fx-padding: 0 0 2 0;");
                 Label icon = new Label("📦");
                 icon.setStyle("-fx-font-size: 10px;");
                 Label lbl = new Label("DEPOT");
-                lbl.getStyleClass().add("micro-dir-arrow");
+                lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 Region spacer = new Region();
                 HBox.setHgrow(spacer, Priority.ALWAYS);
                 Label dir = new Label(getBridgeArrowForDirection(placement.getDirection()));
-                dir.getStyleClass().add("micro-dir-arrow");
+                dir.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 microTopBar.getChildren().addAll(icon, lbl, spacer, dir);
 
                 Canvas canvas = new Canvas(108, 54);
@@ -2542,18 +2537,18 @@ public class MainAppController implements Initializable {
             }
             case BRIDGE -> {
                 VBox box = new VBox(2);
-                box.getStyleClass().add("pipeline-block");
+                box.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
                 box.setMinWidth(118);
                 box.setMaxWidth(122);
                 box.setMinHeight(84);
                 box.setMaxHeight(84);
 
                 HBox microTopBar = new HBox(4);
-                microTopBar.getStyleClass().add("card-micro-bar");
+                microTopBar.setStyle("-fx-padding: 0 0 2 0;");
                 Label arrow = new Label(getBridgeArrowForDirection(placement.getDirection()));
-                arrow.getStyleClass().add("micro-dir-arrow");
+                arrow.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 Label lbl = new Label("BRIDGE");
-                lbl.getStyleClass().add("micro-dir-arrow");
+                lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 microTopBar.getChildren().addAll(arrow, lbl);
 
                 Canvas canvas = new Canvas(108, 54);
@@ -2584,7 +2579,7 @@ public class MainAppController implements Initializable {
 
     private Node createMissingTagCell(FloorCellPlacement placement) {
         VBox box = new VBox(2);
-        box.getStyleClass().add("pipeline-block");
+        box.setStyle("-fx-background-color: #fff1f2; -fx-border-color: #fecdd3; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand;");
         box.setMinWidth(118);
         box.setMaxWidth(122);
         box.setMinHeight(84);
@@ -2605,10 +2600,7 @@ public class MainAppController implements Initializable {
     private Node createOperationalConveyorBlock(ModbusTag tag, FloorCellPlacement placement) {
         boolean isCurved = (placement.getAssetType() == AssetType.CURVED_CONVEYOR) || isCurvedConveyor(tag);
         VBox block = new VBox(2);
-        block.getStyleClass().add("pipeline-block");
-        if (tag.isActive()) {
-            block.getStyleClass().add("pipeline-block-running");
-        }
+        block.setStyle("-fx-background-color: #ffffff; -fx-border-color: " + (tag.isActive() ? "#22c55e" : "#e5e7eb") + "; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
         block.setMinWidth(118);
         block.setMaxWidth(122);
         block.setMinHeight(84);
@@ -2616,21 +2608,21 @@ public class MainAppController implements Initializable {
 
         // Micro Top Bar (no name, no dot-run text pill)
         HBox microTopBar = new HBox(4);
-        microTopBar.getStyleClass().add("card-micro-bar");
+        microTopBar.setStyle("-fx-padding: 0 0 2 0;");
 
         // State LED dot: green when on, ash when off
         Circle ledDot = new Circle(4);
-        ledDot.getStyleClass().add(tag.isActive() ? "state-led-dot-active" : "state-led-dot-idle");
+        ledDot.setFill(Color.web(tag.isActive() ? "#22c55e" : "#94a3b8"));
 
         Label dirLbl = new Label(isCurved ? "↷" : getBridgeArrowForDirection(placement.getDirection()));
-        dirLbl.getStyleClass().add("micro-dir-arrow");
+        dirLbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         // Symbol-only Run/Stop button: ▶ when stopped/idle, ⏹ when running
         Button toggleBtn = new Button(tag.isActive() ? "⏹" : "▶");
-        toggleBtn.getStyleClass().add(tag.isActive() ? "symbol-toggle-btn-stop" : "symbol-toggle-btn");
+        toggleBtn.setStyle(tag.isActive() ? "-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 9px; -fx-padding: 2 6; -fx-cursor: hand;" : "-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-background-radius: 999px; -fx-font-size: 9px; -fx-padding: 2 6; -fx-cursor: hand;");
         toggleBtn.setTooltip(new Tooltip(tag.isActive() ? "Stop Conveyor" : "Start Conveyor"));
         toggleBtn.setOnAction(e -> {
             e.consume(); // Prevent bubbling up to open details dialog
@@ -2670,10 +2662,7 @@ public class MainAppController implements Initializable {
 
     private Node createOperationalSensorBlock(ModbusTag tag, FloorCellPlacement placement) {
         VBox block = new VBox(2);
-        block.getStyleClass().add("pipeline-block");
-        if (tag.isActive()) {
-            block.getStyleClass().add("pipeline-block-detected");
-        }
+        block.setStyle("-fx-background-color: #ffffff; -fx-border-color: " + (tag.isActive() ? "#3b82f6" : "#e5e7eb") + "; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
         block.setMinWidth(118);
         block.setMaxWidth(122);
         block.setMinHeight(84);
@@ -2681,21 +2670,21 @@ public class MainAppController implements Initializable {
 
         // Micro Top Bar
         HBox microTopBar = new HBox(4);
-        microTopBar.getStyleClass().add("card-micro-bar");
+        microTopBar.setStyle("-fx-padding: 0 0 2 0;");
 
         // State LED dot: green when detected, ash when clear
         Circle led = new Circle(4);
-        led.getStyleClass().add(tag.isActive() ? "state-led-dot-active" : "state-led-dot-idle");
+        led.setFill(Color.web(tag.isActive() ? "#3b82f6" : "#94a3b8"));
 
         Label sensLbl = new Label("OPTICAL " + getBridgeArrowForDirection(placement.getDirection()));
-        sensLbl.getStyleClass().add("micro-dir-arrow");
+        sensLbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         sensorCounters.putIfAbsent(tag.getId(), 0);
         Label counterBadge = new Label("Ct: " + sensorCounters.get(tag.getId()));
-        counterBadge.getStyleClass().add("card-counter-chip");
+        counterBadge.setStyle("-fx-background-color: #f1f5f9; -fx-text-fill: #475569; -fx-font-size: 8px; -fx-font-weight: bold; -fx-padding: 1 5; -fx-background-radius: 4px;");
 
         microTopBar.getChildren().addAll(led, sensLbl, spacer, counterBadge);
 
@@ -2738,10 +2727,7 @@ public class MainAppController implements Initializable {
 
         DialogPane dialogPane = dialog.getDialogPane();
         dialogPane.getButtonTypes().add(ButtonType.CLOSE);
-        try {
-            dialogPane.getStylesheets().add(getClass().getResource("/com/example/kanshiwarehousemanagementsystem/css/industrial-dark.css").toExternalForm());
-        } catch (Exception ignored) {}
-        dialogPane.getStyleClass().add("equipment-details-dialog");
+        dialogPane.setStyle("-fx-background-color: #ffffff; -fx-padding: 16px; -fx-font-family: 'Segoe UI', -apple-system, sans-serif;");
 
         VBox content = new VBox(12);
         content.setPrefWidth(420);
@@ -2762,7 +2748,7 @@ public class MainAppController implements Initializable {
 
         // Telemetry Grid
         VBox propBox = new VBox(6);
-        propBox.getStyleClass().add("telemetry-prop-box");
+        propBox.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 12px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(12);
@@ -2825,14 +2811,14 @@ public class MainAppController implements Initializable {
 
         if (tag != null && (placement.getAssetType() == AssetType.CONVEYOR || placement.getAssetType() == AssetType.CURVED_CONVEYOR)) {
             Button diagToggleBtn = new Button(tag.isActive() ? "⏹ Stop Machine" : "▶ Start Machine");
-            diagToggleBtn.getStyleClass().add(tag.isActive() ? "btn-estop" : "btn-primary");
+            diagToggleBtn.setStyle(tag.isActive() ? "-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 14; -fx-cursor: hand;" : "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 14; -fx-cursor: hand;");
             diagToggleBtn.setOnAction(e -> {
                 handleToggleActuator(tag);
                 dialog.close();
             });
 
             Button pulseBtn = new Button("⚡ 2s Pulse Test");
-            pulseBtn.getStyleClass().add("btn-secondary");
+            pulseBtn.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 6 14; -fx-cursor: hand;");
             pulseBtn.setOnAction(e -> {
                 handleQuickTestActuator(tag);
                 dialog.close();
@@ -2841,7 +2827,7 @@ public class MainAppController implements Initializable {
             actionBtns.getChildren().addAll(diagToggleBtn, pulseBtn);
         } else if (tag != null && placement.getAssetType() == AssetType.SENSOR) {
             Button resetCtBtn = new Button("↺ Reset Counter");
-            resetCtBtn.getStyleClass().add("btn-secondary");
+            resetCtBtn.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 6 14; -fx-cursor: hand;");
             resetCtBtn.setOnAction(e -> {
                 sensorCounters.put(tag.getId(), 0);
                 SensorBlockRef ref = sensorRefs.get(tag.getId());
@@ -3092,24 +3078,18 @@ public class MainAppController implements Initializable {
         if (ref != null) {
             // State LED dot: green when running, ash when idle
             if (ref.ledDot != null) {
-                ref.ledDot.getStyleClass().removeAll("state-led-dot-active", "state-led-dot-idle");
-                ref.ledDot.getStyleClass().add(running ? "state-led-dot-active" : "state-led-dot-idle");
+                ref.ledDot.setFill(Color.web(running ? "#22c55e" : "#94a3b8"));
             }
 
             // Symbol-only Run/Stop button: ⏹ when running, ▶ when stopped
             if (ref.toggleBtn != null) {
                 ref.toggleBtn.setText(running ? "⏹" : "▶");
-                ref.toggleBtn.getStyleClass().removeAll("symbol-toggle-btn", "symbol-toggle-btn-stop", "btn-primary", "btn-estop");
-                ref.toggleBtn.getStyleClass().add(running ? "symbol-toggle-btn-stop" : "symbol-toggle-btn");
+                ref.toggleBtn.setStyle(running ? "-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 9px; -fx-padding: 2 6; -fx-cursor: hand;" : "-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-background-radius: 999px; -fx-font-size: 9px; -fx-padding: 2 6; -fx-cursor: hand;");
                 ref.toggleBtn.setTooltip(new Tooltip(running ? "Stop Conveyor" : "Start Conveyor"));
             }
 
-            if (running) {
-                if (!ref.block.getStyleClass().contains("pipeline-block-running")) {
-                    ref.block.getStyleClass().add("pipeline-block-running");
-                }
-            } else {
-                ref.block.getStyleClass().remove("pipeline-block-running");
+            if (ref.block != null) {
+                ref.block.setStyle("-fx-background-color: #ffffff; -fx-border-color: " + (running ? "#22c55e" : "#e5e7eb") + "; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
             }
 
             // Update tooltip text with live telemetry
@@ -3158,14 +3138,14 @@ public class MainAppController implements Initializable {
         if (ref != null) {
             // State LED dot: green when detected, ash when clear
             if (ref.led != null) {
-                ref.led.getStyleClass().removeAll("state-led-dot-active", "state-led-dot-idle", "sensor-led-on", "sensor-led-off");
-                ref.led.getStyleClass().add(active ? "state-led-dot-active" : "state-led-dot-idle");
+                ref.led.setFill(Color.web(active ? "#3b82f6" : "#94a3b8"));
+            }
+
+            if (ref.block != null) {
+                ref.block.setStyle("-fx-background-color: #ffffff; -fx-border-color: " + (active ? "#3b82f6" : "#e5e7eb") + "; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
             }
 
             if (active) {
-                if (!ref.block.getStyleClass().contains("pipeline-block-detected")) {
-                    ref.block.getStyleClass().add("pipeline-block-detected");
-                }
                 int count = sensorCounters.compute(tag.getId(), (k, v) -> v == null ? 1 : v + 1);
                 if (ref.counterLabel != null) {
                     ref.counterLabel.setText("Ct: " + count);
@@ -3188,8 +3168,6 @@ public class MainAppController implements Initializable {
                         refreshKpiMetrics();
                     });
                 }).start();
-            } else {
-                ref.block.getStyleClass().remove("pipeline-block-detected");
             }
 
             // Update tooltip text with live telemetry
@@ -3452,8 +3430,11 @@ public class MainAppController implements Initializable {
         Button[] btns = {btnFilterAll, btnFilterOt, btnFilterIt, btnFilterSys};
         for (Button b : btns) {
             if (b != null) {
-                b.getStyleClass().removeAll("filter-chip-active", "filter-chip");
-                b.getStyleClass().add(b == activeBtn ? "filter-chip-active" : "filter-chip");
+                if (b == activeBtn) {
+                    b.setStyle("-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 4 10; -fx-cursor: hand;");
+                } else {
+                    b.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 10px; -fx-padding: 4 10; -fx-cursor: hand;");
+                }
             }
         }
     }
@@ -3499,12 +3480,10 @@ public class MainAppController implements Initializable {
         if (lblKpiLowStockBadge != null) {
             if (lowStockCount > 0) {
                 lblKpiLowStockBadge.setText("⚠️ " + lowStockCount + " Low Stock");
-                lblKpiLowStockBadge.getStyleClass().removeAll("kpi-mini-badge-green", "kpi-mini-badge-red");
-                lblKpiLowStockBadge.getStyleClass().add("kpi-mini-badge-red");
+                lblKpiLowStockBadge.setStyle("-fx-background-color: #fee2e2; -fx-background-radius: 6px; -fx-text-fill: #991b1b; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;");
             } else {
                 lblKpiLowStockBadge.setText("Stock Normal");
-                lblKpiLowStockBadge.getStyleClass().removeAll("kpi-mini-badge-green", "kpi-mini-badge-red");
-                lblKpiLowStockBadge.getStyleClass().add("kpi-mini-badge-green");
+                lblKpiLowStockBadge.setStyle("-fx-background-color: #f0fdf4; -fx-background-radius: 6px; -fx-text-fill: #166534; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;");
             }
         }
 

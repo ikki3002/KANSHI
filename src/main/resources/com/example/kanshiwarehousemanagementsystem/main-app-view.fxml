@@ -18,252 +18,440 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.Arc?>
 <?import javafx.scene.canvas.Canvas?>
 <?import javafx.scene.layout.GridPane?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.example.kanshiwarehousemanagementsystem.controller.MainAppController"
-            styleClass="main-container"
-            prefWidth="1200" prefHeight="780">
+            style="-fx-background-color: #f3f4f6; -fx-font-family: 'Segoe UI', -apple-system, sans-serif;"
+            prefWidth="1380" prefHeight="880">
 
-    <!-- Top Navigation & Header Bar -->
+    <!-- Top Navigation & Header Bar (Donezo Style) -->
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="14" styleClass="station-header-bar">
+        <HBox alignment="CENTER_LEFT" spacing="16"
+              style="-fx-background-color: #f3f4f6; -fx-padding: 16px 28px 12px 28px;">
             <!-- Sidebar Toggle Button -->
-            <Button fx:id="btnToggleSidebar" text="☰" onAction="#handleToggleSidebar" styleClass="sidebar-toggle-btn" />
+            <Button fx:id="btnToggleSidebar" text="☰" onAction="#handleToggleSidebar"
+                    style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #374151; -fx-padding: 7 14; -fx-cursor: hand;" />
 
-            <!-- Brand -->
-            <VBox spacing="2">
-                <Label text="KANSHI WMS" styleClass="portal-brand" style="-fx-font-size: 22px;" />
-                <Label text="Convergence IT/OT Control Platform" styleClass="station-subtitle" />
-            </VBox>
-
-            <Region HBox.hgrow="ALWAYS" />
-
-            <!-- Real-Time Live Clock -->
-            <Label fx:id="lblClock" text="--:--:--  |  --- -- ----" styleClass="header-clock-badge" />
-
-            <!-- Live PLC Heartbeat Indicator -->
-            <HBox alignment="CENTER" spacing="8" styleClass="plc-heartbeat-pill">
-                <Circle fx:id="circleHeartbeat" radius="5" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
-                <Label fx:id="lblHeartbeatStatus" text="● OFFLINE: 502" styleClass="field-label" style="-fx-font-size: 12px; -fx-font-weight: bold;" />
+            <!-- Pill Search Bar (Matching Donezo Header) -->
+            <HBox alignment="CENTER_LEFT" spacing="10"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 5 16; -fx-pref-width: 320px;">
+                <Label text="🔍" style="-fx-font-size: 13px; -fx-text-fill: #9ca3af;" />
+                <TextField promptText="Search tasks, stock, tags..." HBox.hgrow="ALWAYS"
+                           style="-fx-background-color: transparent; -fx-prompt-text-fill: #9ca3af; -fx-font-size: 12px; -fx-text-fill: #111827; -fx-padding: 2 0;" />
+                <Label text="⌘ F" style="-fx-background-color: #f3f4f6; -fx-background-radius: 6px; -fx-padding: 2 6; -fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #6b7280;" />
             </HBox>
 
             <Region HBox.hgrow="ALWAYS" />
 
-            <!-- Operator Session & Logout -->
-            <HBox alignment="CENTER" spacing="12">
-                <Label fx:id="lblOperatorEmail" text="👤 Operator: admin@gmail.com" styleClass="field-label" />
-                <Button text="Logout" onAction="#handleLogout" styleClass="btn-secondary" style="-fx-font-size: 12px; -fx-padding: 6 14;" />
+            <!-- Live PLC Heartbeat Indicator Pill -->
+            <HBox alignment="CENTER" spacing="8"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 6 14;">
+                <Circle fx:id="circleHeartbeat" radius="4" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+                <Label fx:id="lblHeartbeatStatus" text="● OFFLINE: 502" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #4b5563;" />
+            </HBox>
+
+            <!-- Quick Action Icons (Mail & Notifications) -->
+            <HBox alignment="CENTER" spacing="8">
+                <Button text="✉" style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 6 11; -fx-cursor: hand; -fx-font-size: 13px;" />
+                <Button text="🔔" style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 6 11; -fx-cursor: hand; -fx-font-size: 13px;" />
+            </HBox>
+
+            <!-- Operator Session & Profile Pill -->
+            <HBox alignment="CENTER" spacing="10"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 4 14 4 6;">
+                <Label text="👨‍💼" style="-fx-background-color: #fed7aa; -fx-background-radius: 999px; -fx-padding: 5 8; -fx-font-size: 13px;" />
+                <VBox spacing="1" alignment="CENTER_LEFT">
+                    <Label text="Totok Michael" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
+                    <Label fx:id="lblOperatorEmail" text="tmichael20@mail.com" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
+                </VBox>
+                <Button text="Logout" onAction="#handleLogout"
+                        style="-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 10; -fx-cursor: hand;" />
             </HBox>
         </HBox>
     </top>
 
-    <!-- Left Navigation Rail (3-Level Architecture Navigation) -->
+    <!-- Left Navigation Rail (Donezo Style) -->
     <left>
-        <VBox fx:id="navRail" styleClass="nav-rail">
-            <Label fx:id="lblNavCatCore" text="CORE COMMAND" styleClass="nav-category-header" />
-            <Button fx:id="btnNavDashboard" text="📊 Overview Dashboard" onAction="#handleNavDashboard" styleClass="nav-item-btn, active" />
+        <VBox fx:id="navRail" spacing="6"
+              style="-fx-background-color: #f9fafb; -fx-border-color: transparent #e5e7eb transparent transparent; -fx-border-width: 1px; -fx-padding: 20px 14px; -fx-pref-width: 240px;">
+            <!-- Brand Logo (Matching Donezo logo) -->
+            <HBox alignment="CENTER_LEFT" spacing="8" style="-fx-padding: 0 0 16 6;">
+                <Label text="🌀" style="-fx-font-size: 24px;" />
+                <Label text="Donezo" style="-fx-font-size: 20px; -fx-font-weight: 900; -fx-text-fill: #111827;" />
+            </HBox>
 
-            <Label fx:id="lblNavCatWorkspaces" text="WORKSPACES" styleClass="nav-category-header">
-                <VBox.margin>
-                    <Insets top="10" />
-                </VBox.margin>
-            </Label>
-            <Button fx:id="btnNavScada" text="🏭 OT SCADA Station" onAction="#handleNavScada" styleClass="nav-item-btn" />
-            <Button fx:id="btnNavInventory" text="📦 Inventory Ledger" onAction="#handleNavInventory" styleClass="nav-item-btn" />
-            <Button fx:id="btnNavFinance" text="💰 Finance &amp; Invoicing" onAction="#handleNavFinance" styleClass="nav-item-btn" />
+            <Label fx:id="lblNavCatCore" text="MENU" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-padding: 8 0 4 8;" />
+            <Button fx:id="btnNavDashboard" text="📊 Dashboard" onAction="#handleNavDashboard" maxWidth="Infinity"
+                    style="-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-background-radius: 10px; -fx-font-weight: bold; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-font-size: 13px; -fx-cursor: hand;" />
+            <Button fx:id="btnNavScada" text="🏭 SCADA Station" onAction="#handleNavScada" maxWidth="Infinity"
+                    style="-fx-background-color: transparent; -fx-text-fill: #4b5563; -fx-background-radius: 10px; -fx-font-weight: 500; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-font-size: 13px; -fx-cursor: hand;" />
+            <Button fx:id="btnNavInventory" text="📦 Inventory Ledger" onAction="#handleNavInventory" maxWidth="Infinity"
+                    style="-fx-background-color: transparent; -fx-text-fill: #4b5563; -fx-background-radius: 10px; -fx-font-weight: 500; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-font-size: 13px; -fx-cursor: hand;" />
+            <Button fx:id="btnNavFinance" text="💰 Finance &amp; Invoicing" onAction="#handleNavFinance" maxWidth="Infinity"
+                    style="-fx-background-color: transparent; -fx-text-fill: #4b5563; -fx-background-radius: 10px; -fx-font-weight: 500; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-font-size: 13px; -fx-cursor: hand;" />
 
-            <Label fx:id="lblNavCatSystem" text="SYSTEM &amp; CONFIG" styleClass="nav-category-header">
-                <VBox.margin>
-                    <Insets top="10" />
-                </VBox.margin>
-            </Label>
-            <Button fx:id="btnNavTags" text="⚙️ Hardware Tag Profiler" onAction="#handleNavTags" styleClass="nav-item-btn" />
+            <Label fx:id="lblNavCatSystem" text="GENERAL" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-padding: 14 0 4 8;" />
+            <Button fx:id="btnNavTags" text="⚙️ Settings / Tags" onAction="#handleNavTags" maxWidth="Infinity"
+                    style="-fx-background-color: transparent; -fx-text-fill: #4b5563; -fx-background-radius: 10px; -fx-font-weight: 500; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-font-size: 13px; -fx-cursor: hand;" />
 
             <Region VBox.vgrow="ALWAYS" />
 
-            <!-- System Info Footer -->
-            <VBox fx:id="navRailFooter" spacing="4" style="-fx-padding: 10px; -fx-background-color: #f8fafc; -fx-background-radius: 6px; -fx-border-color: #e2e8f0; -fx-border-radius: 6px;">
-                <Label text="KANSHI WMS v1.0" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #7a0c1e;" />
-                <Label text="Modbus TCP / Factory I/O" style="-fx-font-size: 10px; -fx-text-fill: #64748b;" />
-                <Label text="SQLite kanshi.db Connected" style="-fx-font-size: 10px; -fx-text-fill: #15803d; -fx-font-weight: 600;" />
+            <!-- Bottom Promo Card (Matching "Download our Mobile App" in the image!) -->
+            <VBox fx:id="navRailFooter" spacing="8"
+                  style="-fx-background-color: #064e3b; -fx-background-radius: 16px; -fx-padding: 16px; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 12, 0, 0, 4);">
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="⚙️" style="-fx-background-color: rgba(255,255,255,0.15); -fx-background-radius: 999px; -fx-padding: 5 8; -fx-font-size: 12px; -fx-text-fill: #ffffff;" />
+                    <VBox spacing="1">
+                        <Label text="SCADA Gateway" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #ffffff;" />
+                        <Label text="Modbus TCP : 502" style="-fx-font-size: 10px; -fx-text-fill: #a7f3d0;" />
+                    </VBox>
+                </HBox>
+                <Label text="Factory I/O industrial controller link ready." wrapText="true" style="-fx-font-size: 10px; -fx-text-fill: #d1fae5;" />
+                <Button text="Connect Line →" onAction="#handleNavScada" maxWidth="Infinity"
+                        style="-fx-background-color: #10b981; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 7 14; -fx-cursor: hand;" />
             </VBox>
         </VBox>
     </left>
 
     <!-- Center Workspace Host (Switches dynamically between views) -->
     <center>
-        <StackPane fx:id="mainContentPane" styleClass="content-pane">
+        <StackPane fx:id="mainContentPane" style="-fx-background-color: transparent;">
 
             <!-- ============================================================= -->
             <!-- VIEW 1: LEVEL 1 EXECUTIVE COMMAND OVERVIEW DASHBOARD          -->
             <!-- ============================================================= -->
-            <ScrollPane fx:id="paneDashboard" fitToWidth="true" style="-fx-background-color: transparent;">
-                <VBox spacing="20" style="-fx-padding: 24px;">
+            <ScrollPane fx:id="paneDashboard" fitToWidth="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                <VBox spacing="20" style="-fx-padding: 10px 28px 28px 28px;">
 
-                    <!-- Welcome & Executive Status Banner -->
-                    <HBox alignment="CENTER_LEFT" spacing="16" style="-fx-background-color: #ffffff; -fx-padding: 18px 24px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+                    <!-- Welcome & Header Action Strip (Matching Donezo Header) -->
+                    <HBox alignment="CENTER_LEFT" spacing="16">
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
-                            <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Label text="Executive Command Center (Level 1)" styleClass="station-title" style="-fx-font-size: 18px;" />
-                                <Label text="LIVE SYSTEM" styleClass="badge-live-system" />
-                            </HBox>
-                            <Label text="Real-time operational summary uniting IT warehouse inventory and Factory I/O SCADA hardware automation." styleClass="station-subtitle" />
+                            <Label text="Dashboard" style="-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
+                            <Label text="Plan, prioritize, and accomplish your tasks with ease." style="-fx-font-size: 13px; -fx-text-fill: #6b7280;" />
                         </VBox>
-                        <HBox alignment="CENTER" spacing="10">
-                            <Button text="⚡ 2s Test Sequence" onAction="#handleRunAutoSequence" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 6 12;" />
-                            <Button text="🛑 Quick E-Stop" onAction="#handleEmergencyStop" styleClass="btn-estop" style="-fx-font-size: 11px; -fx-padding: 6 12;" />
-                            <Button text="↺ Refresh All" onAction="#handleRefreshDashboard" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 6 12;" />
+                        <HBox alignment="CENTER" spacing="12">
+                            <Button text="+ Add Project" onAction="#handleOpenCreateInvoice"
+                                    style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 9 20; -fx-cursor: hand;" />
+                            <Button text="Import Data" onAction="#handleExportInventoryJson"
+                                    style="-fx-background-color: #ffffff; -fx-border-color: #111827; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #111827; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 18; -fx-cursor: hand;" />
                         </HBox>
                     </HBox>
 
-                    <!-- Top KPI Metrics Grid (4 Enterprise Cards) -->
+                    <!-- Top 4 KPI Metrics Row (Matching Donezo Top Cards) -->
                     <HBox spacing="16">
-                        <!-- KPI 1: Warehouse Valuation -->
-                        <VBox spacing="8" styleClass="portal-card" style="-fx-padding: 18px; -fx-min-width: 220px;" HBox.hgrow="ALWAYS">
-                            <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="💰" style="-fx-font-size: 13px;" />
-                                <Label text="TOTAL ASSET VALUATION" styleClass="field-label" style="-fx-font-size: 11px;" />
+                        <!-- KPI Card 1: Featured Deep Emerald Green Card ("Total Projects 24") -->
+                        <VBox spacing="10" HBox.hgrow="ALWAYS"
+                              style="-fx-background-color: #14532d; -fx-background-radius: 16px; -fx-padding: 20px; -fx-min-width: 220px; -fx-effect: dropshadow(three-pass-box, rgba(20,83,45,0.2), 12, 0, 0, 4);">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Total Projects" style="-fx-text-fill: #dcfce7; -fx-font-size: 13px; -fx-font-weight: 600;" />
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Label text="SQLITE LEDGER" styleClass="kpi-mini-badge-blue" />
+                                <Button text="↗" onAction="#handleNavFinance"
+                                        style="-fx-background-color: #ffffff; -fx-background-radius: 999px; -fx-text-fill: #14532d; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
                             </HBox>
-                            <Label fx:id="lblKpiValuation" text="-- EUR" styleClass="portal-brand" style="-fx-font-size: 26px;" />
-                            <Label text="Σ (Quantity × Unit Price) asset worth" styleClass="station-subtitle" style="-fx-font-size: 11px;" />
+                            <Label fx:id="lblKpiValuation" text="24" style="-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #ffffff;" />
+                            <HBox alignment="CENTER_LEFT" spacing="6">
+                                <Label text="▲ Increased from last month"
+                                       style="-fx-background-color: #166534; -fx-background-radius: 6px; -fx-text-fill: #bbf7d0; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                            </HBox>
                         </VBox>
 
-                        <!-- KPI 2: Total Inventory -->
-                        <VBox spacing="8" styleClass="portal-card" style="-fx-padding: 18px; -fx-min-width: 220px;" HBox.hgrow="ALWAYS">
-                            <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="📦" style="-fx-font-size: 13px;" />
-                                <Label text="TOTAL INVENTORY STOCK" styleClass="field-label" style="-fx-font-size: 11px;" />
+                        <!-- KPI Card 2: Ended Projects ("Ended Projects 10") -->
+                        <VBox spacing="10" HBox.hgrow="ALWAYS"
+                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-min-width: 220px;">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Ended Projects" style="-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Label fx:id="lblKpiSkuCount" text="5 Active SKUs" styleClass="kpi-mini-badge-blue" />
+                                <Button text="↗" onAction="#handleNavInventory"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-background-radius: 999px; -fx-border-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
                             </HBox>
-                            <Label fx:id="lblKpiInventory" text="-- Units" styleClass="portal-brand" style="-fx-font-size: 26px;" />
-                            <Label text="Across all active warehouse bin locations" styleClass="station-subtitle" style="-fx-font-size: 11px;" />
+                            <Label fx:id="lblKpiInventory" text="10" style="-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
+                            <HBox alignment="CENTER_LEFT" spacing="6">
+                                <Label fx:id="lblKpiLowStockBadge" text="▲ Increased from last month"
+                                       style="-fx-background-color: #f0fdf4; -fx-background-radius: 6px; -fx-text-fill: #166534; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                            </HBox>
                         </VBox>
 
-                        <!-- KPI 3: Line Telemetry -->
-                        <VBox spacing="8" styleClass="portal-card" style="-fx-padding: 18px; -fx-min-width: 220px;" HBox.hgrow="ALWAYS">
-                            <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="🏭" style="-fx-font-size: 13px;" />
-                                <Label text="CONVEYOR LINE STATUS" styleClass="field-label" style="-fx-font-size: 11px;" />
+                        <!-- KPI Card 3: Running Projects ("Running Projects 12") -->
+                        <VBox spacing="10" HBox.hgrow="ALWAYS"
+                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-min-width: 220px;">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Running Projects" style="-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Label fx:id="lblKpiActiveEqCount" text="0 Active" styleClass="kpi-mini-badge-gray" />
+                                <Button text="↗" onAction="#handleNavScada"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-background-radius: 999px; -fx-border-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
                             </HBox>
                             <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Circle fx:id="circleKpiLineDot" radius="6" fill="#94a3b8" />
-                                <Label fx:id="lblKpiLineState" text="IDLE" styleClass="portal-brand" style="-fx-font-size: 24px; -fx-text-fill: #64748b;" />
+                                <Circle fx:id="circleKpiLineDot" radius="5" fill="#22c55e" />
+                                <Label fx:id="lblKpiActiveEqCount" text="12" style="-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
+                                <Label fx:id="lblKpiLineState" text="RUNNING" visible="false" managed="false" />
                             </HBox>
-                            <Label text="Modbus TCP / Factory I/O telemetry" styleClass="station-subtitle" style="-fx-font-size: 11px;" />
-                        </VBox>
-
-                        <!-- KPI 4: Packages Processed -->
-                        <VBox spacing="8" styleClass="portal-card" style="-fx-padding: 18px; -fx-min-width: 220px;" HBox.hgrow="ALWAYS">
                             <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="📥" style="-fx-font-size: 13px;" />
-                                <Label text="PACKAGES DETECTED" styleClass="field-label" style="-fx-font-size: 11px;" />
-                                <Region HBox.hgrow="ALWAYS" />
-                                <Label fx:id="lblKpiLowStockBadge" text="Stock Normal" styleClass="kpi-mini-badge-green" />
+                                <Label text="▲ Increased from last month"
+                                       style="-fx-background-color: #f0fdf4; -fx-background-radius: 6px; -fx-text-fill: #166534; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;" />
                             </HBox>
-                            <Label fx:id="lblKpiPackageCount" text="0 Pcs" styleClass="portal-brand" style="-fx-font-size: 26px; -fx-text-fill: #15803d;" />
-                            <Label text="Auto-increments SQLite inventory on trigger" styleClass="station-subtitle" style="-fx-font-size: 11px;" />
+                        </VBox>
+
+                        <!-- KPI Card 4: Pending Project ("Pending Project 2") -->
+                        <VBox spacing="10" HBox.hgrow="ALWAYS"
+                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-min-width: 220px;">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Pending Project" style="-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Button text="↗" onAction="#handleNavFinance"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-background-radius: 999px; -fx-border-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
+                            </HBox>
+                            <Label fx:id="lblKpiPackageCount" text="2" style="-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
+                            <Label text="On Discuss" style="-fx-text-fill: #9ca3af; -fx-font-size: 12px; -fx-font-weight: 500;" />
+                            <Label fx:id="lblKpiSkuCount" text="5 SKUs" visible="false" managed="false" />
                         </VBox>
                     </HBox>
 
-                    <!-- Producer-Consumer Concurrency Telemetry Card -->
-                    <HBox alignment="CENTER_LEFT" spacing="16" style="-fx-background-color: #ffffff; -fx-padding: 14px 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
-                        <VBox spacing="3" prefWidth="300">
-                            <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Label text="⚡ Thread-Safe Intake Queue" styleClass="station-title" style="-fx-font-size: 15px;" />
-                                <Label text="PRODUCER-CONSUMER" styleClass="kpi-mini-badge-blue" />
-                            </HBox>
-                            <Label text="Bounded WarehouseBuffer (ReentrantLock &amp; Conditions)" styleClass="station-subtitle" style="-fx-font-size: 11px;" />
-                        </VBox>
-
-                        <Separator orientation="VERTICAL" />
-
-                        <VBox spacing="6" HBox.hgrow="ALWAYS">
-                            <HBox alignment="CENTER_LEFT" spacing="12">
-                                <Label fx:id="lblBufferUsage" text="Queue Capacity: 0 / 10 Packages (0% Full)" styleClass="field-label" style="-fx-font-size: 12px;" />
-                                <Region HBox.hgrow="ALWAYS" />
-                                <Label fx:id="lblProducerStatus" text="PRODUCER: IDLE" styleClass="badge-live-system" style="-fx-font-size: 10px;" />
-                                <Label fx:id="lblConsumerStatus" text="CONSUMER: LISTENING" styleClass="badge-live-system" style="-fx-background-color: #dbeafe; -fx-text-fill: #1d4ed8; -fx-font-size: 10px;" />
-                            </HBox>
-                            <HBox fx:id="boxBufferVisualSlots" spacing="6" alignment="CENTER_LEFT" style="-fx-padding: 2 0;" />
-                        </VBox>
-
-                        <Button text="📦 Ingest Batch (+5)" onAction="#handleTriggerProducerBatch" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 6 12;" />
-                    </HBox>
-
-                    <!-- Module Quick-Navigation Gateways (Full 4-Card Hub) -->
-                    <Label text="Operational Workspaces (Level 2 Quick Access)" styleClass="station-title" style="-fx-font-size: 15px;" />
+                    <!-- Middle Row: 3 Cards (Project Analytics | Reminders | Project) -->
                     <HBox spacing="16">
-                        <!-- Gateway 1: SCADA -->
-                        <VBox spacing="8" styleClass="portal-card, gateway-card" style="-fx-padding: 20px; -fx-cursor: hand;" HBox.hgrow="ALWAYS" onMouseClicked="#handleNavScada">
-                            <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="🏭" style="-fx-font-size: 18px;" />
-                                <Label text="OT SCADA Line Control" styleClass="station-title" style="-fx-font-size: 15px;" />
+                        <!-- Card 1: Project Analytics (Pill Bar Chart) -->
+                        <VBox spacing="14" HBox.hgrow="ALWAYS" prefWidth="380"
+                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
+                            <Label text="Project Analytics" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+
+                            <!-- 7 Vertical Pill Bars (S, M, T, W, T, F, S) -->
+                            <HBox alignment="BOTTOM_CENTER" spacing="14" style="-fx-padding: 10 0 4 0;" prefHeight="130">
+                                <!-- Sunday -->
+                                <VBox alignment="BOTTOM_CENTER" spacing="8">
+                                    <Region prefWidth="30" prefHeight="70" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
+                                    <Label text="S" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
+                                </VBox>
+                                <!-- Monday -->
+                                <VBox alignment="BOTTOM_CENTER" spacing="8">
+                                    <Region prefWidth="30" prefHeight="95" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
+                                    <Label text="M" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
+                                </VBox>
+                                <!-- Tuesday (74% Mint Bar) -->
+                                <VBox alignment="BOTTOM_CENTER" spacing="6">
+                                    <Label text="74%" style="-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #15803d; -fx-background-color: #dcfce7; -fx-padding: 1 4; -fx-background-radius: 4px;" />
+                                    <Region prefWidth="32" prefHeight="100" style="-fx-background-color: #4ade80; -fx-background-radius: 999px;" />
+                                    <Label text="T" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
+                                </VBox>
+                                <!-- Wednesday (Solid Dark Green Peak Bar) -->
+                                <VBox alignment="BOTTOM_CENTER" spacing="8">
+                                    <Region prefWidth="32" prefHeight="120" style="-fx-background-color: #14532d; -fx-background-radius: 999px;" />
+                                    <Label text="W" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
+                                </VBox>
+                                <!-- Thursday -->
+                                <VBox alignment="BOTTOM_CENTER" spacing="8">
+                                    <Region prefWidth="30" prefHeight="85" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
+                                    <Label text="T" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
+                                </VBox>
+                                <!-- Friday -->
+                                <VBox alignment="BOTTOM_CENTER" spacing="8">
+                                    <Region prefWidth="30" prefHeight="90" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
+                                    <Label text="F" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
+                                </VBox>
+                                <!-- Saturday -->
+                                <VBox alignment="BOTTOM_CENTER" spacing="8">
+                                    <Region prefWidth="30" prefHeight="65" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
+                                    <Label text="S" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
+                                </VBox>
                             </HBox>
-                            <Label text="Interactive factory floor layout, live conveyor actuation, optical sensors, and emergency stop." wrapText="true" styleClass="station-subtitle" VBox.vgrow="ALWAYS" />
-                            <Button text="Launch SCADA Station →" onAction="#handleNavScada" styleClass="btn-primary" style="-fx-font-size: 11px; -fx-padding: 6 12;" />
                         </VBox>
 
-                        <!-- Gateway 2: Inventory -->
-                        <VBox spacing="8" styleClass="portal-card, gateway-card" style="-fx-padding: 20px; -fx-cursor: hand;" HBox.hgrow="ALWAYS" onMouseClicked="#handleNavInventory">
-                            <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="📦" style="-fx-font-size: 18px;" />
-                                <Label text="Inventory Stock Ledger" styleClass="station-title" style="-fx-font-size: 15px;" />
-                            </HBox>
-                            <Label text="Manage SQLite product catalog, SKU tracking, bin locations, and automated stock replenishment." wrapText="true" styleClass="station-subtitle" VBox.vgrow="ALWAYS" />
-                            <Button text="Open Inventory Ledger →" onAction="#handleNavInventory" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 6 12;" />
-                        </VBox>
-
-                        <!-- Gateway 3: Finance -->
-                        <VBox spacing="8" styleClass="portal-card, gateway-card" style="-fx-padding: 20px; -fx-cursor: hand;" HBox.hgrow="ALWAYS" onMouseClicked="#handleNavFinance">
-                            <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="💰" style="-fx-font-size: 18px;" />
-                                <Label text="Financial Valuation" styleClass="station-title" style="-fx-font-size: 15px;" />
-                            </HBox>
-                            <Label text="Stock valuation calculators, customer order billing, tax calculations, and financial invoice exports." wrapText="true" styleClass="station-subtitle" VBox.vgrow="ALWAYS" />
-                            <Button text="View Finances →" onAction="#handleNavFinance" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 6 12;" />
-                        </VBox>
-
-                        <!-- Gateway 4: Hardware Tag Profiler -->
-                        <VBox spacing="8" styleClass="portal-card, gateway-card" style="-fx-padding: 20px; -fx-cursor: hand;" HBox.hgrow="ALWAYS" onMouseClicked="#handleNavTags">
-                            <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="⚙️" style="-fx-font-size: 18px;" />
-                                <Label text="Hardware Tag Profiler" styleClass="station-title" style="-fx-font-size: 15px;" />
-                            </HBox>
-                            <Label text="Configure Modbus PLC coils, discrete inputs, and mapping parameters stored in warehouse_tags.json." wrapText="true" styleClass="station-subtitle" VBox.vgrow="ALWAYS" />
-                            <Button text="Open Tag Profiler →" onAction="#handleNavTags" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 6 12;" />
-                        </VBox>
-                    </HBox>
-
-                    <!-- Converged Real-Time Activity Log (IT & OT Events Stream) -->
-                    <VBox spacing="10" style="-fx-background-color: #ffffff; -fx-padding: 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
-                        <HBox alignment="CENTER_LEFT" spacing="12">
-                            <VBox spacing="2">
-                                <Label text="Converged Operational Activity Log (IT &amp; OT Stream)" styleClass="station-title" style="-fx-font-size: 15px;" />
-                                <Label text="Live unified audit trail combining user actions, SQLite database updates, and Factory I/O PLC events." styleClass="station-subtitle" />
+                        <!-- Card 2: Reminders ("Meeting with Arc Company") -->
+                        <VBox spacing="12" HBox.hgrow="ALWAYS" prefWidth="340"
+                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
+                            <Label text="Reminders" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                            <VBox spacing="3" VBox.vgrow="ALWAYS">
+                                <Label text="Meeting with Arc Company" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                                <Label text="Time : 02.00 pm - 04.00 pm" style="-fx-font-size: 12px; -fx-text-fill: #6b7280;" />
                             </VBox>
-                            <Region HBox.hgrow="ALWAYS" />
+                            <Button text="📹 Start Meeting" onAction="#handleNavScada" maxWidth="Infinity"
+                                    style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 24; -fx-cursor: hand;" />
+                        </VBox>
 
-                            <!-- Filter Toolbar -->
-                            <HBox spacing="6" alignment="CENTER_LEFT">
-                                <Button fx:id="btnFilterAll" text="All Events" onAction="#handleFilterAuditAll" styleClass="filter-chip-active" />
-                                <Button fx:id="btnFilterOt" text="🏭 OT Only" onAction="#handleFilterAuditOt" styleClass="filter-chip" />
-                                <Button fx:id="btnFilterIt" text="📦 IT Only" onAction="#handleFilterAuditIt" styleClass="filter-chip" />
-                                <Button fx:id="btnFilterSys" text="⚙️ System" onAction="#handleFilterAuditSys" styleClass="filter-chip" />
+                        <!-- Card 3: Project (List with Colored Icons) -->
+                        <VBox spacing="10" HBox.hgrow="ALWAYS" prefWidth="340"
+                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Project" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Button text="+ New" onAction="#handleNavTags"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 12; -fx-cursor: hand;" />
                             </HBox>
 
-                            <Separator orientation="VERTICAL" />
-                            <Button text="Clear Log" onAction="#handleClearAuditStream" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 4 10;" />
-                        </HBox>
-                        <TextArea fx:id="txtAuditStream" prefRowCount="7" editable="false" styleClass="telemetry-log" />
-                    </VBox>
+                            <VBox spacing="8">
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="⚡" style="-fx-text-fill: #3b82f6; -fx-font-size: 14px;" />
+                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                                        <Label text="Develop API Endpoints" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
+                                        <Label text="Due date: Nov 26, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
+                                    </VBox>
+                                </HBox>
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="🔄" style="-fx-text-fill: #10b981; -fx-font-size: 14px;" />
+                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                                        <Label text="Onboarding Flow" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
+                                        <Label text="Due date: Nov 28, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
+                                    </VBox>
+                                </HBox>
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="📦" style="-fx-text-fill: #f59e0b; -fx-font-size: 14px;" />
+                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                                        <Label text="Build Dashboard" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
+                                        <Label text="Due date: Nov 30, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
+                                    </VBox>
+                                </HBox>
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="👁️" style="-fx-text-fill: #ef4444; -fx-font-size: 14px;" />
+                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                                        <Label text="Optimize Page Load" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
+                                        <Label text="Due date: Dec 5, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
+                                    </VBox>
+                                </HBox>
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="🛑" style="-fx-text-fill: #8b5cf6; -fx-font-size: 14px;" />
+                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                                        <Label text="Cross-Browser Testing" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
+                                        <Label text="Due date: Dec 6, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
+                                    </VBox>
+                                </HBox>
+                            </VBox>
+                        </VBox>
+                    </HBox>
+
+                    <!-- Bottom Row: 3 Cards (Team Collaboration | Project Progress | Time Tracker) -->
+                    <HBox spacing="16">
+                        <!-- Card 1: Team Collaboration (Audit Stream List) -->
+                        <VBox spacing="12" HBox.hgrow="ALWAYS" prefWidth="420"
+                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Team Collaboration" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Button text="+ Add Member" onAction="#handleClearAuditStream"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 12; -fx-cursor: hand;" />
+                            </HBox>
+
+                            <!-- Member / Event Rows -->
+                            <VBox spacing="10">
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="👩" style="-fx-background-color: #fed7aa; -fx-background-radius: 999px; -fx-padding: 4 7; -fx-font-size: 13px;" />
+                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                                        <Label text="Alexandra Deff" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
+                                        <Label text="Working on Github Project Repository" style="-fx-font-size: 10px; -fx-text-fill: #6b7280;" />
+                                    </VBox>
+                                    <Label text="Completed" style="-fx-background-color: #dcfce7; -fx-text-fill: #15803d; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                                </HBox>
+
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="👨" style="-fx-background-color: #bbf7d0; -fx-background-radius: 999px; -fx-padding: 4 7; -fx-font-size: 13px;" />
+                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                                        <Label text="Edwin Adenike" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
+                                        <Label text="Working on Integrate User Authentication System" style="-fx-font-size: 10px; -fx-text-fill: #6b7280;" />
+                                    </VBox>
+                                    <Label text="In Progress" style="-fx-background-color: #fef3c7; -fx-text-fill: #b45309; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                                </HBox>
+
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="👦" style="-fx-background-color: #bfdbfe; -fx-background-radius: 999px; -fx-padding: 4 7; -fx-font-size: 13px;" />
+                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                                        <Label text="Isaac Oluwatemilorun" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
+                                        <Label text="Working on Develop Search and Filter Functionality" style="-fx-font-size: 10px; -fx-text-fill: #6b7280;" />
+                                    </VBox>
+                                    <Label text="Pending" style="-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                                </HBox>
+
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="🧔" style="-fx-background-color: #fef08a; -fx-background-radius: 999px; -fx-padding: 4 7; -fx-font-size: 13px;" />
+                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                                        <Label text="David Oshodi" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
+                                        <Label text="Working on Responsive Layout for Homepage" style="-fx-font-size: 10px; -fx-text-fill: #6b7280;" />
+                                    </VBox>
+                                    <Label text="In Progress" style="-fx-background-color: #fef3c7; -fx-text-fill: #b45309; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                                </HBox>
+                            </VBox>
+
+                            <!-- Mini Filter Chips & Actual Telemetry Audit TextArea -->
+                            <HBox spacing="6" alignment="CENTER_LEFT" style="-fx-padding: 4 0 0 0;">
+                                <Button fx:id="btnFilterAll" text="All Events" onAction="#handleFilterAuditAll"
+                                        style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 4 10; -fx-cursor: hand;" />
+                                <Button fx:id="btnFilterOt" text="OT" onAction="#handleFilterAuditOt"
+                                        style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 10px; -fx-padding: 4 10; -fx-cursor: hand;" />
+                                <Button fx:id="btnFilterIt" text="IT" onAction="#handleFilterAuditIt"
+                                        style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 10px; -fx-padding: 4 10; -fx-cursor: hand;" />
+                                <Button fx:id="btnFilterSys" text="Sys" onAction="#handleFilterAuditSys"
+                                        style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 10px; -fx-padding: 4 10; -fx-cursor: hand;" />
+                            </HBox>
+                            <TextArea fx:id="txtAuditStream" prefRowCount="3" editable="false"
+                                      style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;" />
+                        </VBox>
+
+                        <!-- Card 2: Project Progress (Warehouse Buffer Donut Gauge) -->
+                        <VBox spacing="12" HBox.hgrow="ALWAYS" prefWidth="320" alignment="TOP_CENTER"
+                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
+                            <HBox alignment="CENTER_LEFT" maxWidth="Infinity">
+                                <Label text="Project Progress" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                            </HBox>
+
+                            <!-- Donut Progress Semi-Circle Graphic -->
+                            <StackPane prefHeight="110" alignment="CENTER">
+                                <VBox alignment="CENTER" spacing="2">
+                                    <Label text="41%" style="-fx-font-size: 34px; -fx-font-weight: 900; -fx-text-fill: #111827;" />
+                                    <Label text="Project Ended" style="-fx-font-size: 11px; -fx-text-fill: #6b7280; -fx-font-weight: 500;" />
+                                </VBox>
+                            </StackPane>
+
+                            <!-- Producer-Consumer Slot Indicators -->
+                            <HBox fx:id="boxBufferVisualSlots" spacing="4" alignment="CENTER" style="-fx-padding: 2 0;" />
+                            <Label fx:id="lblBufferUsage" text="Queue Capacity: 0 / 10 Packages (0% Full)" style="-fx-font-size: 11px; -fx-text-fill: #6b7280; -fx-font-weight: 600;" />
+
+                            <!-- Legend Dots -->
+                            <HBox spacing="12" alignment="CENTER">
+                                <HBox spacing="4" alignment="CENTER">
+                                    <Circle radius="4" fill="#14532d" />
+                                    <Label text="Completed" style="-fx-font-size: 10px; -fx-text-fill: #4b5563;" />
+                                </HBox>
+                                <HBox spacing="4" alignment="CENTER">
+                                    <Circle radius="4" fill="#4ade80" />
+                                    <Label text="In Progress" style="-fx-font-size: 10px; -fx-text-fill: #4b5563;" />
+                                </HBox>
+                                <HBox spacing="4" alignment="CENTER">
+                                    <Circle radius="4" fill="#cbd5e1" />
+                                    <Label text="Pending" style="-fx-font-size: 10px; -fx-text-fill: #4b5563;" />
+                                </HBox>
+                            </HBox>
+
+                            <Button text="📦 Ingest Batch (+5)" onAction="#handleTriggerProducerBatch" maxWidth="Infinity"
+                                    style="-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;" />
+
+                            <Label fx:id="lblProducerStatus" text="PRODUCER: IDLE" visible="false" managed="false" />
+                            <Label fx:id="lblConsumerStatus" text="CONSUMER: LISTENING" visible="false" managed="false" />
+                        </VBox>
+
+                        <!-- Card 3: Time Tracker (Dark Green Card with Clock & Controls) -->
+                        <VBox spacing="14" HBox.hgrow="ALWAYS" prefWidth="280" alignment="TOP_LEFT"
+                              style="-fx-background-color: #052e16; -fx-background-radius: 16px; -fx-padding: 24px; -fx-effect: dropshadow(three-pass-box, rgba(5,46,22,0.3), 16, 0, 0, 6);">
+                            <Label text="Time Tracker" style="-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #a7f3d0;" />
+
+                            <Region VBox.vgrow="ALWAYS" />
+
+                            <VBox alignment="CENTER" spacing="12">
+                                <Label fx:id="lblClock" text="01:24:08"
+                                       style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 32px; -fx-font-weight: 900; -fx-text-fill: #ffffff;" />
+
+                                <!-- Round Control Buttons (Pause / Stop E-Stop) -->
+                                <HBox spacing="16" alignment="CENTER">
+                                    <Button text="⏸" onAction="#handleRunAutoSequence"
+                                            style="-fx-background-color: #ffffff; -fx-background-radius: 999px; -fx-text-fill: #052e16; -fx-font-size: 15px; -fx-padding: 8 14; -fx-cursor: hand;" />
+                                    <Button text="🛑" onAction="#handleEmergencyStop"
+                                            style="-fx-background-color: #ef4444; -fx-background-radius: 999px; -fx-text-fill: #ffffff; -fx-font-size: 15px; -fx-padding: 8 14; -fx-cursor: hand;" />
+                                </HBox>
+                            </VBox>
+
+                            <Region VBox.vgrow="ALWAYS" />
+                            <Label text="Factory I/O Modbus Ticking Engine" style="-fx-font-size: 10px; -fx-text-fill: #6ee7b7;" />
+                        </VBox>
+                    </HBox>
 
                 </VBox>
             </ScrollPane>
@@ -271,66 +459,77 @@
             <!-- ============================================================= -->
             <!-- VIEW 2: LEVEL 2A OT SCADA HARDWARE CONTROL STATION            -->
             <!-- ============================================================= -->
-            <VBox fx:id="paneScada" visible="false" managed="false">
-                <!-- Hardware Toolbar & Quick Emergency Controls -->
-                <HBox alignment="CENTER_LEFT" spacing="12" styleClass="connection-toolbar">
-                    <Label text="Host IP:" styleClass="field-label" />
-                    <TextField fx:id="txtHost" text="127.0.0.1" prefWidth="125" styleClass="industrial-input" />
+            <VBox fx:id="paneScada" visible="false" managed="false" spacing="18" style="-fx-padding: 20px 28px;">
+                <!-- Connection & Toolbar Card -->
+                <HBox alignment="CENTER_LEFT" spacing="14"
+                      style="-fx-background-color: #ffffff; -fx-padding: 16px 22px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;">
+                    <Label text="Host IP:" style="-fx-font-weight: 600; -fx-font-size: 12px; -fx-text-fill: #374151;" />
+                    <TextField fx:id="txtHost" text="127.0.0.1" prefWidth="120"
+                               style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 6 10; -fx-font-size: 12px;" />
 
-                    <Label text="Port:" styleClass="field-label" />
-                    <TextField fx:id="txtPort" text="502" prefWidth="65" styleClass="industrial-input" />
+                    <Label text="Port:" style="-fx-font-weight: 600; -fx-font-size: 12px; -fx-text-fill: #374151;" />
+                    <TextField fx:id="txtPort" text="502" prefWidth="65"
+                               style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 6 10; -fx-font-size: 12px;" />
 
-                    <Button fx:id="btnConnect" text="Connect" onAction="#handleToggleConnect" styleClass="btn-primary" />
+                    <Button fx:id="btnConnect" text="Connect Station" onAction="#handleToggleConnect"
+                            style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;" />
 
                     <HBox alignment="CENTER" spacing="6">
-                        <Circle fx:id="circleStatus" radius="6" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
-                        <Label fx:id="lblConnectionStatus" text="DISCONNECTED" styleClass="field-label" />
+                        <Circle fx:id="circleStatus" radius="5" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+                        <Label fx:id="lblConnectionStatus" text="DISCONNECTED" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #4b5563;" />
                     </HBox>
 
                     <Region HBox.hgrow="ALWAYS" />
 
-                    <Button fx:id="btnAutoTest" text="⚡ 2s Test Sequence" onAction="#handleRunAutoSequence" styleClass="btn-secondary" />
-                    <Button fx:id="btnEstop" text="🛑 EMERGENCY STOP" onAction="#handleEmergencyStop" styleClass="btn-estop" />
+                    <Button fx:id="btnAutoTest" text="⚡ 2s Motor Test" onAction="#handleRunAutoSequence"
+                            style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 14; -fx-cursor: hand;" />
+                    <Button fx:id="btnEstop" text="🛑 EMERGENCY STOP" onAction="#handleEmergencyStop"
+                            style="-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-border-color: #fca5a5; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;" />
                 </HBox>
 
-                <!-- SCADA Content (Actuators, Sensors, Log) -->
-                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
-                    <VBox spacing="20" style="-fx-padding: 24px;">
-
-                        <!-- 2D SCADA Studio Canvas (Design & Operational Modes) -->
-                        <VBox spacing="12" styleClass="pipeline-board">
+                <!-- SCADA Content (Floor Canvas & Log) -->
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                    <VBox spacing="18">
+                        <!-- 2D SCADA Studio Canvas Card -->
+                        <VBox spacing="12"
+                              style="-fx-background-color: #ffffff; -fx-padding: 22px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;">
                             <HBox alignment="CENTER_LEFT" spacing="12">
                                 <VBox spacing="2">
-                                    <Label text="🏭 2D Factory Floor SCADA Studio" styleClass="station-title" style="-fx-font-size: 16px;" />
-                                    <Label fx:id="lblFloorStudioSubtitle" text="Live operational SCADA mimic. Toggle Edit Mode to place and orient machines on the factory floor grid." styleClass="station-subtitle" />
+                                    <Label text="🏭 2D Factory Floor SCADA Studio" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                                    <Label fx:id="lblFloorStudioSubtitle" text="Live operational SCADA mimic. Toggle Edit Mode to place and orient machines on the factory floor grid." style="-fx-font-size: 12px; -fx-text-fill: #6b7280;" />
                                 </VBox>
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Button fx:id="btnToggleDesignMode" text="✏️ Edit Floor Layout" onAction="#handleToggleDesignMode" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 5 14;" />
-                                <Button text="↺ Reset Default" onAction="#handleResetFloorLayout" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 5 12;" />
-                                <Label fx:id="lblMimicLineStatus" text="LINE STATUS: IDLE" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b; -fx-background-color: #f1f5f9; -fx-padding: 5 12; -fx-background-radius: 4px;" />
+                                <Button fx:id="btnToggleDesignMode" text="✏️ Edit Floor Layout" onAction="#handleToggleDesignMode"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;" />
+                                <Button text="↺ Reset Default" onAction="#handleResetFloorLayout"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 12; -fx-cursor: hand;" />
+                                <Label fx:id="lblMimicLineStatus" text="LINE STATUS: IDLE" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #166534; -fx-background-color: #f0fdf4; -fx-padding: 5 12; -fx-background-radius: 999px;" />
                             </HBox>
 
                             <!-- Amber Studio Mode Notice Banner -->
-                            <HBox fx:id="boxDesignModeBanner" visible="false" managed="false" alignment="CENTER_LEFT" spacing="10" styleClass="design-mode-banner">
+                            <HBox fx:id="boxDesignModeBanner" visible="false" managed="false" alignment="CENTER_LEFT" spacing="10"
+                                  style="-fx-background-color: #fef3c7; -fx-padding: 10 14; -fx-background-radius: 8px;">
                                 <Label text="⚠️ LAYOUT STUDIO ACTIVE" style="-fx-font-weight: bold; -fx-text-fill: #92400e; -fx-font-size: 11px;" />
                                 <Label text="Click [+] on any empty cell to place hardware tags. Click [↻] to rotate flow direction, or [🗑] to remove equipment." style="-fx-text-fill: #78350f; -fx-font-size: 11px;" />
                             </HBox>
 
                             <ScrollPane fitToHeight="false" fitToWidth="false" vbarPolicy="AS_NEEDED" hbarPolicy="AS_NEEDED" style="-fx-background-color: transparent; -fx-padding: 0;">
-                                <GridPane fx:id="floorGridPane" styleClass="floor-grid-pane" hgap="12" vgap="12" />
+                                <GridPane fx:id="floorGridPane" hgap="12" vgap="12" style="-fx-padding: 10px;" />
                             </ScrollPane>
                         </VBox>
 
-                        <!-- Telemetry Log -->
-                        <VBox spacing="8" style="-fx-background-color: #ffffff; -fx-padding: 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+                        <!-- Telemetry Log Card -->
+                        <VBox spacing="10"
+                              style="-fx-background-color: #ffffff; -fx-padding: 20px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;">
                             <HBox alignment="CENTER_LEFT">
-                                <Label text="Modbus Telemetry &amp; Event Stream" styleClass="station-title" style="-fx-font-size: 14px;" />
+                                <Label text="Modbus Telemetry &amp; Event Stream" style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Button text="Clear Log" onAction="#handleClearLog" styleClass="btn-secondary" style="-fx-font-size: 11px; -fx-padding: 4 10;" />
+                                <Button text="Clear Log" onAction="#handleClearLog"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 4 12; -fx-cursor: hand;" />
                             </HBox>
-                            <TextArea fx:id="txtLog" prefRowCount="6" editable="false" styleClass="telemetry-log" />
+                            <TextArea fx:id="txtLog" prefRowCount="6" editable="false"
+                                      style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;" />
                         </VBox>
-
                     </VBox>
                 </ScrollPane>
             </VBox>
@@ -338,56 +537,60 @@
             <!-- ============================================================= -->
             <!-- VIEW 3: LEVEL 2B INVENTORY LEDGER (Module 4)                   -->
             <!-- ============================================================= -->
-            <VBox fx:id="paneInventory" visible="false" managed="false" spacing="16" style="-fx-padding: 20px 24px;" VBox.vgrow="ALWAYS">
-                <!-- Header & Quick Stat Bar -->
-                <HBox alignment="CENTER_LEFT" spacing="16" style="-fx-background-color: #ffffff; -fx-padding: 16px 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+            <VBox fx:id="paneInventory" visible="false" managed="false" spacing="16" style="-fx-padding: 20px 28px;" VBox.vgrow="ALWAYS">
+                <!-- Header Card -->
+                <HBox alignment="CENTER_LEFT" spacing="16"
+                      style="-fx-background-color: #ffffff; -fx-padding: 18px 22px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;">
                     <VBox spacing="3" HBox.hgrow="ALWAYS">
                         <HBox alignment="CENTER_LEFT" spacing="8">
-                            <Label text="📦 Warehouse Inventory Stock Ledger (Level 2B)" styleClass="station-title" style="-fx-font-size: 17px;" />
-                            <Label text="SQLITE CONNECTED" styleClass="badge-live-system" />
+                            <Label text="📦 Warehouse Inventory Stock Ledger (Level 2B)" style="-fx-font-size: 17px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                            <Label text="SQLITE CONNECTED" style="-fx-background-color: #dcfce7; -fx-text-fill: #15803d; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
                         </HBox>
-                        <Label text="Relational inventory ledger with SKU tracking, live category filtering, and location bin management." styleClass="station-subtitle" />
+                        <Label text="Relational inventory ledger with SKU tracking, live category filtering, and location bin management." style="-fx-font-size: 12px; -fx-text-fill: #6b7280;" />
                     </VBox>
                     <HBox alignment="CENTER" spacing="14">
                         <VBox alignment="CENTER_RIGHT" spacing="2">
-                            <Label text="CATALOG ASSET WORTH" styleClass="field-label" style="-fx-font-size: 9px;" />
-                            <Label fx:id="lblInvLedgerValuation" text="\$0.00" styleClass="portal-brand" style="-fx-font-size: 18px;" />
+                            <Label text="CATALOG ASSET WORTH" style="-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #9ca3af;" />
+                            <Label fx:id="lblInvLedgerValuation" text="\$0.00" style="-fx-font-size: 18px; -fx-font-weight: 800; -fx-text-fill: #14532d;" />
                         </VBox>
                         <Separator orientation="VERTICAL" />
                         <VBox alignment="CENTER_RIGHT" spacing="2">
-                            <Label text="TOTAL UNITS" styleClass="field-label" style="-fx-font-size: 9px;" />
-                            <Label fx:id="lblInvLedgerTotalUnits" text="0 Units" styleClass="portal-brand" style="-fx-font-size: 18px; -fx-text-fill: #15803d;" />
+                            <Label text="TOTAL UNITS" style="-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #9ca3af;" />
+                            <Label fx:id="lblInvLedgerTotalUnits" text="0 Units" style="-fx-font-size: 18px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
                         </VBox>
                     </HBox>
                 </HBox>
 
                 <!-- Search, Filter & Action Toolbar -->
-                <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: #ffffff; -fx-padding: 12px 18px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+                <HBox alignment="CENTER_LEFT" spacing="12"
+                      style="-fx-background-color: #ffffff; -fx-padding: 12px 18px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;">
                     <Label text="🔍" style="-fx-font-size: 14px;" />
-                    <TextField fx:id="txtInventorySearch" promptText="Search by SKU, product name, or bin location..." prefWidth="300" styleClass="industrial-input" />
+                    <TextField fx:id="txtInventorySearch" promptText="Search by SKU, product name, or bin location..." prefWidth="300"
+                               style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 7 14; -fx-font-size: 12px;" />
 
-                    <Label text="Category:" styleClass="field-label" style="-fx-font-size: 12px;">
+                    <Label text="Category:" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #374151;">
                         <HBox.margin>
                             <Insets left="8" />
                         </HBox.margin>
                     </Label>
-                    <ComboBox fx:id="cmbCategoryFilter" prefWidth="180" styleClass="industrial-input" />
+                    <ComboBox fx:id="cmbCategoryFilter" prefWidth="180"
+                              style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px;" />
 
                     <Region HBox.hgrow="ALWAYS" />
 
-                    <Button text="+ Add Product" onAction="#handleOpenAddProduct" styleClass="btn-primary" style="-fx-font-size: 12px; -fx-padding: 6 14;" />
-                    <Button text="⚡ Stock Adjustment" onAction="#handleOpenStockAdjustment" styleClass="btn-secondary" style="-fx-font-size: 12px; -fx-padding: 6 14;" />
-                    <Button text="💾 Export JSON" onAction="#handleExportInventoryJson" styleClass="btn-secondary" style="-fx-font-size: 12px; -fx-padding: 6 12;" />
-                    <Button text="↺" onAction="#handleRefreshInventory" styleClass="btn-secondary" style="-fx-font-size: 12px; -fx-padding: 6 10;">
-                        <tooltip>
-                            <Tooltip text="Refresh Inventory from SQLite" />
-                        </tooltip>
-                    </Button>
+                    <Button text="+ Add Product" onAction="#handleOpenAddProduct"
+                            style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;" />
+                    <Button text="⚡ Stock Adjustment" onAction="#handleOpenStockAdjustment"
+                            style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 14; -fx-cursor: hand;" />
+                    <Button text="💾 Export JSON" onAction="#handleExportInventoryJson"
+                            style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 14; -fx-cursor: hand;" />
+                    <Button text="↺" onAction="#handleRefreshInventory"
+                            style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 11; -fx-cursor: hand;" />
                 </HBox>
 
-                <!-- TableView of Products -->
-                <VBox spacing="8" style="-fx-background-color: #ffffff; -fx-padding: 16px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;" VBox.vgrow="ALWAYS">
-                    <TableView fx:id="tableInventory" VBox.vgrow="ALWAYS" styleClass="table-view">
+                <!-- TableView of Products Card -->
+                <VBox spacing="8" style="-fx-background-color: #ffffff; -fx-padding: 16px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;" VBox.vgrow="ALWAYS">
+                    <TableView fx:id="tableInventory" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
                         <columns>
                             <TableColumn fx:id="colInvSku" text="SKU Code" prefWidth="130" />
                             <TableColumn fx:id="colInvName" text="Product Name" prefWidth="240" />
@@ -400,11 +603,10 @@
                         </columns>
                     </TableView>
 
-                    <!-- Table Footer Status Strip -->
                     <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 4 6;">
-                        <Label fx:id="lblInventoryRowCount" text="Showing 0 products" styleClass="station-subtitle" style="-fx-font-size: 11px; -fx-font-weight: 600;" />
+                        <Label fx:id="lblInventoryRowCount" text="Showing 0 products" style="-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #4b5563;" />
                         <Region HBox.hgrow="ALWAYS" />
-                        <Label text="Database: SQLite (kanshi.db) • Table: inventory" styleClass="station-subtitle" style="-fx-font-size: 10px;" />
+                        <Label text="Database: SQLite (kanshi.db) • Table: inventory" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
                     </HBox>
                 </VBox>
             </VBox>
@@ -412,65 +614,68 @@
             <!-- ============================================================= -->
             <!-- VIEW 4: LEVEL 2C FINANCE & INVOICING (Module 6)                -->
             <!-- ============================================================= -->
-            <VBox fx:id="paneFinance" visible="false" managed="false" spacing="16" style="-fx-padding: 20px 24px;" VBox.vgrow="ALWAYS">
-                <!-- Header & Commercial Stat Strip -->
-                <HBox alignment="CENTER_LEFT" spacing="16" style="-fx-background-color: #ffffff; -fx-padding: 16px 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+            <VBox fx:id="paneFinance" visible="false" managed="false" spacing="16" style="-fx-padding: 20px 28px;" VBox.vgrow="ALWAYS">
+                <!-- Header Card -->
+                <HBox alignment="CENTER_LEFT" spacing="16"
+                      style="-fx-background-color: #ffffff; -fx-padding: 18px 22px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;">
                     <VBox spacing="3" HBox.hgrow="ALWAYS">
                         <HBox alignment="CENTER_LEFT" spacing="8">
-                            <Label text="💰 Commercial Invoicing &amp; Financial Valuation (Level 2C)" styleClass="station-title" style="-fx-font-size: 17px;" />
-                            <Label text="SQLITE RELATIONAL (FK)" styleClass="badge-live-system" />
+                            <Label text="💰 Commercial Invoicing &amp; Financial Valuation (Level 2C)" style="-fx-font-size: 17px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                            <Label text="SQLITE RELATIONAL (FK)" style="-fx-background-color: #dcfce7; -fx-text-fill: #15803d; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
                         </HBox>
-                        <Label text="Customer billing, automated multi-item order dispatches, sales tax, and commercial ledger." styleClass="station-subtitle" />
+                        <Label text="Customer billing, automated multi-item order dispatches, sales tax, and commercial ledger." style="-fx-font-size: 12px; -fx-text-fill: #6b7280;" />
                     </VBox>
                     <HBox alignment="CENTER" spacing="14">
                         <VBox alignment="CENTER_RIGHT" spacing="2">
-                            <Label text="TOTAL INVOICED REVENUE" styleClass="field-label" style="-fx-font-size: 9px;" />
-                            <Label fx:id="lblFinanceTotalRevenue" text="\$0.00" styleClass="portal-brand" style="-fx-font-size: 18px; -fx-text-fill: #15803d;" />
+                            <Label text="TOTAL INVOICED REVENUE" style="-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #9ca3af;" />
+                            <Label fx:id="lblFinanceTotalRevenue" text="\$0.00" style="-fx-font-size: 18px; -fx-font-weight: 800; -fx-text-fill: #15803d;" />
                         </VBox>
                         <Separator orientation="VERTICAL" />
                         <VBox alignment="CENTER_RIGHT" spacing="2">
-                            <Label text="PAID ORDERS" styleClass="field-label" style="-fx-font-size: 9px;" />
-                            <Label fx:id="lblFinancePaidCount" text="0 Paid" styleClass="portal-brand" style="-fx-font-size: 18px;" />
+                            <Label text="PAID ORDERS" style="-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #9ca3af;" />
+                            <Label fx:id="lblFinancePaidCount" text="0 Paid" style="-fx-font-size: 18px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
                         </VBox>
                         <Separator orientation="VERTICAL" />
                         <VBox alignment="CENTER_RIGHT" spacing="2">
-                            <Label text="PENDING ORDERS" styleClass="field-label" style="-fx-font-size: 9px;" />
-                            <Label fx:id="lblFinancePendingCount" text="0 Pending" styleClass="portal-brand" style="-fx-font-size: 18px; -fx-text-fill: #b45309;" />
+                            <Label text="PENDING ORDERS" style="-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #9ca3af;" />
+                            <Label fx:id="lblFinancePendingCount" text="0 Pending" style="-fx-font-size: 18px; -fx-font-weight: 800; -fx-text-fill: #b45309;" />
                         </VBox>
                         <Separator orientation="VERTICAL" />
                         <VBox alignment="CENTER_RIGHT" spacing="2">
-                            <Label text="WAREHOUSE ASSET WORTH" styleClass="field-label" style="-fx-font-size: 9px;" />
-                            <Label fx:id="lblFinanceCatalogValuation" text="\$0.00" styleClass="portal-brand" style="-fx-font-size: 18px; -fx-text-fill: #7a0c1e;" />
+                            <Label text="WAREHOUSE ASSET WORTH" style="-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #9ca3af;" />
+                            <Label fx:id="lblFinanceCatalogValuation" text="\$0.00" style="-fx-font-size: 18px; -fx-font-weight: 800; -fx-text-fill: #14532d;" />
                         </VBox>
                     </HBox>
                 </HBox>
 
                 <!-- Search, Filter & Action Toolbar -->
-                <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: #ffffff; -fx-padding: 12px 18px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
+                <HBox alignment="CENTER_LEFT" spacing="12"
+                      style="-fx-background-color: #ffffff; -fx-padding: 12px 18px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;">
                     <Label text="🔍" style="-fx-font-size: 14px;" />
-                    <TextField fx:id="txtFinanceSearch" promptText="Search by Invoice # or Customer name..." prefWidth="300" styleClass="industrial-input" />
+                    <TextField fx:id="txtFinanceSearch" promptText="Search by Invoice # or Customer name..." prefWidth="300"
+                               style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 7 14; -fx-font-size: 12px;" />
 
-                    <Label text="Status:" styleClass="field-label" style="-fx-font-size: 12px;">
+                    <Label text="Status:" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #374151;">
                         <HBox.margin>
                             <Insets left="8" />
                         </HBox.margin>
                     </Label>
-                    <ComboBox fx:id="cmbFinanceStatusFilter" prefWidth="160" styleClass="industrial-input" />
+                    <ComboBox fx:id="cmbFinanceStatusFilter" prefWidth="160"
+                              style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px;" />
 
                     <Region HBox.hgrow="ALWAYS" />
 
-                    <Button text="+ Create Invoice" onAction="#handleOpenCreateInvoice" styleClass="btn-primary" style="-fx-font-size: 12px; -fx-padding: 6 14;" />
-                    <Button text="💾 Export JSON" onAction="#handleExportInvoicesJson" styleClass="btn-secondary" style="-fx-font-size: 12px; -fx-padding: 6 12;" />
-                    <Button text="↺" onAction="#handleRefreshFinance" styleClass="btn-secondary" style="-fx-font-size: 12px; -fx-padding: 6 10;">
-                        <tooltip>
-                            <Tooltip text="Refresh Invoices from SQLite" />
-                        </tooltip>
-                    </Button>
+                    <Button text="+ Create Invoice" onAction="#handleOpenCreateInvoice"
+                            style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;" />
+                    <Button text="💾 Export JSON" onAction="#handleExportInvoicesJson"
+                            style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 14; -fx-cursor: hand;" />
+                    <Button text="↺" onAction="#handleRefreshFinance"
+                            style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 11; -fx-cursor: hand;" />
                 </HBox>
 
-                <!-- TableView of Invoices -->
-                <VBox spacing="8" style="-fx-background-color: #ffffff; -fx-padding: 16px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;" VBox.vgrow="ALWAYS">
-                    <TableView fx:id="tableInvoices" VBox.vgrow="ALWAYS" styleClass="table-view">
+                <!-- TableView of Invoices Card -->
+                <VBox spacing="8" style="-fx-background-color: #ffffff; -fx-padding: 16px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;" VBox.vgrow="ALWAYS">
+                    <TableView fx:id="tableInvoices" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
                         <columns>
                             <TableColumn fx:id="colInvoiceNumber" text="Invoice #" prefWidth="140" />
                             <TableColumn fx:id="colInvoiceCustomer" text="Customer Name" prefWidth="220" />
@@ -483,11 +688,10 @@
                         </columns>
                     </TableView>
 
-                    <!-- Table Footer Status Strip -->
                     <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 4 6;">
-                        <Label fx:id="lblFinanceRowCount" text="Showing 0 invoices" styleClass="station-subtitle" style="-fx-font-size: 11px; -fx-font-weight: 600;" />
+                        <Label fx:id="lblFinanceRowCount" text="Showing 0 invoices" style="-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #4b5563;" />
                         <Region HBox.hgrow="ALWAYS" />
-                        <Label text="Database: SQLite (kanshi.db) • Tables: invoices ➔ invoice_items (Foreign Key)" styleClass="station-subtitle" style="-fx-font-size: 10px;" />
+                        <Label text="Database: SQLite (kanshi.db) • Tables: invoices ➔ invoice_items (Foreign Key)" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
                     </HBox>
                 </VBox>
             </VBox>
@@ -495,16 +699,18 @@
             <!-- ============================================================= -->
             <!-- VIEW 5: LEVEL 2D HARDWARE TAG CONFIGURATION PROFILER          -->
             <!-- ============================================================= -->
-            <VBox fx:id="paneTags" visible="false" managed="false" spacing="20" style="-fx-padding: 24px;">
-                <VBox spacing="4" style="-fx-background-color: #ffffff; -fx-padding: 16px 20px; -fx-background-radius: 8px; -fx-border-color: #e2e8f0; -fx-border-radius: 8px;">
-                    <Label text="Hardware Tag Profiler &amp; JSON Configuration (Level 2D)" styleClass="station-title" style="-fx-font-size: 18px;" />
-                    <Label text="Dynamically configure Modbus PLC coils and discrete inputs stored in warehouse_tags.json without code recompilation." styleClass="station-subtitle" />
+            <VBox fx:id="paneTags" visible="false" managed="false" spacing="20" style="-fx-padding: 20px 28px;">
+                <VBox spacing="4"
+                      style="-fx-background-color: #ffffff; -fx-padding: 18px 22px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;">
+                    <Label text="Hardware Tag Profiler &amp; JSON Configuration (Level 2D)" style="-fx-font-size: 18px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="Dynamically configure Modbus PLC coils and discrete inputs stored in warehouse_tags.json without code recompilation." style="-fx-font-size: 12px; -fx-text-fill: #6b7280;" />
                 </VBox>
 
-                <HBox spacing="24" VBox.vgrow="ALWAYS">
-                    <!-- Table of Configured Tags -->
-                    <VBox spacing="12" HBox.hgrow="ALWAYS">
-                        <TableView fx:id="tableTags" VBox.vgrow="ALWAYS" styleClass="table-view">
+                <HBox spacing="20" VBox.vgrow="ALWAYS">
+                    <!-- Table Card -->
+                    <VBox spacing="12" HBox.hgrow="ALWAYS"
+                          style="-fx-background-color: #ffffff; -fx-padding: 18px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px;">
+                        <TableView fx:id="tableTags" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
                             <columns>
                                 <TableColumn fx:id="colTagName" text="Tag Name" prefWidth="240" />
                                 <TableColumn fx:id="colTagType" text="Type" prefWidth="180" />
@@ -514,32 +720,39 @@
                         </TableView>
 
                         <HBox spacing="12" alignment="CENTER_LEFT">
-                            <Button text="💾 Save to warehouse_tags.json" onAction="#handleSaveTags" styleClass="btn-primary" />
-                            <Button text="↺ Reset to Factory I/O Defaults" onAction="#handleResetTags" styleClass="btn-secondary" />
+                            <Button text="💾 Save to warehouse_tags.json" onAction="#handleSaveTags"
+                                    style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;" />
+                            <Button text="↺ Reset to Defaults" onAction="#handleResetTags"
+                                    style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 14; -fx-cursor: hand;" />
                         </HBox>
                     </VBox>
 
-                    <!-- Form to Add New Tag -->
-                    <VBox spacing="14" styleClass="portal-card" style="-fx-min-width: 320px; -fx-max-width: 340px; -fx-padding: 24px;">
-                        <Label text="Add Hardware Tag" styleClass="station-title" style="-fx-font-size: 16px;" />
-                        <Label text="Add new conveyor or sensor without writing code." styleClass="station-subtitle" />
+                    <!-- Add Tag Form Card -->
+                    <VBox spacing="14"
+                          style="-fx-background-color: #ffffff; -fx-padding: 24px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-min-width: 320px; -fx-max-width: 340px;">
+                        <Label text="Add Hardware Tag" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                        <Label text="Add new conveyor or sensor without writing code." style="-fx-font-size: 12px; -fx-text-fill: #6b7280;" />
 
                         <VBox spacing="6">
-                            <Label text="Tag Name:" styleClass="field-label" />
-                            <TextField fx:id="txtNewTagName" promptText="e.g. Diverter Arm 1" styleClass="industrial-input" />
+                            <Label text="Tag Name:" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #374151;" />
+                            <TextField fx:id="txtNewTagName" promptText="e.g. Diverter Arm 1"
+                                       style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 8 12; -fx-font-size: 12px;" />
                         </VBox>
 
                         <VBox spacing="6">
-                            <Label text="Modbus Register Address:" styleClass="field-label" />
-                            <TextField fx:id="txtNewTagAddress" promptText="e.g. 3" styleClass="industrial-input" />
+                            <Label text="Modbus Register Address:" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #374151;" />
+                            <TextField fx:id="txtNewTagAddress" promptText="e.g. 3"
+                                       style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 8 12; -fx-font-size: 12px;" />
                         </VBox>
 
                         <VBox spacing="6">
-                            <Label text="Tag Type:" styleClass="field-label" />
-                            <ComboBox fx:id="cmbNewTagType" maxWidth="Infinity" styleClass="industrial-input" />
+                            <Label text="Tag Type:" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #374151;" />
+                            <ComboBox fx:id="cmbNewTagType" maxWidth="Infinity"
+                                      style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-font-size: 12px;" />
                         </VBox>
 
-                        <Button text="+ Add Tag to Profile" onAction="#handleAddTag" styleClass="btn-primary" maxWidth="Infinity">
+                        <Button text="+ Add Tag to Profile" onAction="#handleAddTag" maxWidth="Infinity"
+                                style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 10 18; -fx-cursor: hand;">
                             <VBox.margin>
                                 <Insets top="8" />
                             </VBox.margin>
@@ -552,3 +765,4 @@
     </center>
 
 </BorderPane>
+

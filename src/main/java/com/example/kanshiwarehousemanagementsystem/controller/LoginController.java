@@ -72,16 +72,24 @@ public class LoginController implements Initializable {
         lblStrengthLevel.setText(result.getLevel().getLabel());
         lblStrengthHint.setText(result.getHint());
 
-        // Update progress bar CSS styling
-        progressStrength.getStyleClass().removeAll("strength-weak", "strength-medium", "strength-strong");
-        progressStrength.getStyleClass().add(result.getLevel().getCssClass());
-
-        // Text color for label
+        // Progress bar and text styling via inline styles
         switch (result.getLevel()) {
-            case WEAK -> lblStrengthLevel.setStyle("-fx-text-fill: #dc2626;");
-            case MEDIUM -> lblStrengthLevel.setStyle("-fx-text-fill: #d97706;");
-            case STRONG -> lblStrengthLevel.setStyle("-fx-text-fill: #059669;");
-            default -> lblStrengthLevel.setStyle("-fx-text-fill: #4b5563;");
+            case WEAK -> {
+                progressStrength.setStyle("-fx-accent: #dc2626;");
+                lblStrengthLevel.setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold;");
+            }
+            case MEDIUM -> {
+                progressStrength.setStyle("-fx-accent: #d97706;");
+                lblStrengthLevel.setStyle("-fx-text-fill: #d97706; -fx-font-weight: bold;");
+            }
+            case STRONG -> {
+                progressStrength.setStyle("-fx-accent: #15803d;");
+                lblStrengthLevel.setStyle("-fx-text-fill: #15803d; -fx-font-weight: bold;");
+            }
+            default -> {
+                progressStrength.setStyle("-fx-accent: #9ca3af;");
+                lblStrengthLevel.setStyle("-fx-text-fill: #4b5563;");
+            }
         }
     }
 
@@ -136,10 +144,7 @@ public class LoginController implements Initializable {
             FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("main-app-view.fxml"));
             Scene scene = new Scene(fxmlLoader.load());
 
-            URL cssResource = HelloApplication.class.getResource("css/industrial-dark.css");
-            if (cssResource != null) {
-                scene.getStylesheets().add(cssResource.toExternalForm());
-            }
+
 
             MainAppController controller = fxmlLoader.getController();
             controller.setUserSession(user);
