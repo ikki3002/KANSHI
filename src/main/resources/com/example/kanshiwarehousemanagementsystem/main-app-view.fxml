@@ -28,7 +28,7 @@
             style="-fx-background-color: #f3f4f6; -fx-font-family: 'Segoe UI', -apple-system, sans-serif;"
             prefWidth="1380" prefHeight="880">
 
-    <!-- Top Navigation & Header Bar (Donezo Style) -->
+    <!-- Top Navigation & Header Bar -->
     <top>
         <HBox alignment="CENTER_LEFT" spacing="16"
               style="-fx-background-color: #f3f4f6; -fx-padding: 16px 28px 12px 28px;">
@@ -36,7 +36,7 @@
             <Button fx:id="btnToggleSidebar" text="☰" onAction="#handleToggleSidebar"
                     style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #374151; -fx-padding: 7 14; -fx-cursor: hand;" />
 
-            <!-- Pill Search Bar (Matching Donezo Header) -->
+            <!-- Pill Search Bar -->
             <HBox alignment="CENTER_LEFT" spacing="10"
                   style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 5 16; -fx-pref-width: 320px;">
                 <Label text="🔍" style="-fx-font-size: 13px; -fx-text-fill: #9ca3af;" />
@@ -54,7 +54,7 @@
                 <Label fx:id="lblHeartbeatStatus" text="● OFFLINE: 502" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #4b5563;" />
             </HBox>
 
-            <!-- Quick Action Icons (Mail & Notifications) -->
+            <!-- Quick Action Icons -->
             <HBox alignment="CENTER" spacing="8">
                 <Button text="✉" style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 6 11; -fx-cursor: hand; -fx-font-size: 13px;" />
                 <Button text="🔔" style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 6 11; -fx-cursor: hand; -fx-font-size: 13px;" />
@@ -63,10 +63,10 @@
             <!-- Operator Session & Profile Pill -->
             <HBox alignment="CENTER" spacing="10"
                   style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-padding: 4 14 4 6;">
-                <Label text="👨‍💼" style="-fx-background-color: #fed7aa; -fx-background-radius: 999px; -fx-padding: 5 8; -fx-font-size: 13px;" />
+                <Label text="👨‍💼" style="-fx-background-color: #dcfce7; -fx-background-radius: 999px; -fx-padding: 5 8; -fx-font-size: 13px;" />
                 <VBox spacing="1" alignment="CENTER_LEFT">
-                    <Label text="Totok Michael" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
-                    <Label fx:id="lblOperatorEmail" text="tmichael20@mail.com" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
+                    <Label text="Operator" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
+                    <Label fx:id="lblOperatorEmail" text="operator@kanshi.local" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
                 </VBox>
                 <Button text="Logout" onAction="#handleLogout"
                         style="-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 10; -fx-cursor: hand;" />
@@ -74,19 +74,24 @@
         </HBox>
     </top>
 
-    <!-- Left Navigation Rail (Donezo Style) -->
+    <!-- Left Navigation Rail -->
     <left>
         <VBox fx:id="navRail" spacing="6"
               style="-fx-background-color: #f9fafb; -fx-border-color: transparent #e5e7eb transparent transparent; -fx-border-width: 1px; -fx-padding: 20px 14px; -fx-pref-width: 240px;">
-            <!-- Brand Logo (Matching Donezo logo) -->
-            <HBox alignment="CENTER_LEFT" spacing="8" style="-fx-padding: 0 0 16 6;">
-                <Label text="🌀" style="-fx-font-size: 24px;" />
-                <Label text="Donezo" style="-fx-font-size: 20px; -fx-font-weight: 900; -fx-text-fill: #111827;" />
+            <!-- Brand Logo -->
+            <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 0 0 16 6;">
+                <Label text="📦" style="-fx-font-size: 24px;" />
+                <VBox spacing="1">
+                    <Label text="KANSHI" style="-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #111827; -fx-letter-spacing: 0.5px;" />
+                    <Label text="WMS • IT/OT Convergence" style="-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #6b7280;" />
+                </VBox>
             </HBox>
 
-            <Label fx:id="lblNavCatCore" text="MENU" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-padding: 8 0 4 8;" />
+            <Label fx:id="lblNavCatCore" text="CORE WORKSPACES" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-padding: 8 0 4 8;" />
             <Button fx:id="btnNavDashboard" text="📊 Dashboard" onAction="#handleNavDashboard" maxWidth="Infinity"
                     style="-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-background-radius: 10px; -fx-font-weight: bold; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-font-size: 13px; -fx-cursor: hand;" />
+
+            <Label fx:id="lblNavCatWorkspaces" text="OPERATIONS" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-padding: 12 0 4 8;" />
             <Button fx:id="btnNavScada" text="🏭 SCADA Station" onAction="#handleNavScada" maxWidth="Infinity"
                     style="-fx-background-color: transparent; -fx-text-fill: #4b5563; -fx-background-radius: 10px; -fx-font-weight: 500; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-font-size: 13px; -fx-cursor: hand;" />
             <Button fx:id="btnNavInventory" text="📦 Inventory Ledger" onAction="#handleNavInventory" maxWidth="Infinity"
@@ -94,13 +99,13 @@
             <Button fx:id="btnNavFinance" text="💰 Finance &amp; Invoicing" onAction="#handleNavFinance" maxWidth="Infinity"
                     style="-fx-background-color: transparent; -fx-text-fill: #4b5563; -fx-background-radius: 10px; -fx-font-weight: 500; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-font-size: 13px; -fx-cursor: hand;" />
 
-            <Label fx:id="lblNavCatSystem" text="GENERAL" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-padding: 14 0 4 8;" />
+            <Label fx:id="lblNavCatSystem" text="SYSTEM" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-padding: 14 0 4 8;" />
             <Button fx:id="btnNavTags" text="⚙️ Settings / Tags" onAction="#handleNavTags" maxWidth="Infinity"
                     style="-fx-background-color: transparent; -fx-text-fill: #4b5563; -fx-background-radius: 10px; -fx-font-weight: 500; -fx-alignment: CENTER_LEFT; -fx-padding: 10 14; -fx-font-size: 13px; -fx-cursor: hand;" />
 
             <Region VBox.vgrow="ALWAYS" />
 
-            <!-- Bottom Promo Card (Matching "Download our Mobile App" in the image!) -->
+            <!-- Bottom Gateway Card -->
             <VBox fx:id="navRailFooter" spacing="8"
                   style="-fx-background-color: #064e3b; -fx-background-radius: 16px; -fx-padding: 16px; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 12, 0, 0, 4);">
                 <HBox spacing="8" alignment="CENTER_LEFT">
@@ -117,7 +122,7 @@
         </VBox>
     </left>
 
-    <!-- Center Workspace Host (Switches dynamically between views) -->
+    <!-- Center Workspace Host -->
     <center>
         <StackPane fx:id="mainContentPane" style="-fx-background-color: transparent;">
 
@@ -127,331 +132,235 @@
             <ScrollPane fx:id="paneDashboard" fitToWidth="true" style="-fx-background-color: transparent; -fx-border-color: transparent;">
                 <VBox spacing="20" style="-fx-padding: 10px 28px 28px 28px;">
 
-                    <!-- Welcome & Header Action Strip (Matching Donezo Header) -->
+                    <!-- Welcome & Header Action Strip -->
                     <HBox alignment="CENTER_LEFT" spacing="16">
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
-                            <Label text="Dashboard" style="-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
-                            <Label text="Plan, prioritize, and accomplish your tasks with ease." style="-fx-font-size: 13px; -fx-text-fill: #6b7280;" />
+                            <Label text="Executive Overview" style="-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
+                            <Label text="Live Warehouse IT/OT Convergence &amp; Operational Telemetry" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;" />
                         </VBox>
-                        <HBox alignment="CENTER" spacing="12">
-                            <Button text="+ Add Project" onAction="#handleOpenCreateInvoice"
-                                    style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 9 20; -fx-cursor: hand;" />
-                            <Button text="Import Data" onAction="#handleExportInventoryJson"
-                                    style="-fx-background-color: #ffffff; -fx-border-color: #111827; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #111827; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 18; -fx-cursor: hand;" />
+                        <HBox alignment="CENTER" spacing="10">
+                            <Button text="+ Create Invoice" onAction="#handleOpenCreateInvoice"
+                                    style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 8 18; -fx-cursor: hand;" />
+                            <Button text="📦 Export JSON" onAction="#handleExportInventoryJson"
+                                    style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #374151; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 8 16; -fx-cursor: hand;" />
+                            <Button text="↺ Refresh" onAction="#handleRefreshDashboard"
+                                    style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #374151; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 8 14; -fx-cursor: hand;" />
                         </HBox>
                     </HBox>
 
-                    <!-- Top 4 KPI Metrics Row (Matching Donezo Top Cards) -->
+                    <!-- Top 4 KPI Metrics Row -->
                     <HBox spacing="16">
-                        <!-- KPI Card 1: Featured Deep Emerald Green Card ("Total Projects 24") -->
+                        <!-- KPI Card 1: Featured Deep Emerald Green Card -->
                         <VBox spacing="10" HBox.hgrow="ALWAYS"
                               style="-fx-background-color: #14532d; -fx-background-radius: 16px; -fx-padding: 20px; -fx-min-width: 220px; -fx-effect: dropshadow(three-pass-box, rgba(20,83,45,0.2), 12, 0, 0, 4);">
                             <HBox alignment="CENTER_LEFT">
-                                <Label text="Total Projects" style="-fx-text-fill: #dcfce7; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                                <Label text="TOTAL ASSET VALUATION" style="-fx-text-fill: #dcfce7; -fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;" />
                                 <Region HBox.hgrow="ALWAYS" />
                                 <Button text="↗" onAction="#handleNavFinance"
                                         style="-fx-background-color: #ffffff; -fx-background-radius: 999px; -fx-text-fill: #14532d; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
                             </HBox>
-                            <Label fx:id="lblKpiValuation" text="24" style="-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #ffffff;" />
+                            <Label fx:id="lblKpiValuation" text="\$0.00" style="-fx-font-size: 32px; -fx-font-weight: 800; -fx-text-fill: #ffffff;" />
                             <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="▲ Increased from last month"
+                                <Label fx:id="lblKpiSkuCount" text="0 Active SKUs"
                                        style="-fx-background-color: #166534; -fx-background-radius: 6px; -fx-text-fill: #bbf7d0; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;" />
                             </HBox>
                         </VBox>
 
-                        <!-- KPI Card 2: Ended Projects ("Ended Projects 10") -->
+                        <!-- KPI Card 2: Total Inventory Stock -->
                         <VBox spacing="10" HBox.hgrow="ALWAYS"
                               style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-min-width: 220px;">
                             <HBox alignment="CENTER_LEFT">
-                                <Label text="Ended Projects" style="-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                                <Label text="TOTAL INVENTORY STOCK" style="-fx-text-fill: #6b7280; -fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;" />
                                 <Region HBox.hgrow="ALWAYS" />
                                 <Button text="↗" onAction="#handleNavInventory"
-                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-background-radius: 999px; -fx-border-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
                             </HBox>
-                            <Label fx:id="lblKpiInventory" text="10" style="-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
+                            <Label fx:id="lblKpiInventory" text="0 Units" style="-fx-font-size: 32px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
                             <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label fx:id="lblKpiLowStockBadge" text="▲ Increased from last month"
+                                <Label fx:id="lblKpiLowStockBadge" text="Stock Normal"
                                        style="-fx-background-color: #f0fdf4; -fx-background-radius: 6px; -fx-text-fill: #166534; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;" />
                             </HBox>
                         </VBox>
 
-                        <!-- KPI Card 3: Running Projects ("Running Projects 12") -->
+                        <!-- KPI Card 3: Conveyor Line Status -->
                         <VBox spacing="10" HBox.hgrow="ALWAYS"
                               style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-min-width: 220px;">
                             <HBox alignment="CENTER_LEFT">
-                                <Label text="Running Projects" style="-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                                <Label text="CONVEYOR LINE STATUS" style="-fx-text-fill: #6b7280; -fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;" />
                                 <Region HBox.hgrow="ALWAYS" />
                                 <Button text="↗" onAction="#handleNavScada"
-                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-background-radius: 999px; -fx-border-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
                             </HBox>
                             <HBox alignment="CENTER_LEFT" spacing="8">
-                                <Circle fx:id="circleKpiLineDot" radius="5" fill="#22c55e" />
-                                <Label fx:id="lblKpiActiveEqCount" text="12" style="-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
-                                <Label fx:id="lblKpiLineState" text="RUNNING" visible="false" managed="false" />
+                                <Circle fx:id="circleKpiLineDot" radius="6" fill="#94a3b8" />
+                                <Label fx:id="lblKpiLineState" text="DISCONNECTED" style="-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: #64748b;" />
                             </HBox>
                             <HBox alignment="CENTER_LEFT" spacing="6">
-                                <Label text="▲ Increased from last month"
-                                       style="-fx-background-color: #f0fdf4; -fx-background-radius: 6px; -fx-text-fill: #166534; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                                <Label fx:id="lblKpiActiveEqCount" text="0/0 Active"
+                                       style="-fx-background-color: #f3f4f6; -fx-background-radius: 6px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;" />
                             </HBox>
                         </VBox>
 
-                        <!-- KPI Card 4: Pending Project ("Pending Project 2") -->
+                        <!-- KPI Card 4: Packages Detected -->
                         <VBox spacing="10" HBox.hgrow="ALWAYS"
                               style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-min-width: 220px;">
                             <HBox alignment="CENTER_LEFT">
-                                <Label text="Pending Project" style="-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                                <Label text="PACKAGES DETECTED" style="-fx-text-fill: #6b7280; -fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;" />
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Button text="↗" onAction="#handleNavFinance"
-                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-background-radius: 999px; -fx-border-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
+                                <Button text="↗" onAction="#handleNavScada"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-cursor: hand;" />
                             </HBox>
-                            <Label fx:id="lblKpiPackageCount" text="2" style="-fx-font-size: 34px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
-                            <Label text="On Discuss" style="-fx-text-fill: #9ca3af; -fx-font-size: 12px; -fx-font-weight: 500;" />
-                            <Label fx:id="lblKpiSkuCount" text="5 SKUs" visible="false" managed="false" />
+                            <Label fx:id="lblKpiPackageCount" text="0 Pcs" style="-fx-font-size: 32px; -fx-font-weight: 800; -fx-text-fill: #111827;" />
+                            <Label text="Optical entry sensor counter" style="-fx-text-fill: #9ca3af; -fx-font-size: 11px; -fx-font-weight: 500;" />
                         </VBox>
                     </HBox>
 
-                    <!-- Middle Row: 3 Cards (Project Analytics | Reminders | Project) -->
+                    <!-- Middle Row: Concurrency Buffer & Fast Line Controls -->
                     <HBox spacing="16">
-                        <!-- Card 1: Project Analytics (Pill Bar Chart) -->
-                        <VBox spacing="14" HBox.hgrow="ALWAYS" prefWidth="380"
+                        <!-- Card 1: Thread-Safe Intake Queue (Producer-Consumer Engine) -->
+                        <VBox spacing="14" HBox.hgrow="ALWAYS"
                               style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
-                            <Label text="Project Analytics" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
-
-                            <!-- 7 Vertical Pill Bars (S, M, T, W, T, F, S) -->
-                            <HBox alignment="BOTTOM_CENTER" spacing="14" style="-fx-padding: 10 0 4 0;" prefHeight="130">
-                                <!-- Sunday -->
-                                <VBox alignment="BOTTOM_CENTER" spacing="8">
-                                    <Region prefWidth="30" prefHeight="70" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
-                                    <Label text="S" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <Label text="⚡" style="-fx-font-size: 18px; -fx-text-fill: #16a34a;" />
+                                <VBox spacing="2">
+                                    <HBox alignment="CENTER_LEFT" spacing="8">
+                                        <Label text="Thread-Safe Intake Queue" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                                        <Label text="PRODUCER-CONSUMER"
+                                               style="-fx-background-color: #dcfce7; -fx-background-radius: 999px; -fx-text-fill: #15803d; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 2 8;" />
+                                    </HBox>
+                                    <Label text="Bounded WarehouseBuffer (ReentrantLock &amp; Conditions)" style="-fx-font-size: 11px; -fx-text-fill: #6b7280;" />
                                 </VBox>
-                                <!-- Monday -->
-                                <VBox alignment="BOTTOM_CENTER" spacing="8">
-                                    <Region prefWidth="30" prefHeight="95" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
-                                    <Label text="M" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
-                                </VBox>
-                                <!-- Tuesday (74% Mint Bar) -->
-                                <VBox alignment="BOTTOM_CENTER" spacing="6">
-                                    <Label text="74%" style="-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #15803d; -fx-background-color: #dcfce7; -fx-padding: 1 4; -fx-background-radius: 4px;" />
-                                    <Region prefWidth="32" prefHeight="100" style="-fx-background-color: #4ade80; -fx-background-radius: 999px;" />
-                                    <Label text="T" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
-                                </VBox>
-                                <!-- Wednesday (Solid Dark Green Peak Bar) -->
-                                <VBox alignment="BOTTOM_CENTER" spacing="8">
-                                    <Region prefWidth="32" prefHeight="120" style="-fx-background-color: #14532d; -fx-background-radius: 999px;" />
-                                    <Label text="W" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
-                                </VBox>
-                                <!-- Thursday -->
-                                <VBox alignment="BOTTOM_CENTER" spacing="8">
-                                    <Region prefWidth="30" prefHeight="85" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
-                                    <Label text="T" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
-                                </VBox>
-                                <!-- Friday -->
-                                <VBox alignment="BOTTOM_CENTER" spacing="8">
-                                    <Region prefWidth="30" prefHeight="90" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
-                                    <Label text="F" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
-                                </VBox>
-                                <!-- Saturday -->
-                                <VBox alignment="BOTTOM_CENTER" spacing="8">
-                                    <Region prefWidth="30" prefHeight="65" style="-fx-background-color: #e5e7eb; -fx-background-radius: 999px;" />
-                                    <Label text="S" style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" />
-                                </VBox>
-                            </HBox>
-                        </VBox>
-
-                        <!-- Card 2: Reminders ("Meeting with Arc Company") -->
-                        <VBox spacing="12" HBox.hgrow="ALWAYS" prefWidth="340"
-                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
-                            <Label text="Reminders" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
-                            <VBox spacing="3" VBox.vgrow="ALWAYS">
-                                <Label text="Meeting with Arc Company" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
-                                <Label text="Time : 02.00 pm - 04.00 pm" style="-fx-font-size: 12px; -fx-text-fill: #6b7280;" />
-                            </VBox>
-                            <Button text="📹 Start Meeting" onAction="#handleNavScada" maxWidth="Infinity"
-                                    style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 24; -fx-cursor: hand;" />
-                        </VBox>
-
-                        <!-- Card 3: Project (List with Colored Icons) -->
-                        <VBox spacing="10" HBox.hgrow="ALWAYS" prefWidth="340"
-                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
-                            <HBox alignment="CENTER_LEFT">
-                                <Label text="Project" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Button text="+ New" onAction="#handleNavTags"
-                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 12; -fx-cursor: hand;" />
+                                <Button text="📦 Ingest Batch (+5)" onAction="#handleTriggerProducerBatch"
+                                        style="-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;" />
                             </HBox>
 
-                            <VBox spacing="8">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="⚡" style="-fx-text-fill: #3b82f6; -fx-font-size: 14px;" />
-                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
-                                        <Label text="Develop API Endpoints" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
-                                        <Label text="Due date: Nov 26, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
-                                    </VBox>
-                                </HBox>
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="🔄" style="-fx-text-fill: #10b981; -fx-font-size: 14px;" />
-                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
-                                        <Label text="Onboarding Flow" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
-                                        <Label text="Due date: Nov 28, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
-                                    </VBox>
-                                </HBox>
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="📦" style="-fx-text-fill: #f59e0b; -fx-font-size: 14px;" />
-                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
-                                        <Label text="Build Dashboard" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
-                                        <Label text="Due date: Nov 30, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
-                                    </VBox>
-                                </HBox>
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="👁️" style="-fx-text-fill: #ef4444; -fx-font-size: 14px;" />
-                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
-                                        <Label text="Optimize Page Load" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
-                                        <Label text="Due date: Dec 5, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
-                                    </VBox>
-                                </HBox>
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="🛑" style="-fx-text-fill: #8b5cf6; -fx-font-size: 14px;" />
-                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
-                                        <Label text="Cross-Browser Testing" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #111827;" />
-                                        <Label text="Due date: Dec 6, 2024" style="-fx-font-size: 10px; -fx-text-fill: #9ca3af;" />
-                                    </VBox>
-                                </HBox>
+                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                <Label fx:id="lblBufferUsage" text="Queue Capacity: 0 / 10 Packages (0% Full)" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #374151;" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Label fx:id="lblProducerStatus" text="PRODUCER: IDLE"
+                                       style="-fx-background-color: #f3f4f6; -fx-background-radius: 6px; -fx-text-fill: #4b5563; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                                <Label fx:id="lblConsumerStatus" text="CONSUMER: LISTENING"
+                                       style="-fx-background-color: #dbeafe; -fx-background-radius: 6px; -fx-text-fill: #1d4ed8; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                            </HBox>
+
+                            <!-- Visual Slot Strip -->
+                            <HBox fx:id="boxBufferVisualSlots" spacing="6" alignment="CENTER_LEFT"
+                                  style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 12px 14px;" />
+                        </VBox>
+
+                        <!-- Card 2: OT Line Controls & Live Digital Clock -->
+                        <VBox spacing="14" prefWidth="380"
+                              style="-fx-background-color: #052e16; -fx-background-radius: 16px; -fx-padding: 22px; -fx-effect: dropshadow(three-pass-box, rgba(5,46,22,0.3), 16, 0, 0, 6);">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="OT Line Controls &amp; Clock" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #a7f3d0;" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Label text="Modbus TCP" style="-fx-font-size: 10px; -fx-text-fill: #6ee7b7; -fx-background-color: rgba(255,255,255,0.1); -fx-background-radius: 999px; -fx-padding: 2 8;" />
+                            </HBox>
+
+                            <VBox spacing="4" alignment="CENTER_LEFT">
+                                <Label text="CURRENT SYSTEM TIME" style="-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #6ee7b7;" />
+                                <Label fx:id="lblClock" text="00:00:00  |  01 Jan 2025"
+                                       style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 20px; -fx-font-weight: 800; -fx-text-fill: #ffffff;" />
                             </VBox>
+
+                            <Region VBox.vgrow="ALWAYS" />
+
+                            <HBox spacing="10" alignment="CENTER_LEFT">
+                                <Button text="⚡ 2s Motor Test" onAction="#handleRunAutoSequence" HBox.hgrow="ALWAYS" maxWidth="Infinity"
+                                        style="-fx-background-color: #ffffff; -fx-text-fill: #052e16; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;" />
+                                <Button text="🛑 EMERGENCY STOP" onAction="#handleEmergencyStop" HBox.hgrow="ALWAYS" maxWidth="Infinity"
+                                        style="-fx-background-color: #ef4444; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;" />
+                            </HBox>
                         </VBox>
                     </HBox>
 
-                    <!-- Bottom Row: 3 Cards (Team Collaboration | Project Progress | Time Tracker) -->
-                    <HBox spacing="16">
-                        <!-- Card 1: Team Collaboration (Audit Stream List) -->
-                        <VBox spacing="12" HBox.hgrow="ALWAYS" prefWidth="420"
-                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
-                            <HBox alignment="CENTER_LEFT">
-                                <Label text="Team Collaboration" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
-                                <Region HBox.hgrow="ALWAYS" />
-                                <Button text="+ Add Member" onAction="#handleClearAuditStream"
-                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 12; -fx-cursor: hand;" />
-                            </HBox>
-
-                            <!-- Member / Event Rows -->
-                            <VBox spacing="10">
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="👩" style="-fx-background-color: #fed7aa; -fx-background-radius: 999px; -fx-padding: 4 7; -fx-font-size: 13px;" />
-                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
-                                        <Label text="Alexandra Deff" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
-                                        <Label text="Working on Github Project Repository" style="-fx-font-size: 10px; -fx-text-fill: #6b7280;" />
-                                    </VBox>
-                                    <Label text="Completed" style="-fx-background-color: #dcfce7; -fx-text-fill: #15803d; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
+                    <!-- Operational Workspaces Gateways (Level 2 Quick Access) -->
+                    <VBox spacing="12">
+                        <Label text="Operational Workspaces (Level 2 Access)" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                        <HBox spacing="16">
+                            <!-- Gateway 1: SCADA -->
+                            <VBox spacing="10" HBox.hgrow="ALWAYS" prefWidth="260" onMouseClicked="#handleNavScada"
+                                  style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-cursor: hand;">
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="🏭" style="-fx-font-size: 20px;" />
+                                    <Label text="OT SCADA Station" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
                                 </HBox>
-
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="👨" style="-fx-background-color: #bbf7d0; -fx-background-radius: 999px; -fx-padding: 4 7; -fx-font-size: 13px;" />
-                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
-                                        <Label text="Edwin Adenike" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
-                                        <Label text="Working on Integrate User Authentication System" style="-fx-font-size: 10px; -fx-text-fill: #6b7280;" />
-                                    </VBox>
-                                    <Label text="In Progress" style="-fx-background-color: #fef3c7; -fx-text-fill: #b45309; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
-                                </HBox>
-
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="👦" style="-fx-background-color: #bfdbfe; -fx-background-radius: 999px; -fx-padding: 4 7; -fx-font-size: 13px;" />
-                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
-                                        <Label text="Isaac Oluwatemilorun" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
-                                        <Label text="Working on Develop Search and Filter Functionality" style="-fx-font-size: 10px; -fx-text-fill: #6b7280;" />
-                                    </VBox>
-                                    <Label text="Pending" style="-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
-                                </HBox>
-
-                                <HBox alignment="CENTER_LEFT" spacing="10">
-                                    <Label text="🧔" style="-fx-background-color: #fef08a; -fx-background-radius: 999px; -fx-padding: 4 7; -fx-font-size: 13px;" />
-                                    <VBox spacing="1" HBox.hgrow="ALWAYS">
-                                        <Label text="David Oshodi" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #111827;" />
-                                        <Label text="Working on Responsive Layout for Homepage" style="-fx-font-size: 10px; -fx-text-fill: #6b7280;" />
-                                    </VBox>
-                                    <Label text="In Progress" style="-fx-background-color: #fef3c7; -fx-text-fill: #b45309; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;" />
-                                </HBox>
+                                <Label text="Interactive 2D factory floor layout, live conveyor actuation, optical sensors, and emergency stop." wrapText="true"
+                                       style="-fx-font-size: 11px; -fx-text-fill: #6b7280;" VBox.vgrow="ALWAYS" />
+                                <Button text="Launch SCADA Station →" onAction="#handleNavScada" maxWidth="Infinity"
+                                        style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 7 14; -fx-cursor: hand;" />
                             </VBox>
 
-                            <!-- Mini Filter Chips & Actual Telemetry Audit TextArea -->
-                            <HBox spacing="6" alignment="CENTER_LEFT" style="-fx-padding: 4 0 0 0;">
+                            <!-- Gateway 2: Inventory -->
+                            <VBox spacing="10" HBox.hgrow="ALWAYS" prefWidth="260" onMouseClicked="#handleNavInventory"
+                                  style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-cursor: hand;">
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="📦" style="-fx-font-size: 20px;" />
+                                    <Label text="Inventory Ledger" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                                </HBox>
+                                <Label text="Manage SQLite product catalog, SKU tracking, bin locations, and automated stock replenishment." wrapText="true"
+                                       style="-fx-font-size: 11px; -fx-text-fill: #6b7280;" VBox.vgrow="ALWAYS" />
+                                <Button text="Open Ledger →" onAction="#handleNavInventory" maxWidth="Infinity"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #374151; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 7 14; -fx-cursor: hand;" />
+                            </VBox>
+
+                            <!-- Gateway 3: Finance -->
+                            <VBox spacing="10" HBox.hgrow="ALWAYS" prefWidth="260" onMouseClicked="#handleNavFinance"
+                                  style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-cursor: hand;">
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="💰" style="-fx-font-size: 20px;" />
+                                    <Label text="Financial Valuation" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                                </HBox>
+                                <Label text="Stock valuation calculators, customer order billing, tax calculations, and invoice exports." wrapText="true"
+                                       style="-fx-font-size: 11px; -fx-text-fill: #6b7280;" VBox.vgrow="ALWAYS" />
+                                <Button text="View Finances →" onAction="#handleNavFinance" maxWidth="Infinity"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #374151; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 7 14; -fx-cursor: hand;" />
+                            </VBox>
+
+                            <!-- Gateway 4: Hardware Tag Profiler -->
+                            <VBox spacing="10" HBox.hgrow="ALWAYS" prefWidth="260" onMouseClicked="#handleNavTags"
+                                  style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 20px; -fx-cursor: hand;">
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="⚙️" style="-fx-font-size: 20px;" />
+                                    <Label text="Hardware Tag Profiler" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                                </HBox>
+                                <Label text="Configure Modbus PLC coils, discrete inputs, and mapping parameters in warehouse_tags.json." wrapText="true"
+                                       style="-fx-font-size: 11px; -fx-text-fill: #6b7280;" VBox.vgrow="ALWAYS" />
+                                <Button text="Open Settings →" onAction="#handleNavTags" maxWidth="Infinity"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #374151; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 7 14; -fx-cursor: hand;" />
+                            </VBox>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Converged Real-Time Activity Log (IT & OT Stream) -->
+                    <VBox spacing="12"
+                          style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <VBox spacing="2">
+                                <Label text="Converged Operational Activity Log (IT &amp; OT Stream)" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                                <Label text="Live unified audit trail combining operator actions, SQLite database transactions, and Factory I/O PLC events." style="-fx-font-size: 12px; -fx-text-fill: #6b7280;" />
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS" />
+
+                            <!-- Filter Toolbar -->
+                            <HBox spacing="6" alignment="CENTER_LEFT">
                                 <Button fx:id="btnFilterAll" text="All Events" onAction="#handleFilterAuditAll"
-                                        style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 4 10; -fx-cursor: hand;" />
-                                <Button fx:id="btnFilterOt" text="OT" onAction="#handleFilterAuditOt"
-                                        style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 10px; -fx-padding: 4 10; -fx-cursor: hand;" />
-                                <Button fx:id="btnFilterIt" text="IT" onAction="#handleFilterAuditIt"
-                                        style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 10px; -fx-padding: 4 10; -fx-cursor: hand;" />
-                                <Button fx:id="btnFilterSys" text="Sys" onAction="#handleFilterAuditSys"
-                                        style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 10px; -fx-padding: 4 10; -fx-cursor: hand;" />
+                                        style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;" />
+                                <Button fx:id="btnFilterOt" text="🏭 OT Only" onAction="#handleFilterAuditOt"
+                                        style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 11px; -fx-padding: 5 12; -fx-cursor: hand;" />
+                                <Button fx:id="btnFilterIt" text="📦 IT Only" onAction="#handleFilterAuditIt"
+                                        style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 11px; -fx-padding: 5 12; -fx-cursor: hand;" />
+                                <Button fx:id="btnFilterSys" text="⚙️ System" onAction="#handleFilterAuditSys"
+                                        style="-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #6b7280; -fx-font-size: 11px; -fx-padding: 5 12; -fx-cursor: hand;" />
+                                <Button text="Clear Log" onAction="#handleClearAuditStream"
+                                        style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #4b5563; -fx-font-size: 11px; -fx-padding: 5 12; -fx-cursor: hand;" />
                             </HBox>
-                            <TextArea fx:id="txtAuditStream" prefRowCount="3" editable="false"
-                                      style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;" />
-                        </VBox>
+                        </HBox>
 
-                        <!-- Card 2: Project Progress (Warehouse Buffer Donut Gauge) -->
-                        <VBox spacing="12" HBox.hgrow="ALWAYS" prefWidth="320" alignment="TOP_CENTER"
-                              style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
-                            <HBox alignment="CENTER_LEFT" maxWidth="Infinity">
-                                <Label text="Project Progress" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
-                            </HBox>
-
-                            <!-- Donut Progress Semi-Circle Graphic -->
-                            <StackPane prefHeight="110" alignment="CENTER">
-                                <VBox alignment="CENTER" spacing="2">
-                                    <Label text="41%" style="-fx-font-size: 34px; -fx-font-weight: 900; -fx-text-fill: #111827;" />
-                                    <Label text="Project Ended" style="-fx-font-size: 11px; -fx-text-fill: #6b7280; -fx-font-weight: 500;" />
-                                </VBox>
-                            </StackPane>
-
-                            <!-- Producer-Consumer Slot Indicators -->
-                            <HBox fx:id="boxBufferVisualSlots" spacing="4" alignment="CENTER" style="-fx-padding: 2 0;" />
-                            <Label fx:id="lblBufferUsage" text="Queue Capacity: 0 / 10 Packages (0% Full)" style="-fx-font-size: 11px; -fx-text-fill: #6b7280; -fx-font-weight: 600;" />
-
-                            <!-- Legend Dots -->
-                            <HBox spacing="12" alignment="CENTER">
-                                <HBox spacing="4" alignment="CENTER">
-                                    <Circle radius="4" fill="#14532d" />
-                                    <Label text="Completed" style="-fx-font-size: 10px; -fx-text-fill: #4b5563;" />
-                                </HBox>
-                                <HBox spacing="4" alignment="CENTER">
-                                    <Circle radius="4" fill="#4ade80" />
-                                    <Label text="In Progress" style="-fx-font-size: 10px; -fx-text-fill: #4b5563;" />
-                                </HBox>
-                                <HBox spacing="4" alignment="CENTER">
-                                    <Circle radius="4" fill="#cbd5e1" />
-                                    <Label text="Pending" style="-fx-font-size: 10px; -fx-text-fill: #4b5563;" />
-                                </HBox>
-                            </HBox>
-
-                            <Button text="📦 Ingest Batch (+5)" onAction="#handleTriggerProducerBatch" maxWidth="Infinity"
-                                    style="-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;" />
-
-                            <Label fx:id="lblProducerStatus" text="PRODUCER: IDLE" visible="false" managed="false" />
-                            <Label fx:id="lblConsumerStatus" text="CONSUMER: LISTENING" visible="false" managed="false" />
-                        </VBox>
-
-                        <!-- Card 3: Time Tracker (Dark Green Card with Clock & Controls) -->
-                        <VBox spacing="14" HBox.hgrow="ALWAYS" prefWidth="280" alignment="TOP_LEFT"
-                              style="-fx-background-color: #052e16; -fx-background-radius: 16px; -fx-padding: 24px; -fx-effect: dropshadow(three-pass-box, rgba(5,46,22,0.3), 16, 0, 0, 6);">
-                            <Label text="Time Tracker" style="-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #a7f3d0;" />
-
-                            <Region VBox.vgrow="ALWAYS" />
-
-                            <VBox alignment="CENTER" spacing="12">
-                                <Label fx:id="lblClock" text="01:24:08"
-                                       style="-fx-font-family: 'Consolas', monospace; -fx-font-size: 32px; -fx-font-weight: 900; -fx-text-fill: #ffffff;" />
-
-                                <!-- Round Control Buttons (Pause / Stop E-Stop) -->
-                                <HBox spacing="16" alignment="CENTER">
-                                    <Button text="⏸" onAction="#handleRunAutoSequence"
-                                            style="-fx-background-color: #ffffff; -fx-background-radius: 999px; -fx-text-fill: #052e16; -fx-font-size: 15px; -fx-padding: 8 14; -fx-cursor: hand;" />
-                                    <Button text="🛑" onAction="#handleEmergencyStop"
-                                            style="-fx-background-color: #ef4444; -fx-background-radius: 999px; -fx-text-fill: #ffffff; -fx-font-size: 15px; -fx-padding: 8 14; -fx-cursor: hand;" />
-                                </HBox>
-                            </VBox>
-
-                            <Region VBox.vgrow="ALWAYS" />
-                            <Label text="Factory I/O Modbus Ticking Engine" style="-fx-font-size: 10px; -fx-text-fill: #6ee7b7;" />
-                        </VBox>
-                    </HBox>
+                        <TextArea fx:id="txtAuditStream" prefRowCount="6" editable="false"
+                                  style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 10px; -fx-background-radius: 10px; -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;" />
+                    </VBox>
 
                 </VBox>
             </ScrollPane>

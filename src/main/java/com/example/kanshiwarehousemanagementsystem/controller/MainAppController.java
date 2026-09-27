@@ -1008,9 +1008,9 @@ public class MainAppController implements Initializable {
                 slot.setPrefWidth(24);
                 slot.setPrefHeight(14);
                 if (i < currentSize) {
-                    slot.setStyle("-fx-background-color: #7a0c1e; -fx-background-radius: 3px;");
+                    slot.setStyle("-fx-background-color: #14532d; -fx-background-radius: 4px;");
                 } else {
-                    slot.setStyle("-fx-background-color: #f1f5f9; -fx-background-radius: 3px; -fx-border-color: #cbd5e1; -fx-border-radius: 3px;");
+                    slot.setStyle("-fx-background-color: #f1f5f9; -fx-background-radius: 4px; -fx-border-color: #cbd5e1; -fx-border-radius: 4px;");
                 }
                 boxBufferVisualSlots.getChildren().add(slot);
             }

@@ -55,8 +55,14 @@ public class LoginController implements Initializable {
 
     private final UserDao userDao = new UserDao();
 
+    private static final String TAB_ACTIVE_STYLE = "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 8 20; -fx-cursor: hand;";
+    private static final String TAB_INACTIVE_STYLE = "-fx-background-color: transparent; -fx-text-fill: #6b7280; -fx-background-radius: 999px; -fx-font-size: 13px; -fx-font-weight: 500; -fx-padding: 8 20; -fx-cursor: hand;";
+
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        btnSignInTab.setStyle(TAB_ACTIVE_STYLE);
+        btnRegisterTab.setStyle(TAB_INACTIVE_STYLE);
+
         // Password Strength Real-time Listener
         txtRegPassword.textProperty().addListener((obs, oldVal, newVal) -> {
             updatePasswordStrength(newVal);
@@ -100,8 +106,8 @@ public class LoginController implements Initializable {
         registerFormBox.setVisible(false);
         registerFormBox.setManaged(false);
 
-        btnSignInTab.getStyleClass().add("mode-tab-btn-active");
-        btnRegisterTab.getStyleClass().remove("mode-tab-btn-active");
+        btnSignInTab.setStyle(TAB_ACTIVE_STYLE);
+        btnRegisterTab.setStyle(TAB_INACTIVE_STYLE);
 
         hideStatus();
     }
@@ -113,8 +119,8 @@ public class LoginController implements Initializable {
         registerFormBox.setVisible(true);
         registerFormBox.setManaged(true);
 
-        btnRegisterTab.getStyleClass().add("mode-tab-btn-active");
-        btnSignInTab.getStyleClass().remove("mode-tab-btn-active");
+        btnRegisterTab.setStyle(TAB_ACTIVE_STYLE);
+        btnSignInTab.setStyle(TAB_INACTIVE_STYLE);
 
         hideStatus();
     }
