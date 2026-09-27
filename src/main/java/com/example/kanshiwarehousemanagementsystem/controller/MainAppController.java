@@ -303,10 +303,13 @@ public class MainAppController implements Initializable {
      * Initializes the live ticking header clock.
      */
     private void initClock() {
+        if (lblClock == null) return;
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss  |  dd MMM yyyy");
         lblClock.setText(LocalDateTime.now().format(formatter));
         clockTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
-            lblClock.setText(LocalDateTime.now().format(formatter));
+            if (lblClock != null) {
+                lblClock.setText(LocalDateTime.now().format(formatter));
+            }
         }));
         clockTimeline.setCycleCount(Animation.INDEFINITE);
         clockTimeline.play();
@@ -2468,7 +2471,9 @@ public class MainAppController implements Initializable {
             btnToggleDesignMode.setStyle("-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
             boxDesignModeBanner.setVisible(true);
             boxDesignModeBanner.setManaged(true);
-            lblFloorStudioSubtitle.setText("LAYOUT STUDIO ACTIVE: Click [+] on an empty cell to add equipment, [↻] to rotate flow direction, or [🗑] to remove.");
+            if (lblFloorStudioSubtitle != null) {
+                lblFloorStudioSubtitle.setText("LAYOUT STUDIO ACTIVE: Click [+] on an empty cell to add equipment, [↻] to rotate flow direction, or [🗑] to remove.");
+            }
             log("[SCADA STUDIO] Entered layout design mode.");
         } else {
             floorLayoutService.saveToFile();
@@ -2476,7 +2481,9 @@ public class MainAppController implements Initializable {
             btnToggleDesignMode.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
             boxDesignModeBanner.setVisible(false);
             boxDesignModeBanner.setManaged(false);
-            lblFloorStudioSubtitle.setText("Live operational SCADA mimic. Toggle Edit Mode to place and orient machines on the factory floor grid.");
+            if (lblFloorStudioSubtitle != null) {
+                lblFloorStudioSubtitle.setText("Live operational SCADA mimic. Toggle Edit Mode to place and orient machines on the factory floor grid.");
+            }
             log("[SCADA STUDIO] Factory floor layout updated and locked into operational mode.");
             logAudit("OT-SCADA", "Factory floor layout updated and locked into operational mode.");
         }
