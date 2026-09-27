@@ -151,6 +151,8 @@ public class MainAppController implements Initializable {
     @FXML private Label lblConnectionStatus;
     @FXML private Button btnAutoTest;
     @FXML private Button btnEstop;
+    @FXML private Button btnStartAll;
+    @FXML private Button btnDashStartAll;
 
     // 2D Factory Floor SCADA Studio
     @FXML private GridPane floorGridPane;
@@ -247,6 +249,7 @@ public class MainAppController implements Initializable {
     // SCADA Status & Animation
     @FXML private Label lblMimicLineStatus;
 
+    private boolean isSystemRunningAll = false;
     private double beltOffset = 0;
     private Timeline mimicAnimationTimeline;
     private volatile boolean isVisionSensorActive = false;
@@ -777,6 +780,177 @@ public class MainAppController implements Initializable {
         gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
         String arrow = getBridgeArrowForDirection(dir);
         gc.fillText(arrow, w / 2 - 12, h / 2 + 6);
+    }
+
+    private void drawStackerCraneVisual(Canvas canvas) {
+        if (canvas == null) return;
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        gc.setFill(Color.web("#0f172a"));
+        gc.fillRect(0, 0, w, h);
+
+        gc.setStroke(Color.web("#334155"));
+        gc.setLineWidth(1.0);
+        gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
+
+        // Yellow hazard stripe top cross-beam
+        gc.setFill(Color.web("#eab308"));
+        gc.fillRect(4, 4, w - 8, 4);
+        gc.setStroke(Color.web("#ca8a04"));
+        gc.setLineWidth(0.8);
+        gc.strokeRect(4, 4, w - 8, 4);
+
+        // Dual vertical mast columns
+        gc.setFill(Color.web("#64748b"));
+        gc.fillRect(8, 8, 6, h - 16);
+        gc.fillRect(w - 14, 8, 6, h - 16);
+
+        // Mast lattice truss lines
+        gc.setStroke(Color.web("#475569"));
+        gc.setLineWidth(0.8);
+        for (double y = 10; y < h - 14; y += 8) {
+            gc.strokeLine(8, y, 14, y + 6);
+            gc.strokeLine(w - 14, y, w - 8, y + 6);
+        }
+
+        // Ground rail
+        gc.setFill(Color.web("#334155"));
+        gc.fillRect(4, h - 7, w - 8, 4);
+
+        // Central elevator carriage & telescopic forks
+        double cy = h / 2.0 - 5;
+        gc.setFill(Color.web("#0284c7"));
+        gc.fillRoundRect(22, cy, w - 44, 14, 3, 3);
+        gc.setStroke(Color.web("#38bdf8"));
+        gc.setLineWidth(1.0);
+        gc.strokeRoundRect(22, cy, w - 44, 14, 3, 3);
+
+        // Telescopic forks
+        gc.setFill(Color.web("#e2e8f0"));
+        gc.fillRect(16, cy + 4, 10, 3);
+        gc.fillRect(w - 26, cy + 4, 10, 3);
+
+        // Center crane label
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 8));
+        gc.fillText("ASRS CRANE", w / 2.0 - 24, cy + 10);
+    }
+
+    private void drawStorageRackVisual(Canvas canvas) {
+        if (canvas == null) return;
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        gc.setFill(Color.web("#f8fafc"));
+        gc.fillRect(0, 0, w, h);
+
+        gc.setStroke(Color.web("#cbd5e1"));
+        gc.setLineWidth(1.0);
+        gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
+
+        // Vertical rack uprights (blue steel columns)
+        gc.setFill(Color.web("#2563eb"));
+        gc.fillRect(6, 4, 4, h - 8);
+        gc.fillRect(w / 2.0 - 2, 4, 4, h - 8);
+        gc.fillRect(w - 10, 4, 4, h - 8);
+
+        // Horizontal shelf beams
+        gc.setFill(Color.web("#f97316"));
+        double shelfY1 = h / 3.0 + 2;
+        double shelfY2 = 2 * h / 3.0 + 4;
+        gc.fillRect(6, shelfY1, w - 12, 3);
+        gc.fillRect(6, shelfY2, w - 12, 3);
+        gc.fillRect(6, h - 6, w - 12, 3);
+
+        // Crates stored on shelves
+        gc.setFill(Color.web("#d97706"));
+        gc.fillRoundRect(12, shelfY1 - 10, 18, 10, 2, 2);
+        gc.setFill(Color.web("#059669"));
+        gc.fillRoundRect(w / 2.0 + 6, shelfY1 - 10, 18, 10, 2, 2);
+
+        gc.setFill(Color.web("#4f46e5"));
+        gc.fillRoundRect(12, shelfY2 - 10, 18, 10, 2, 2);
+        gc.setFill(Color.web("#d97706"));
+        gc.fillRoundRect(w / 2.0 + 6, shelfY2 - 10, 18, 10, 2, 2);
+
+        gc.setFill(Color.web("#0284c7"));
+        gc.fillRoundRect(12, h - 16, 18, 10, 2, 2);
+        gc.setFill(Color.web("#d97706"));
+        gc.fillRoundRect(w / 2.0 + 6, h - 16, 18, 10, 2, 2);
+    }
+
+    private void drawControlPanelVisual(Canvas canvas, boolean running) {
+        if (canvas == null) return;
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        // Control Console Enclosure
+        gc.setFill(Color.web("#1e293b"));
+        gc.fillRect(0, 0, w, h);
+
+        gc.setStroke(Color.web("#475569"));
+        gc.setLineWidth(1.2);
+        gc.strokeRoundRect(1.5, 1.5, w - 3, h - 3, 5, 5);
+
+        // Title Header
+        gc.setFill(Color.web("#94a3b8"));
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 7));
+        gc.fillText("CONTROL CONSOLE", 12, 10);
+
+        // Three Indicator Pilot Lamps
+        double lamp1X = 22, lampY = 22;
+        gc.setFill(Color.web("#334155"));
+        gc.fillOval(lamp1X - 6, lampY - 6, 12, 12);
+        gc.setFill(running ? Color.web("#22c55e") : Color.web("#14532d"));
+        gc.fillOval(lamp1X - 4, lampY - 4, 8, 8);
+        if (running) {
+            gc.setStroke(Color.web("#4ade80"));
+            gc.setLineWidth(1.0);
+            gc.strokeOval(lamp1X - 7, lampY - 7, 14, 14);
+        }
+
+        double lamp2X = w / 2.0;
+        gc.setFill(Color.web("#334155"));
+        gc.fillOval(lamp2X - 6, lampY - 6, 12, 12);
+        gc.setFill(Color.web("#78350f"));
+        gc.fillOval(lamp2X - 4, lampY - 4, 8, 8);
+
+        double lamp3X = w - 22;
+        gc.setFill(Color.web("#334155"));
+        gc.fillOval(lamp3X - 6, lampY - 6, 12, 12);
+        gc.setFill(!running ? Color.web("#ef4444") : Color.web("#7f1d1d"));
+        gc.fillOval(lamp3X - 4, lampY - 4, 8, 8);
+        if (!running) {
+            gc.setStroke(Color.web("#f87171"));
+            gc.setLineWidth(1.0);
+            gc.strokeOval(lamp3X - 7, lampY - 7, 14, 14);
+        }
+
+        // Push Buttons
+        double btnY = 38;
+        gc.setFill(Color.web("#16a34a"));
+        gc.fillRoundRect(lamp1X - 7, btnY - 5, 14, 10, 3, 3);
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 6));
+        gc.fillText("START", lamp1X - 7, btnY + 12);
+
+        gc.setFill(Color.web("#ca8a04"));
+        gc.fillRoundRect(lamp2X - 7, btnY - 5, 14, 10, 3, 3);
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 6));
+        gc.fillText("RESET", lamp2X - 7, btnY + 12);
+
+        gc.setFill(Color.web("#eab308"));
+        gc.fillOval(lamp3X - 8, btnY - 6, 16, 12);
+        gc.setFill(Color.web("#dc2626"));
+        gc.fillOval(lamp3X - 6, btnY - 5, 12, 10);
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 6));
+        gc.fillText("STOP", lamp3X - 6, btnY + 12);
     }
 
     /**
@@ -2611,6 +2785,91 @@ public class MainAppController implements Initializable {
                 }
                 return createOperationalSensorBlock(tag, placement);
             }
+            case STACKER_CRANE -> {
+                VBox box = new VBox(2);
+                box.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
+                box.setMinWidth(118);
+                box.setMaxWidth(122);
+                box.setMinHeight(84);
+                box.setMaxHeight(84);
+
+                HBox microTopBar = new HBox(4);
+                microTopBar.setStyle("-fx-padding: 0 0 2 0;");
+                Label icon = new Label("🏗️");
+                icon.setStyle("-fx-font-size: 10px;");
+                Label lbl = new Label("CRANE");
+                lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                int bay = (asrsEngine != null) ? asrsEngine.getActiveBay() : 0;
+                Label bayBadge = new Label(bay > 0 ? "Bay " + bay : "Standby");
+                bayBadge.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #15803d; -fx-background-color: #dcfce7; -fx-padding: 1 5; -fx-background-radius: 4px;");
+                microTopBar.getChildren().addAll(icon, lbl, spacer, bayBadge);
+
+                Canvas canvas = new Canvas(108, 54);
+                drawStackerCraneVisual(canvas);
+
+                box.getChildren().addAll(microTopBar, canvas);
+                Tooltip.install(box, new Tooltip("ASRS 2-Axis Stacker Crane\nClick for Diagnostics & Controls"));
+                box.setOnMouseClicked(e -> openEquipmentDetailsDialog(placement));
+                return box;
+            }
+            case STORAGE_RACK -> {
+                VBox box = new VBox(2);
+                box.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
+                box.setMinWidth(118);
+                box.setMaxWidth(122);
+                box.setMinHeight(84);
+                box.setMaxHeight(84);
+
+                HBox microTopBar = new HBox(4);
+                microTopBar.setStyle("-fx-padding: 0 0 2 0;");
+                Label icon = new Label("🗄️");
+                icon.setStyle("-fx-font-size: 10px;");
+                Label lbl = new Label("RACK");
+                lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                Label bayBadge = new Label("54 Bays");
+                bayBadge.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #1e40af; -fx-background-color: #dbeafe; -fx-padding: 1 5; -fx-background-radius: 4px;");
+                microTopBar.getChildren().addAll(icon, lbl, spacer, bayBadge);
+
+                Canvas canvas = new Canvas(108, 54);
+                drawStorageRackVisual(canvas);
+
+                box.getChildren().addAll(microTopBar, canvas);
+                Tooltip.install(box, new Tooltip("High-Bay Storage Rack (54 Bays)\nClick to Open Rack Storage Matrix"));
+                box.setOnMouseClicked(e -> handleNavMatrix(null));
+                return box;
+            }
+            case CONTROL_PANEL -> {
+                VBox box = new VBox(2);
+                box.setStyle("-fx-background-color: #ffffff; -fx-border-color: #e5e7eb; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-padding: 6px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 6, 0, 0, 2);");
+                box.setMinWidth(118);
+                box.setMaxWidth(122);
+                box.setMinHeight(84);
+                box.setMaxHeight(84);
+
+                HBox microTopBar = new HBox(4);
+                microTopBar.setStyle("-fx-padding: 0 0 2 0;");
+                Label icon = new Label("🎛️");
+                icon.setStyle("-fx-font-size: 10px;");
+                Label lbl = new Label("CONSOLE");
+                lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                Label stateBadge = new Label(isSystemRunningAll ? "RUNNING" : "STOPPED");
+                stateBadge.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: " + (isSystemRunningAll ? "#15803d; -fx-background-color: #dcfce7;" : "#991b1b; -fx-background-color: #fee2e2;") + " -fx-padding: 1 5; -fx-background-radius: 4px;");
+                microTopBar.getChildren().addAll(icon, lbl, spacer, stateBadge);
+
+                Canvas canvas = new Canvas(108, 54);
+                drawControlPanelVisual(canvas, isSystemRunningAll);
+
+                box.getChildren().addAll(microTopBar, canvas);
+                Tooltip.install(box, new Tooltip("Automated Warehouse Control Console\nClick to Toggle Master Run All"));
+                box.setOnMouseClicked(e -> handleStartAllSystem(null));
+                return box;
+            }
         }
         return createEmptyOperationalCell();
     }
@@ -2876,6 +3135,30 @@ public class MainAppController implements Initializable {
                 dialog.close();
             });
             actionBtns.getChildren().add(resetCtBtn);
+        } else if (placement.getAssetType() == AssetType.STACKER_CRANE) {
+            Button btnMatrix = new Button("🗄️ Open Storage Matrix");
+            btnMatrix.setStyle("-fx-background-color: #1e40af; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
+            btnMatrix.setOnAction(e -> {
+                dialog.close();
+                handleNavMatrix(null);
+            });
+            actionBtns.getChildren().add(btnMatrix);
+        } else if (placement.getAssetType() == AssetType.STORAGE_RACK) {
+            Button btnMatrix = new Button("🗄️ View 54-Bay Matrix Twin");
+            btnMatrix.setStyle("-fx-background-color: #1e40af; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
+            btnMatrix.setOnAction(e -> {
+                dialog.close();
+                handleNavMatrix(null);
+            });
+            actionBtns.getChildren().add(btnMatrix);
+        } else if (placement.getAssetType() == AssetType.CONTROL_PANEL) {
+            Button btnStartToggle = new Button(isSystemRunningAll ? "⏹ Stop All Lines" : "▶ Start All Lines");
+            btnStartToggle.setStyle(isSystemRunningAll ? "-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;" : "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
+            btnStartToggle.setOnAction(e -> {
+                dialog.close();
+                handleStartAllSystem(null);
+            });
+            actionBtns.getChildren().add(btnStartToggle);
         } else {
             Label passiveNotice = new Label("Passive fixture — no electrical actuation or direct I/O binding.");
             passiveNotice.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
@@ -2948,6 +3231,9 @@ public class MainAppController implements Initializable {
                 gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
                 gc.fillText(getBridgeArrowForDirection(placement.getDirection()), canvas.getWidth() / 2 - 8, 15);
             }
+            case STACKER_CRANE -> drawStackerCraneVisual(canvas);
+            case STORAGE_RACK -> drawStorageRackVisual(canvas);
+            case CONTROL_PANEL -> drawControlPanelVisual(canvas, false);
         }
     }
 
@@ -2989,6 +3275,9 @@ public class MainAppController implements Initializable {
         options.add(new PlacementOption(AssetType.INFEED, null, "📥 Infeed Chute (Entry Point)", false));
         options.add(new PlacementOption(AssetType.DEPOT, null, "📦 Warehouse Depot (Outfeed Chute)", false));
         options.add(new PlacementOption(AssetType.BRIDGE, null, "──► Conveyor Bridge (Flow Link)", false));
+        options.add(new PlacementOption(AssetType.STACKER_CRANE, null, "🏗️ Stacker Crane (ASRS 2-Axis)", false));
+        options.add(new PlacementOption(AssetType.STORAGE_RACK, null, "🗄️ Storage Rack (High-Bay)", false));
+        options.add(new PlacementOption(AssetType.CONTROL_PANEL, null, "🎛️ Control Console (Auto/Manual)", false));
 
         comboOptions.setItems(options);
         comboOptions.setCellFactory(param -> new ListCell<>() {
@@ -3232,6 +3521,9 @@ public class MainAppController implements Initializable {
             lblKpiLineState.setText("DISCONNECTED");
             lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #64748b;");
 
+            isSystemRunningAll = false;
+            updateMasterStartButtonState(false);
+
             log("[INFO] Disconnected from Modbus TCP server.");
             Platform.runLater(this::redrawMimic);
         } else {
@@ -3291,11 +3583,90 @@ public class MainAppController implements Initializable {
     }
 
     @FXML
+    private void handleStartAllSystem(ActionEvent event) {
+        if (!ioService.isConnected()) {
+            showAlert("Not Connected", "Please connect to Factory I/O Modbus TCP server first.");
+            return;
+        }
+
+        isSystemRunningAll = !isSystemRunningAll;
+        boolean run = isSystemRunningAll;
+
+        new Thread(() -> {
+            try {
+                // Conveyors: Entry (0), Load (1), Unload (5), Exit (6)
+                ioService.writeCoil(AsrsAutomationEngine.COIL_ENTRY_CONVEYOR, run);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LOAD_CONVEYOR, run);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR, run);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_EXIT_CONVEYOR, run);
+                // Panel indicators: START light (7), STOP light (9)
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_START, run);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_STOP, !run);
+
+                if (asrsEngine != null) {
+                    asrsEngine.setAutoMode(run);
+                }
+
+                Platform.runLater(() -> {
+                    updateMasterStartButtonState(run);
+
+                    // Update UI actuator tiles for active coils
+                    for (ModbusTag tag : tagManager.getActuatorTags()) {
+                        int addr = tag.getAddress();
+                        if (addr == AsrsAutomationEngine.COIL_ENTRY_CONVEYOR ||
+                            addr == AsrsAutomationEngine.COIL_LOAD_CONVEYOR ||
+                            addr == AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR ||
+                            addr == AsrsAutomationEngine.COIL_EXIT_CONVEYOR) {
+                            tag.setActive(run);
+                            updateActuatorTileUI(tag, run);
+                        }
+                    }
+
+                    if (run) {
+                        lblKpiLineState.setText("SYSTEM RUNNING");
+                        lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
+                        log(">> [MASTER START] Energized all conveyors (Entry, Load, Unload, Exit) and activated ASRS Soft-PLC automation.");
+                    } else {
+                        lblKpiLineState.setText("STANDBY");
+                        lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #1e293b;");
+                        log(">> [MASTER STOP] Stopped all line conveyors. ASRS entered Standby mode.");
+                    }
+                    redrawMimic();
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> log("[ERROR] Master Start All execution failed: " + ex.getMessage()));
+            }
+        }).start();
+    }
+
+    private void updateMasterStartButtonState(boolean running) {
+        String activeStyle = "-fx-background-color: #374151; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;";
+        String inactiveStyle = "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;";
+        String dashActiveStyle = "-fx-background-color: #374151; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;";
+        String dashInactiveStyle = "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;";
+
+        if (btnStartAll != null) {
+            btnStartAll.setText(running ? "⏹ STOP ALL CONVEYORS" : "▶ START ALL / RUN SYSTEM");
+            btnStartAll.setStyle(running ? activeStyle : inactiveStyle);
+        }
+        if (btnDashStartAll != null) {
+            btnDashStartAll.setText(running ? "⏹ Stop All" : "▶ Start All");
+            btnDashStartAll.setStyle(running ? dashActiveStyle : dashInactiveStyle);
+        }
+    }
+
+    @FXML
     private void handleEmergencyStop(ActionEvent event) {
         if (asrsEngine != null) {
             asrsEngine.emergencyStop();
         }
+        isSystemRunningAll = false;
+        updateMasterStartButtonState(false);
         new Thread(() -> {
+            try {
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_START, false);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_STOP, true);
+            } catch (Exception ignored) {}
             ioService.emergencyStop(tagManager.getActuatorTags());
             Platform.runLater(() -> {
                 for (ModbusTag tag : tagManager.getActuatorTags()) {

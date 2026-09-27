@@ -73,12 +73,33 @@ public class FloorLayoutService {
         gridRows = DEFAULT_ROWS;
         gridCols = DEFAULT_COLS;
         placements.clear();
+
+        // Row 0: Infeed Line (Entry Chute -> Entry Conveyor -> At Entry Sensor -> Load Conveyor -> At Load Sensor -> Turn)
         placements.add(new FloorCellPlacement(0, 0, AssetType.INFEED, null, Direction.EAST));
         placements.add(new FloorCellPlacement(0, 1, AssetType.CONVEYOR, "coil_0", Direction.EAST));
         placements.add(new FloorCellPlacement(0, 2, AssetType.SENSOR, "input_0", Direction.EAST));
         placements.add(new FloorCellPlacement(0, 3, AssetType.CONVEYOR, "coil_1", Direction.EAST));
-        placements.add(new FloorCellPlacement(0, 4, AssetType.CURVED_CONVEYOR, "coil_2", Direction.EAST));
-        placements.add(new FloorCellPlacement(1, 4, AssetType.DEPOT, null, Direction.SOUTH));
+        placements.add(new FloorCellPlacement(0, 4, AssetType.SENSOR, "input_1", Direction.EAST));
+        placements.add(new FloorCellPlacement(0, 5, AssetType.CURVED_CONVEYOR, "coil_1", Direction.SOUTH));
+
+        // Row 1: High-Bay Storage Racks (54 bays), Stacker Crane (Reg 0), and Station 55 Transfer
+        placements.add(new FloorCellPlacement(1, 0, AssetType.STORAGE_RACK, null, Direction.EAST));
+        placements.add(new FloorCellPlacement(1, 1, AssetType.STORAGE_RACK, null, Direction.EAST));
+        placements.add(new FloorCellPlacement(1, 2, AssetType.STORAGE_RACK, null, Direction.EAST));
+        placements.add(new FloorCellPlacement(1, 3, AssetType.STACKER_CRANE, "reg_0", Direction.EAST));
+        placements.add(new FloorCellPlacement(1, 4, AssetType.BRIDGE, null, Direction.EAST));
+        placements.add(new FloorCellPlacement(1, 5, AssetType.CURVED_CONVEYOR, "coil_5", Direction.WEST));
+
+        // Row 2: Outfeed Discharge Line (Exit Depot <- Exit Conveyor <- At Exit Sensor <- Unload Conveyor <- At Unload Sensor)
+        placements.add(new FloorCellPlacement(2, 1, AssetType.DEPOT, null, Direction.WEST));
+        placements.add(new FloorCellPlacement(2, 2, AssetType.CONVEYOR, "coil_6", Direction.WEST));
+        placements.add(new FloorCellPlacement(2, 3, AssetType.SENSOR, "input_6", Direction.WEST));
+        placements.add(new FloorCellPlacement(2, 4, AssetType.CONVEYOR, "coil_5", Direction.WEST));
+        placements.add(new FloorCellPlacement(2, 5, AssetType.SENSOR, "input_5", Direction.WEST));
+
+        // Row 3: Industrial Control Console & Pilot Indicator Panel
+        placements.add(new FloorCellPlacement(3, 2, AssetType.CONTROL_PANEL, "input_9", Direction.EAST));
+        placements.add(new FloorCellPlacement(3, 3, AssetType.CONTROL_PANEL, "coil_7", Direction.EAST));
     }
 
     public synchronized boolean loadFromFile() {

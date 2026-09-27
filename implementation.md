@@ -344,3 +344,101 @@ To provide complete spatial visibility of the automated warehouse, Kanshi WMS wi
 5. **Full Automated Storage Cycle**: Dropping a pallet onto Factory I/O entry conveyor automatically stores it in a rack bay and records stock in SQLite.
 6. **Full Automated Retrieval Cycle**: Requesting a retrieval in Kanshi WMS commands crane to fetch the pallet and deliver to outfeed conveyor.
 7. **All Unit Tests Passing**.
+
+---
+
+## 8. Clean Slate Database & Default Storage / Invoices Removal
+
+To ensure Kanshi WMS operates as an authentic, data-driven automation hub driven directly by physical/simulated Factory I/O pallet operations rather than static dummy mockups:
+
+1. **Elimination of Seed Inventories & Invoices**:
+   - In `DatabaseManager.java`, the static `seedInventory` insert statements and relational `seedInvoice` insert statements were permanently removed.
+   - Upon initial database initialization or system reset, the `inventory`, `invoices`, and `invoice_items` tables start completely empty (`0` rows).
+   - Only administrative and operator user credentials (`admin@gmail.com` / `Admin@123`, `user@gmail.com` / `User@123`, `operator@kanshi.local`) are retained for secure role-based authentication.
+
+2. **Dynamic Database Purge Utility**:
+   - Introduced `DatabaseManager.purgeWarehouseData()`, which safely clears operational warehouse records:
+     ```sql
+     DELETE FROM invoice_items;
+     DELETE FROM invoices;
+     DELETE FROM inventory;
+     DELETE FROM sqlite_sequence WHERE name IN ('invoice_items', 'invoices', 'inventory');
+     ```
+   - Automatically resets SQLite `AUTOINCREMENT` sequence counters so that newly generated pallets and customer invoices restart from primary key index `1`.
+   - All unit test fixtures (`InventoryDaoTest`, `DatabaseRelationshipTest`) utilize self-contained `@BeforeAll` setup and `@AfterAll` teardown hooks to ensure isolation without leaving residue in production databases.
+
+---
+
+## 9. 2D SCADA Station Automated Warehouse Default Equipment Layout
+
+The default SCADA Studio floor plan in `FloorLayoutService.java` and `scada_layout.json` has been updated from a simple single-conveyor demo to the full **19-cell Factory I/O "Automated Warehouse" Line**, arranged over an expandable $4 \times 6$ floor matrix:
+
+### 9.1 Grid Topology & Equipment Placements:
+```
+Row 0 (Infeed):
+  [0,0] 📥 Infeed Chute (Entry Point)
+  [0,1] ──► Entry Conveyor (Coil 0, %M0.0)
+  [0,2] 👁️ At Entry Optical Sensor (Input 0, %I0.0)
+  [0,3] ──► Load Conveyor (Coil 1, %M0.1)
+  [0,4] 👁️ At Load Optical Sensor (Input 1, %I0.1)
+  [0,5] ↷  Curved Transfer Chute (Coil 1, %M0.1) -> SOUTH
+
+Row 1 (ASRS Core):
+  [1,0] 🗄️ High-Bay Rack Bay Col 1-3
+  [1,1] 🗄️ High-Bay Rack Bay Col 4-6
+  [1,2] 🗄️ High-Bay Rack Bay Col 7-9
+  [1,3] 🏗️ 2-Axis Stacker Crane (Reg 0, %MW0 / Station 1..55)
+  [1,4] ──► Station 55 Load Transfer Bridge
+  [1,5] ↷  Curved Return Chute (Coil 5, %M0.5) -> WEST
+
+Row 2 (Outfeed):
+  [2,0] (Expansion Bay)
+  [2,1] 📦 Outfeed Discharge Depot (Exit Chute)
+  [2,2] ◄── Exit Conveyor (Coil 6, %M0.6)
+  [2,3] 👁️ At Exit Optical Sensor (Input 6, %I0.6)
+  [2,4] ◄── Unload Conveyor (Coil 5, %M0.5)
+  [2,5] 👁️ At Unload Optical Sensor (Input 5, %I0.5)
+
+Row 3 (Operator Console):
+  [3,2] 🎛️ Control Console Start Switch (Input 9, %I1.1)
+  [3,3] 🎛️ Control Console Pilot Lamp (Coil 7, %M0.7)
+```
+
+### 9.2 Custom Vector Canvas Renderers:
+New visual drawing routines were implemented directly in `MainAppController.java` to deliver a zero-dependency, high-definition aesthetic:
+- **`drawStackerCraneVisual(Canvas)`**: Renders dark charcoal mast framing, yellow hazard-stripe upper gantry beam, dual lattice truss columns, ground traversing rails, and a central blue carriage with extendable telescopic forks.
+- **`drawStorageRackVisual(Canvas)`**: Renders structural blue vertical uprights, industrial orange load-bearing shelf beams, and multi-colored Kanshi product crates (`BOX-SML`, `PAL-EUR`).
+- **`drawControlPanelVisual(Canvas, running)`**: Renders a physical industrial console enclosure with illuminated green `START` pilot lamp, amber `RESET` lamp, red `STOP` lamp, and tactile pushbuttons.
+
+---
+
+## 10. Master "Start Everything On" Line Control System
+
+Previously, individual conveyor motors had to be tested or toggled one by one. Kanshi WMS now features a unified **Master "Start All / Run System"** control system available from both the SCADA Station and the Overview Dashboard:
+
+### 10.1 UI Trigger Points:
+1. **SCADA Hardware Control Toolbar**:
+   - Button: `btnStartAll` (`"▶ START ALL / RUN SYSTEM"` / `"⏹ STOP ALL CONVEYORS"`).
+   - Styled with emerald green pill geometry (`-fx-background-color: #14532d; -fx-text-fill: #ffffff;`).
+2. **Overview Dashboard OT Controls Card**:
+   - Button: `btnDashStartAll` (`"▶ Start All"` / `"⏹ Stop All"`).
+   - Positioned alongside the 2-second pulse test and Emergency Stop button.
+3. **SCADA Interactive Control Console Tile**:
+   - Clicking on the Console fixture cell `(3,2)` or `(3,3)` opens the engineering modal with direct master toggle controls.
+
+### 10.2 Synchronized Line Energization Flow:
+When **Start All** is pressed:
+1. Validates active connection to Factory I/O Modbus TCP server (`127.0.0.1:502`).
+2. Concurrently energizes all operational material-handling line actuators:
+   - `Coil 0 (%M0.0)`: Entry Conveyor $\rightarrow$ `ON`
+   - `Coil 1 (%M0.1)`: Load Conveyor $\rightarrow$ `ON`
+   - `Coil 5 (%M0.5)`: Unload Conveyor $\rightarrow$ `ON`
+   - `Coil 6 (%M0.6)`: Exit Conveyor $\rightarrow$ `ON`
+3. Drives physical panel status indicators:
+   - `Coil 7 (%M0.7)`: Start Indicator Light $\rightarrow$ `ON` (Green)
+   - `Coil 9 (%M1.1)`: Stop Indicator Light $\rightarrow$ `OFF`
+4. Automatically engages the embedded Soft-PLC (`AsrsAutomationEngine.setAutoMode(true)`):
+   - Continuous scanning of infeed photo-eyes: When a pallet triggers `At Entry (DI 0)` or `At Load (DI 1)`, the Stacker Crane automatically claims the pallet, reads destination bay setpoints, travels along the X-Z axes, lowers into rack supports, and logs dynamic stock into SQLite.
+5. Updates all 2D SCADA conveyor tiles with active chevron flow animations and green pilot indicators.
+6. Pressing **Stop All** halts conveyors, switches panel lamps to Stop (Red), and sets Soft-PLC to Standby.
+7. Tripping **EMERGENCY STOP** immediately halts all motors, resets the master start state, and locks out automation.

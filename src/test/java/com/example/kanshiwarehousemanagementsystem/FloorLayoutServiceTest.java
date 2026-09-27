@@ -37,7 +37,7 @@ public class FloorLayoutServiceTest {
     void testDefaultLayoutInitialization() {
         List<FloorCellPlacement> list = layoutService.getAllPlacements();
         assertFalse(list.isEmpty(), "Default layout should have placements");
-        assertEquals(6, list.size(), "Standard factory line has 6 cells");
+        assertEquals(19, list.size(), "Automated Warehouse line has 19 cells");
         assertEquals(4, layoutService.getGridRows());
         assertEquals(6, layoutService.getGridCols());
 
@@ -45,9 +45,13 @@ public class FloorLayoutServiceTest {
         assertNotNull(infeed);
         assertEquals(AssetType.INFEED, infeed.getAssetType());
 
-        FloorCellPlacement depot = layoutService.findPlacement(1, 4);
+        FloorCellPlacement depot = layoutService.findPlacement(2, 1);
         assertNotNull(depot);
         assertEquals(AssetType.DEPOT, depot.getAssetType());
+
+        FloorCellPlacement crane = layoutService.findPlacement(1, 3);
+        assertNotNull(crane);
+        assertEquals(AssetType.STACKER_CRANE, crane.getAssetType());
     }
 
     @Test
@@ -64,11 +68,11 @@ public class FloorLayoutServiceTest {
         layoutService.removePlacement(0, 1);
         assertNull(layoutService.findPlacement(0, 1), "Placement should be removed");
 
-        // Add a new placement at (2, 2)
-        FloorCellPlacement custom = new FloorCellPlacement(2, 2, AssetType.CONVEYOR, "coil_99", Direction.NORTH);
+        // Add a new placement at (2, 0)
+        FloorCellPlacement custom = new FloorCellPlacement(2, 0, AssetType.CONVEYOR, "coil_99", Direction.NORTH);
         layoutService.setPlacement(custom);
 
-        FloorCellPlacement retrieved = layoutService.findPlacement(2, 2);
+        FloorCellPlacement retrieved = layoutService.findPlacement(2, 0);
         assertNotNull(retrieved);
         assertEquals("coil_99", retrieved.getTagId());
         assertEquals(Direction.NORTH, retrieved.getDirection());
@@ -76,7 +80,7 @@ public class FloorLayoutServiceTest {
         // Test persistence
         layoutService.saveToFile();
         FloorLayoutService reloaded = new FloorLayoutService(tempFile);
-        assertNotNull(reloaded.findPlacement(2, 2));
+        assertNotNull(reloaded.findPlacement(2, 0));
     }
 
     @Test
@@ -98,23 +102,17 @@ public class FloorLayoutServiceTest {
         assertTrue(layoutService.removeRow());
         assertEquals(4, layoutService.getGridRows());
 
-        // Column 5 is empty, but column 4 has placements (Curved Conveyor and Depot).
-        // Removing col 5 should succeed (leaving 5 cols: 0..4).
-        assertTrue(layoutService.removeCol());
-        assertEquals(5, layoutService.getGridCols());
-
-        // Now the last column is col 4, which has placements at (0,4) and (1,4).
-        // Removing it MUST fail to protect user equipment!
+        // In the Automated Warehouse layout, Column 5 contains active equipment at (0,5), (1,5), (2,5).
+        // Removing column 5 MUST fail to protect user equipment!
         assertFalse(layoutService.removeCol(), "Should not remove column containing placed equipment");
-        assertEquals(5, layoutService.getGridCols());
+        assertEquals(6, layoutService.getGridCols());
 
         // Test persistence of custom dimensions
-        layoutService.addCol(); // now 6
+        layoutService.addCol(); // now 7
         layoutService.addRow(); // now 5
         layoutService.saveToFile();
-
         FloorLayoutService reloaded = new FloorLayoutService(tempFile);
         assertEquals(5, reloaded.getGridRows());
-        assertEquals(6, reloaded.getGridCols());
+        assertEquals(7, reloaded.getGridCols());
     }
 }

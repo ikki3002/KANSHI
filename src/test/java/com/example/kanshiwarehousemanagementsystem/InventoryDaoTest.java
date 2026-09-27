@@ -17,10 +17,23 @@ public class InventoryDaoTest {
 
     private static InventoryDao inventoryDao;
 
-    @BeforeAll
+    @org.junit.jupiter.api.BeforeAll
     public static void setUp() {
         DatabaseManager.initializeDatabase();
+        DatabaseManager.purgeWarehouseData();
         inventoryDao = new InventoryDao();
+
+        // Seed test fixture inventory items
+        inventoryDao.addProduct(new Product(0, "BOX-SML-101", "Standard Cardboard Box (Small)", "Packaging", 150, 12.50, "Bay-01"));
+        inventoryDao.addProduct(new Product(0, "BOX-MED-102", "Heavy Duty Corrugated Box (Med)", "Packaging", 85, 18.00, "Bay-05"));
+        inventoryDao.addProduct(new Product(0, "PAL-EUR-201", "Euro Pallet EPAL-1 Heavy Duty", "Material Handling", 40, 35.00, "Bay-12"));
+        inventoryDao.addProduct(new Product(0, "SEN-OPT-301", "Optical Retroreflective Sensor M18", "Automation Parts", 24, 120.00, "Bay-21"));
+        inventoryDao.addProduct(new Product(0, "CON-BLT-401", "Modular Conveyor Belt Segment 2m", "Spares", 12, 245.00, "Bay-33"));
+    }
+
+    @org.junit.jupiter.api.AfterAll
+    public static void tearDown() {
+        DatabaseManager.purgeWarehouseData();
     }
 
     @Test

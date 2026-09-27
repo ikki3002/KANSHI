@@ -13,7 +13,10 @@ public class FloorCellPlacement {
         CURVED_CONVEYOR("Curved Conveyor", "90° Turn", "↷"),
         SENSOR("Vision Sensor", "Optical", "👁️"),
         DEPOT("Depot Chute", "Outfeed", "📦"),
-        BRIDGE("Conveyor Bridge", "Flow Link", "──►");
+        BRIDGE("Conveyor Bridge", "Flow Link", "──►"),
+        STACKER_CRANE("Stacker Crane", "ASRS 2-Axis", "🏗️"),
+        STORAGE_RACK("Storage Rack", "High-Bay", "🗄️"),
+        CONTROL_PANEL("Control Console", "Auto/Manual", "🎛️");
 
         private final String displayName;
         private final String subTitle;

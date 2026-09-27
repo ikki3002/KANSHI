@@ -269,9 +269,11 @@
                             <Region VBox.vgrow="ALWAYS" />
 
                             <HBox spacing="10" alignment="CENTER_LEFT">
-                                <Button text="⚡ 2s Motor Test" onAction="#handleRunAutoSequence" HBox.hgrow="ALWAYS" maxWidth="Infinity"
+                                <Button fx:id="btnDashStartAll" text="▶ Start All" onAction="#handleStartAllSystem" HBox.hgrow="ALWAYS" maxWidth="Infinity"
+                                        style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;" />
+                                <Button text="⚡ 2s Test" onAction="#handleRunAutoSequence" HBox.hgrow="ALWAYS" maxWidth="Infinity"
                                         style="-fx-background-color: #ffffff; -fx-text-fill: #052e16; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;" />
-                                <Button text="🛑 EMERGENCY STOP" onAction="#handleEmergencyStop" HBox.hgrow="ALWAYS" maxWidth="Infinity"
+                                <Button text="🛑 E-STOP" onAction="#handleEmergencyStop" HBox.hgrow="ALWAYS" maxWidth="Infinity"
                                         style="-fx-background-color: #ef4444; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;" />
                             </HBox>
                         </VBox>
@@ -405,6 +407,8 @@
 
                     <Region HBox.hgrow="ALWAYS" />
 
+                    <Button fx:id="btnStartAll" text="▶ START ALL / RUN SYSTEM" onAction="#handleStartAllSystem"
+                            style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;" />
                     <Button fx:id="btnAutoTest" text="⚡ 2s Motor Test" onAction="#handleRunAutoSequence"
                             style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 14; -fx-cursor: hand;" />
                     <Button fx:id="btnEstop" text="🛑 EMERGENCY STOP" onAction="#handleEmergencyStop"

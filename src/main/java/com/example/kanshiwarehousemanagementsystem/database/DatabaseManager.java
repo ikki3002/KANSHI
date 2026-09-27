@@ -92,34 +92,29 @@ public class DatabaseManager {
             // 2. Initialize Inventory Table (Week 6 Relational DB)
             stmt.execute(createInventoryTable);
 
-            // Seed initial warehouse inventory items in ASRS High-Bay Rack
-            String seedInventory = "INSERT OR IGNORE INTO inventory (sku, name, category, quantity, unit_price, location) VALUES " +
-                    "('BOX-SML-101', 'Standard Cardboard Box (Small)', 'Packaging', 150, 12.50, 'Bay-01'), " +
-                    "('BOX-MED-102', 'Heavy Duty Corrugated Box (Med)', 'Packaging', 85, 18.00, 'Bay-05'), " +
-                    "('PAL-EUR-201', 'Euro Pallet EPAL-1 Heavy Duty', 'Material Handling', 40, 35.00, 'Bay-12'), " +
-                    "('SEN-OPT-301', 'Optical Retroreflective Sensor M18', 'Automation Parts', 24, 120.00, 'Bay-21'), " +
-                    "('CON-BLT-401', 'Modular Conveyor Belt Segment 2m', 'Spares', 12, 245.00, 'Bay-33');";
-            stmt.execute(seedInventory);
-
-            // 3. Initialize Relational Invoices & Items tables
+            // 3. Initialize Relational Invoices & Items tables (Clean Slate - no dummy records)
             stmt.execute(createInvoicesTable);
             stmt.execute(createInvoiceItemsTable);
-
-            // Seed initial relational invoice if none exists
-            String checkInvoiceSql = "SELECT COUNT(*) FROM invoices;";
-            try (var rs = stmt.executeQuery(checkInvoiceSql)) {
-                if (rs.next() && rs.getInt(1) == 0) {
-                    stmt.execute("INSERT INTO invoices (invoice_number, user_id, customer_name, total_amount, status) " +
-                            "VALUES ('INV-2026-001', 2, 'Global Logistics Corp', 305.00, 'PAID');");
-                    stmt.execute("INSERT INTO invoice_items (invoice_id, product_id, quantity, unit_price, subtotal) VALUES " +
-                            "(1, 1, 10, 12.50, 125.00), " +
-                            "(1, 3, 5, 36.00, 180.00);");
-                }
-            }
 
         } catch (SQLException e) {
             System.err.println("Database initialization failed: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Purges all inventory items, invoices, and invoice line items for a clean slate.
+     * Preserves authenticated user accounts.
+     */
+    public static void purgeWarehouseData() {
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("DELETE FROM invoice_items;");
+            stmt.execute("DELETE FROM invoices;");
+            stmt.execute("DELETE FROM inventory;");
+            stmt.execute("DELETE FROM sqlite_sequence WHERE name IN ('invoice_items', 'invoices', 'inventory');");
+        } catch (SQLException e) {
+            System.err.println("Failed to purge warehouse data: " + e.getMessage());
         }
     }
 }

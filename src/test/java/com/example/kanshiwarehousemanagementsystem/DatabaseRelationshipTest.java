@@ -18,10 +18,29 @@ public class DatabaseRelationshipTest {
 
     private static InvoiceDao invoiceDao;
 
-    @BeforeAll
+    @org.junit.jupiter.api.BeforeAll
     public static void setUp() {
         DatabaseManager.initializeDatabase();
+        DatabaseManager.purgeWarehouseData();
         invoiceDao = new InvoiceDao();
+
+        com.example.kanshiwarehousemanagementsystem.database.InventoryDao inventoryDao = new com.example.kanshiwarehousemanagementsystem.database.InventoryDao();
+        inventoryDao.addProduct(new com.example.kanshiwarehousemanagementsystem.model.Product(0, "BOX-SML-101", "Standard Cardboard Box (Small)", "Packaging", 150, 12.50, "Bay-01"));
+        inventoryDao.addProduct(new com.example.kanshiwarehousemanagementsystem.model.Product(0, "PAL-EUR-201", "Euro Pallet EPAL-1 Heavy Duty", "Material Handling", 40, 35.00, "Bay-12"));
+
+        List<com.example.kanshiwarehousemanagementsystem.model.Product> products = inventoryDao.getAll();
+        int prodId1 = products.get(0).getId();
+        int prodId2 = products.get(1).getId();
+
+        Invoice initialInvoice = new Invoice("INV-2026-001", 1, "Global Logistics Corp", 305.00, "PAID");
+        initialInvoice.addItem(new InvoiceItem(prodId1, products.get(0).getSku(), products.get(0).getName(), 10, 12.50));
+        initialInvoice.addItem(new InvoiceItem(prodId2, products.get(1).getSku(), products.get(1).getName(), 5, 36.00));
+        invoiceDao.add(initialInvoice);
+    }
+
+    @org.junit.jupiter.api.AfterAll
+    public static void tearDown() {
+        DatabaseManager.purgeWarehouseData();
     }
 
     @Test
@@ -44,11 +63,15 @@ public class DatabaseRelationshipTest {
 
     @Test
     public void testInvoiceCreationAndCascadeDeletion() {
+        List<com.example.kanshiwarehousemanagementsystem.model.Product> products = new com.example.kanshiwarehousemanagementsystem.database.InventoryDao().getAll();
+        int prodId1 = products.get(0).getId();
+        int prodId2 = products.get(1).getId();
+
         // 1. Create a new Invoice for user ID 1 (user@gmail.com)
         String invoiceNum = "TEST-INV-" + System.currentTimeMillis();
         Invoice newInvoice = new Invoice(invoiceNum, 1, "Acme Logistics Test", 150.0, "PENDING");
-        newInvoice.addItem(new InvoiceItem(1, "BOX-SML-101", "Standard Cardboard Box (Small)", 4, 12.50));
-        newInvoice.addItem(new InvoiceItem(2, "BOX-MED-102", "Heavy Duty Corrugated Box (Med)", 5, 20.00));
+        newInvoice.addItem(new InvoiceItem(prodId1, products.get(0).getSku(), products.get(0).getName(), 4, 12.50));
+        newInvoice.addItem(new InvoiceItem(prodId2, products.get(1).getSku(), products.get(1).getName(), 5, 20.00));
 
         boolean added = invoiceDao.add(newInvoice);
         assertTrue(added, "Adding relational invoice with line items in transaction should succeed");

@@ -115,6 +115,16 @@ public class FactoryIOService {
     }
 
     /**
+     * Writes a boolean state to a Modbus coil address.
+     */
+    public boolean writeCoil(int address, boolean on) throws IOException {
+        if (client != null) {
+            return client.writeSingleCoil(address, on);
+        }
+        return false;
+    }
+
+    /**
      * Reads a 16-bit value from a Modbus holding register.
      */
     public int readRegister(int address) throws IOException {
