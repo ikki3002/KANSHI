@@ -15,6 +15,8 @@ import com.example.kanshiwarehousemanagementsystem.model.Product;
 import com.example.kanshiwarehousemanagementsystem.model.User;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.FactoryIOService;
 import com.example.kanshiwarehousemanagementsystem.service.modbus.TagManager;
+import com.example.kanshiwarehousemanagementsystem.service.scada.AsrsAutomationEngine;
+import com.example.kanshiwarehousemanagementsystem.service.scada.AsrsAutomationEngine.AsrsState;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
@@ -103,6 +105,7 @@ public class MainAppController implements Initializable {
     // Navigation Rail Buttons
     @FXML private Button btnNavDashboard;
     @FXML private Button btnNavScada;
+    @FXML private Button btnNavMatrix;
     @FXML private Button btnNavInventory;
     @FXML private Button btnNavFinance;
     @FXML private Button btnNavTags;
@@ -114,6 +117,21 @@ public class MainAppController implements Initializable {
     @FXML private VBox paneInventory;
     @FXML private VBox paneFinance;
     @FXML private VBox paneTags;
+    @FXML private VBox paneStorageMatrix;
+
+    // Level 2E High-Bay Rack Storage Matrix FXML Controls
+    @FXML private Label lblAsrsStatusBadge;
+    @FXML private Label lblMatrixTotalBays;
+    @FXML private Label lblMatrixOccupiedBays;
+    @FXML private Label lblMatrixVacantBays;
+    @FXML private Label lblMatrixUtilization;
+    @FXML private Label lblMatrixValuation;
+    @FXML private TextField txtMatrixSearch;
+    @FXML private ComboBox<String> cmbMatrixCategoryFilter;
+    @FXML private Button btnToggleAutoPutaway;
+    @FXML private Button btnDispatchInfeed;
+    @FXML private Label lblCraneTelemetryInfo;
+    @FXML private GridPane gridStorageMatrix;
 
     // Level 1 KPI Overview Labels & Badges
     @FXML private Label lblKpiValuation;
@@ -216,6 +234,7 @@ public class MainAppController implements Initializable {
     private final InventoryDao inventoryDao = new InventoryDao();
     private final FloorLayoutService floorLayoutService = new FloorLayoutService();
     private final ObservableList<ModbusTag> tableData = FXCollections.observableArrayList();
+    private AsrsAutomationEngine asrsEngine;
 
     private boolean isDesignMode = false;
     private final Map<String, ActuatorBlockRef> actuatorRefs = new ConcurrentHashMap<>();
@@ -258,6 +277,8 @@ public class MainAppController implements Initializable {
         setupInventoryLedger();
         setupFinanceWorkspace();
         setupProducerConsumerEngine();
+        setupStorageMatrix();
+        initAsrsEngine();
         refreshDynamicHardwareUI();
         refreshKpiMetrics();
         initMimicAnimation();
@@ -806,6 +827,8 @@ public class MainAppController implements Initializable {
             btnNavDashboard.setTooltip(new Tooltip("Dashboard"));
             btnNavScada.setText("🏭");
             btnNavScada.setTooltip(new Tooltip("SCADA Station"));
+            btnNavMatrix.setText("🗄️");
+            btnNavMatrix.setTooltip(new Tooltip("Storage Matrix"));
             btnNavInventory.setText("📦");
             btnNavInventory.setTooltip(new Tooltip("Inventory Ledger"));
             btnNavFinance.setText("💰");
@@ -815,6 +838,7 @@ public class MainAppController implements Initializable {
 
             btnNavDashboard.setAlignment(Pos.CENTER);
             btnNavScada.setAlignment(Pos.CENTER);
+            btnNavMatrix.setAlignment(Pos.CENTER);
             btnNavInventory.setAlignment(Pos.CENTER);
             btnNavFinance.setAlignment(Pos.CENTER);
             btnNavTags.setAlignment(Pos.CENTER);
@@ -836,6 +860,8 @@ public class MainAppController implements Initializable {
             btnNavDashboard.setTooltip(null);
             btnNavScada.setText("🏭 SCADA Station");
             btnNavScada.setTooltip(null);
+            btnNavMatrix.setText("🗄️ Storage Matrix");
+            btnNavMatrix.setTooltip(null);
             btnNavInventory.setText("📦 Inventory Ledger");
             btnNavInventory.setTooltip(null);
             btnNavFinance.setText("💰 Finance & Invoicing");
@@ -845,6 +871,7 @@ public class MainAppController implements Initializable {
 
             btnNavDashboard.setAlignment(Pos.CENTER_LEFT);
             btnNavScada.setAlignment(Pos.CENTER_LEFT);
+            btnNavMatrix.setAlignment(Pos.CENTER_LEFT);
             btnNavInventory.setAlignment(Pos.CENTER_LEFT);
             btnNavFinance.setAlignment(Pos.CENTER_LEFT);
             btnNavTags.setAlignment(Pos.CENTER_LEFT);
@@ -863,6 +890,12 @@ public class MainAppController implements Initializable {
     @FXML
     private void handleNavScada(Event event) {
         activateView(paneScada, btnNavScada);
+    }
+
+    @FXML
+    private void handleNavMatrix(Event event) {
+        activateView(paneStorageMatrix, btnNavMatrix);
+        renderStorageMatrixGrid();
     }
 
     @FXML
@@ -886,6 +919,8 @@ public class MainAppController implements Initializable {
         paneDashboard.setManaged(false);
         paneScada.setVisible(false);
         paneScada.setManaged(false);
+        paneStorageMatrix.setVisible(false);
+        paneStorageMatrix.setManaged(false);
         paneInventory.setVisible(false);
         paneInventory.setManaged(false);
         paneFinance.setVisible(false);
@@ -896,7 +931,7 @@ public class MainAppController implements Initializable {
         activePane.setVisible(true);
         activePane.setManaged(true);
 
-        Button[] navButtons = {btnNavDashboard, btnNavScada, btnNavInventory, btnNavFinance, btnNavTags};
+        Button[] navButtons = {btnNavDashboard, btnNavScada, btnNavMatrix, btnNavInventory, btnNavFinance, btnNavTags};
         for (Button btn : navButtons) {
             if (btn != null) {
                 String align = isSidebarCollapsed ? "-fx-alignment: CENTER;" : "-fx-alignment: CENTER_LEFT;";
@@ -957,6 +992,9 @@ public class MainAppController implements Initializable {
         }
         if (producerService != null) {
             producerService.shutdown();
+        }
+        if (asrsEngine != null) {
+            asrsEngine.stop();
         }
     }
 
@@ -3254,6 +3292,9 @@ public class MainAppController implements Initializable {
 
     @FXML
     private void handleEmergencyStop(ActionEvent event) {
+        if (asrsEngine != null) {
+            asrsEngine.emergencyStop();
+        }
         new Thread(() -> {
             ioService.emergencyStop(tagManager.getActuatorTags());
             Platform.runLater(() -> {
@@ -3519,6 +3560,326 @@ public class MainAppController implements Initializable {
             }
             if (txtAuditStream != null) {
                 txtAuditStream.appendText(entry);
+            }
+        });
+    }
+
+    // =========================================================================
+    // Level 2E: High-Bay Rack N x M Storage Matrix & Digital Twin
+    // =========================================================================
+
+    private void initAsrsEngine() {
+        this.asrsEngine = new AsrsAutomationEngine(this.ioService, this.inventoryDao);
+        this.asrsEngine.setStateListener((state, msg) -> {
+            Platform.runLater(() -> {
+                if (lblAsrsStatusBadge != null) {
+                    lblAsrsStatusBadge.setText("SOFT-PLC: " + state.name());
+                    if (state == AsrsState.FAULT) {
+                        lblAsrsStatusBadge.setStyle("-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;");
+                    } else if (state == AsrsState.IDLE) {
+                        lblAsrsStatusBadge.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #4b5563; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;");
+                    } else {
+                        lblAsrsStatusBadge.setStyle("-fx-background-color: #fef3c7; -fx-text-fill: #b45309; -fx-background-radius: 999px; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 8;");
+                    }
+                }
+                if (lblCraneTelemetryInfo != null) {
+                    lblCraneTelemetryInfo.setText("Crane Target Position: " + asrsEngine.getCurrentTargetPosition() + " (Bay " + asrsEngine.getActiveBay() + ") | Soft-PLC: " + state.name());
+                }
+                logAudit("OT", "🤖 ASRS Stacker Crane: " + msg);
+                renderStorageMatrixGrid();
+            });
+        });
+
+        this.asrsEngine.setInventoryRefreshCallback(() -> {
+            Platform.runLater(() -> {
+                refreshKpiMetrics();
+                loadInventoryData();
+                renderStorageMatrixGrid();
+            });
+        });
+
+        this.asrsEngine.start();
+    }
+
+    private void setupStorageMatrix() {
+        if (cmbMatrixCategoryFilter != null) {
+            cmbMatrixCategoryFilter.setItems(FXCollections.observableArrayList(
+                    "All Categories", "Packaging", "Sensors", "Electronics", "Logistics", "Raw Materials"
+            ));
+            cmbMatrixCategoryFilter.getSelectionModel().selectFirst();
+            cmbMatrixCategoryFilter.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> renderStorageMatrixGrid());
+        }
+
+        if (txtMatrixSearch != null) {
+            txtMatrixSearch.textProperty().addListener((obs, oldVal, newVal) -> renderStorageMatrixGrid());
+        }
+
+        renderStorageMatrixGrid();
+    }
+
+    @FXML
+    private void handleToggleAutoPutaway(ActionEvent event) {
+        if (asrsEngine == null) return;
+        boolean nextState = !asrsEngine.isAutoMode();
+        asrsEngine.setAutoMode(nextState);
+
+        if (btnToggleAutoPutaway != null) {
+            if (nextState) {
+                btnToggleAutoPutaway.setText("⏹ Pause Auto-Putaway");
+                btnToggleAutoPutaway.setStyle("-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
+            } else {
+                btnToggleAutoPutaway.setText("⚡ Enable Auto-Putaway");
+                btnToggleAutoPutaway.setStyle("-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
+            }
+        }
+        logAudit("OT", "ASRS Soft-PLC: Auto-Putaway mode set to " + (nextState ? "ENABLED (Sensors Active)" : "PAUSED"));
+    }
+
+    @FXML
+    private void handleTriggerInfeedStore(ActionEvent event) {
+        int nextBay = inventoryDao.findNextAvailableBay(54);
+        if (nextBay <= 0) {
+            showAlert("Storage Rack Full", "The 54-bay storage matrix is 100% full. Cannot store new pallet.");
+            return;
+        }
+
+        String assignedSku = "BOX-" + (100 + nextBay);
+        inventoryDao.storeProductInBay(assignedSku, "Inbound Pallet #" + nextBay, "Packaging", 1, 14.50, nextBay);
+        logAudit("OT", "📦 Pallet Infeed: Dispatched pallet to Bay " + nextBay + " (SKU: " + assignedSku + ")");
+        refreshKpiMetrics();
+        loadInventoryData();
+        renderStorageMatrixGrid();
+    }
+
+    @FXML
+    private void handleRefreshMatrix(ActionEvent event) {
+        renderStorageMatrixGrid();
+    }
+
+    /**
+     * Renders the 9-column x 6-level high-bay storage rack matrix.
+     * Total 54 cells. Level 6 is top row, Level 1 is bottom row.
+     */
+    public synchronized void renderStorageMatrixGrid() {
+        if (gridStorageMatrix == null) return;
+
+        Map<Integer, Product> occupancy = inventoryDao.getBayOccupancyMap(54);
+        int totalBays = 54;
+        int occupiedCount = occupancy.size();
+        int vacantCount = totalBays - occupiedCount;
+        double utilization = (occupiedCount * 100.0) / totalBays;
+        double totalValuation = occupancy.values().stream().mapToDouble(Product::getTotalValue).sum();
+
+        if (lblMatrixTotalBays != null) lblMatrixTotalBays.setText(totalBays + " Bays");
+        if (lblMatrixOccupiedBays != null) lblMatrixOccupiedBays.setText(occupiedCount + " Bays");
+        if (lblMatrixVacantBays != null) lblMatrixVacantBays.setText(vacantCount + " Bays");
+        if (lblMatrixUtilization != null) lblMatrixUtilization.setText(String.format("%.1f%%", utilization));
+        if (lblMatrixValuation != null) lblMatrixValuation.setText(String.format("$%,.2f", totalValuation));
+
+        String query = (txtMatrixSearch != null && txtMatrixSearch.getText() != null)
+                ? txtMatrixSearch.getText().trim().toLowerCase() : "";
+        String catFilter = (cmbMatrixCategoryFilter != null && cmbMatrixCategoryFilter.getValue() != null)
+                ? cmbMatrixCategoryFilter.getValue() : "All Categories";
+
+        gridStorageMatrix.getChildren().clear();
+
+        int activeBayNum = (asrsEngine != null) ? asrsEngine.getActiveBay() : 0;
+
+        // 6 vertical levels (row 0 = Level 6 ... row 5 = Level 1)
+        for (int r = 0; r < 6; r++) {
+            int level = 6 - r;
+            // 9 horizontal columns (col 0 = Col 1 ... col 8 = Col 9)
+            for (int c = 0; c < 9; c++) {
+                int col = c + 1;
+                int bayNumber = (level - 1) * 9 + col;
+                Product product = occupancy.get(bayNumber);
+
+                Node cellNode = createBayCell(bayNumber, level, col, product, activeBayNum, query, catFilter);
+                gridStorageMatrix.add(cellNode, c, r);
+            }
+        }
+    }
+
+    private Node createBayCell(int bayNumber, int level, int col, Product product, int activeBayNum, String query, String catFilter) {
+        boolean isOccupied = (product != null);
+        boolean isActiveTarget = (bayNumber == activeBayNum);
+
+        boolean matchesFilter = true;
+        if (!query.isEmpty()) {
+            boolean matchSku = isOccupied && product.getSku().toLowerCase().contains(query);
+            boolean matchName = isOccupied && product.getName().toLowerCase().contains(query);
+            boolean matchBay = String.valueOf(bayNumber).equals(query) || ("bay-" + bayNumber).contains(query) || ("bay " + bayNumber).contains(query);
+            matchesFilter = matchSku || matchName || matchBay;
+        }
+        if (matchesFilter && !catFilter.equalsIgnoreCase("All Categories")) {
+            matchesFilter = isOccupied && catFilter.equalsIgnoreCase(product.getCategory());
+        }
+
+        VBox cell = new VBox(3);
+        cell.setPrefWidth(116);
+        cell.setMinWidth(116);
+        cell.setMaxWidth(116);
+        cell.setPrefHeight(76);
+        cell.setMinHeight(76);
+        cell.setMaxHeight(76);
+
+        if (!matchesFilter) {
+            cell.setOpacity(0.28);
+        } else {
+            cell.setOpacity(1.0);
+        }
+
+        // Header Row: Bay Number & Level-Col coordinates
+        HBox header = new HBox(4);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblBay = new Label(String.format("Bay %02d", bayNumber));
+        lblBay.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #111827;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label lblCoord = new Label("L" + level + "-C" + col);
+        lblCoord.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #9ca3af;");
+
+        header.getChildren().addAll(lblBay, spacer, lblCoord);
+
+        if (isOccupied) {
+            // Occupied Cell
+            String borderStyle = isActiveTarget
+                    ? "-fx-border-color: #f59e0b; -fx-border-width: 2.5px; -fx-background-color: #fffbeb;"
+                    : "-fx-border-color: #14532d; -fx-border-width: 1.5px; -fx-background-color: #ffffff;";
+
+            cell.setStyle(borderStyle + " -fx-border-radius: 10px; -fx-background-radius: 10px; -fx-padding: 6px 8px; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(20,83,45,0.08), 6, 0, 0, 2);");
+
+            Label lblSku = new Label(product.getSku());
+            lblSku.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #166534; -fx-background-color: #dcfce7; -fx-padding: 1 5; -fx-background-radius: 4px;");
+
+            HBox bottomRow = new HBox(4);
+            bottomRow.setAlignment(Pos.CENTER_LEFT);
+
+            Label lblValue = new Label(String.format("$%,.0f", product.getTotalValue()));
+            lblValue.setStyle("-fx-font-size: 9px; -fx-font-weight: 800; -fx-text-fill: #111827;");
+
+            Region spacer2 = new Region();
+            HBox.setHgrow(spacer2, Priority.ALWAYS);
+
+            Button btnRetrieve = new Button("🚀");
+            btnRetrieve.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 8px; -fx-padding: 1 5; -fx-cursor: hand;");
+            btnRetrieve.setTooltip(new Tooltip("Retrieve Pallet via Stacker Crane"));
+            btnRetrieve.setOnAction(e -> {
+                e.consume();
+                triggerPalletRetrieval(bayNumber, product);
+            });
+
+            bottomRow.getChildren().addAll(lblValue, spacer2, btnRetrieve);
+            cell.getChildren().addAll(header, lblSku, bottomRow);
+
+            cell.setOnMouseClicked(e -> openOccupiedBayDialog(bayNumber, product));
+
+        } else {
+            // Vacant Cell
+            String borderStyle = isActiveTarget
+                    ? "-fx-border-color: #f59e0b; -fx-border-width: 2.5px; -fx-background-color: #fffbeb;"
+                    : "-fx-border-color: #bbf7d0; -fx-border-width: 1px; -fx-background-color: #f0fdf4;";
+
+            cell.setStyle(borderStyle + " -fx-border-radius: 10px; -fx-background-radius: 10px; -fx-padding: 6px 8px; -fx-cursor: hand;");
+
+            Label lblStatus = new Label("VACANT");
+            lblStatus.setStyle("-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #15803d;");
+
+            Label lblSub = new Label("+ Available");
+            lblSub.setStyle("-fx-font-size: 8px; -fx-text-fill: #86efac;");
+
+            cell.getChildren().addAll(header, lblStatus, lblSub);
+            cell.setOnMouseClicked(e -> openVacantBayDialog(bayNumber));
+        }
+
+        return cell;
+    }
+
+    private void triggerPalletRetrieval(int bayNumber, Product product) {
+        if (asrsEngine == null) return;
+        asrsEngine.requestRetrieval(bayNumber);
+        logAudit("OT", "🚀 Stacker Crane dispatched to RETRIEVE pallet from Bay " + bayNumber + " (" + product.getSku() + ")");
+    }
+
+    private void openOccupiedBayDialog(int bayNumber, Product product) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Bay " + String.format("%02d", bayNumber) + " - Occupied Storage Cell");
+        dialog.setHeaderText("Pallet Inventory & Crane Retrieval Dispatch");
+
+        ButtonType retrieveBtnType = new ButtonType("🚀 Retrieve Pallet (Dispatch Crane)", ButtonBar.ButtonData.OK_DONE);
+        ButtonType closeBtnType = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(retrieveBtnType, closeBtnType);
+
+        VBox content = new VBox(10);
+        content.setStyle("-fx-padding: 14px; -fx-min-width: 360px;");
+
+        Label skuLbl = new Label("SKU Code: " + product.getSku());
+        skuLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #111827;");
+
+        Label nameLbl = new Label("Product: " + product.getName());
+        nameLbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #374151;");
+
+        Label catLbl = new Label("Category: " + product.getCategory());
+        catLbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #6b7280;");
+
+        Label qtyLbl = new Label("Stored Quantity: " + product.getQuantity() + " Pallet Unit");
+        qtyLbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #374151;");
+
+        Label priceLbl = new Label(String.format("Unit Price: $%,.2f  |  Total Asset Value: $%,.2f", product.getUnitPrice(), product.getTotalValue()));
+        priceLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #14532d;");
+
+        Label bayLocLbl = new Label("Physical Location: Bay " + String.format("%02d", bayNumber) + " (Factory I/O Target Position: " + bayNumber + ")");
+        bayLocLbl.setStyle("-fx-font-size: 11px; -fx-font-family: 'Consolas', monospace; -fx-text-fill: #64748b;");
+
+        content.getChildren().addAll(skuLbl, nameLbl, catLbl, qtyLbl, priceLbl, bayLocLbl);
+        dialog.getDialogPane().setContent(content);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == retrieveBtnType) {
+                triggerPalletRetrieval(bayNumber, product);
+            }
+        });
+    }
+
+    private void openVacantBayDialog(int bayNumber) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Bay " + String.format("%02d", bayNumber) + " - Vacant Slot");
+        dialog.setHeaderText("Allocate Pallet to High-Bay Storage Cell");
+
+        ButtonType allocateBtnType = new ButtonType("📦 Allocate Pallet", ButtonBar.ButtonData.OK_DONE);
+        ButtonType closeBtnType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(allocateBtnType, closeBtnType);
+
+        VBox content = new VBox(10);
+        content.setStyle("-fx-padding: 14px; -fx-min-width: 320px;");
+
+        Label info = new Label("This storage slot is currently empty and available for automated putaway.");
+        info.setStyle("-fx-font-size: 12px; -fx-text-fill: #6b7280;");
+
+        TextField txtSku = new TextField("BOX-" + (100 + bayNumber));
+        txtSku.setPromptText("Enter SKU...");
+        txtSku.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-padding: 6 10;");
+
+        TextField txtName = new TextField("Industrial Pallet Unit #" + bayNumber);
+        txtName.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-padding: 6 10;");
+
+        content.getChildren().addAll(info, new Label("SKU:"), txtSku, new Label("Description:"), txtName);
+        dialog.getDialogPane().setContent(content);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == allocateBtnType) {
+                String sku = txtSku.getText().trim();
+                String name = txtName.getText().trim();
+                if (!sku.isEmpty()) {
+                    inventoryDao.storeProductInBay(sku, name, "Packaging", 1, 15.00, bayNumber);
+                    logAudit("OT", "📦 Manual allocation: Stored " + sku + " in Bay " + bayNumber);
+                    refreshKpiMetrics();
+                    loadInventoryData();
+                    renderStorageMatrixGrid();
+                }
             }
         });
     }

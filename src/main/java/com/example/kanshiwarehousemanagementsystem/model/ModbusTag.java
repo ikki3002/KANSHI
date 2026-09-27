@@ -10,7 +10,8 @@ public class ModbusTag {
 
     public enum TagType {
         COIL("Coil (Actuator / Output)"),
-        DISCRETE_INPUT("Discrete Input (Sensor / Input)");
+        DISCRETE_INPUT("Discrete Input (Sensor / Input)"),
+        HOLDING_REGISTER("Holding Register (Setpoint / Integer)");
 
         private final String displayName;
 
@@ -33,6 +34,7 @@ public class ModbusTag {
     private int address;
     private TagType type;
     private transient boolean active; // Transient: not saved in JSON configuration
+    private transient int registerValue; // Transient: numerical register value
 
     public ModbusTag() {
     }
@@ -43,6 +45,7 @@ public class ModbusTag {
         this.address = address;
         this.type = type;
         this.active = false;
+        this.registerValue = 0;
     }
 
     public String getId() {
@@ -85,12 +88,24 @@ public class ModbusTag {
         this.active = active;
     }
 
+    public int getRegisterValue() {
+        return registerValue;
+    }
+
+    public void setRegisterValue(int registerValue) {
+        this.registerValue = registerValue;
+    }
+
     public boolean isActuator() {
         return type == TagType.COIL;
     }
 
     public boolean isSensor() {
         return type == TagType.DISCRETE_INPUT;
+    }
+
+    public boolean isRegister() {
+        return type == TagType.HOLDING_REGISTER;
     }
 
     @Override

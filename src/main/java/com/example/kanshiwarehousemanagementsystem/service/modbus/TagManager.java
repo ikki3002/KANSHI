@@ -52,14 +52,41 @@ public class TagManager {
     }
 
     /**
-     * Resets tag list to the exact Factory I/O driver scene configuration.
+     * Resets tag list to the exact Factory I/O Automated Warehouse driver scene configuration.
      */
     public synchronized void resetToDefaults() {
         tags.clear();
-        tags.add(new ModbusTag("coil_0", "Belt Conveyor (6m) 0", 0, TagType.COIL));
-        tags.add(new ModbusTag("coil_1", "Belt Conveyor (6m) 1", 1, TagType.COIL));
-        tags.add(new ModbusTag("coil_2", "Curved Belt Conveyor 0 CW", 2, TagType.COIL));
-        tags.add(new ModbusTag("input_0", "Vision Sensor 0", 0, TagType.DISCRETE_INPUT));
+        // 15 Discrete Inputs (0..14)
+        tags.add(new ModbusTag("input_0", "At Entry", 0, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_1", "At Load", 1, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_2", "At Left", 2, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_3", "At Middle", 3, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_4", "At Right", 4, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_5", "At Unload", 5, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_6", "At Exit", 6, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_7", "Moving X", 7, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_8", "Moving Z", 8, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_9", "Start", 9, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_10", "Reset", 10, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_11", "Stop", 11, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_12", "Emergency stop", 12, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_13", "Auto", 13, TagType.DISCRETE_INPUT));
+        tags.add(new ModbusTag("input_14", "FACTORY I/O (Running)", 14, TagType.DISCRETE_INPUT));
+
+        // 10 Coils (0..9)
+        tags.add(new ModbusTag("coil_0", "Entry Conveyor", 0, TagType.COIL));
+        tags.add(new ModbusTag("coil_1", "Load Conveyor", 1, TagType.COIL));
+        tags.add(new ModbusTag("coil_2", "Forks Left", 2, TagType.COIL));
+        tags.add(new ModbusTag("coil_3", "Forks Right", 3, TagType.COIL));
+        tags.add(new ModbusTag("coil_4", "Lift", 4, TagType.COIL));
+        tags.add(new ModbusTag("coil_5", "Unload Conveyor", 5, TagType.COIL));
+        tags.add(new ModbusTag("coil_6", "Exit Conveyor", 6, TagType.COIL));
+        tags.add(new ModbusTag("coil_7", "Start light", 7, TagType.COIL));
+        tags.add(new ModbusTag("coil_8", "Reset light", 8, TagType.COIL));
+        tags.add(new ModbusTag("coil_9", "Stop light", 9, TagType.COIL));
+
+        // Holding Register 0
+        tags.add(new ModbusTag("reg_0", "Target Position", 0, TagType.HOLDING_REGISTER));
     }
 
     /**

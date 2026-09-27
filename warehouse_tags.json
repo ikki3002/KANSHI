@@ -1,62 +1,158 @@
 [
   {
+    "id": "input_0",
+    "name": "At Entry",
+    "address": 0,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_1",
+    "name": "At Load",
+    "address": 1,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_2",
+    "name": "At Left",
+    "address": 2,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_3",
+    "name": "At Middle",
+    "address": 3,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_4",
+    "name": "At Right",
+    "address": 4,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_5",
+    "name": "At Unload",
+    "address": 5,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_6",
+    "name": "At Exit",
+    "address": 6,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_7",
+    "name": "Moving X",
+    "address": 7,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_8",
+    "name": "Moving Z",
+    "address": 8,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_9",
+    "name": "Start",
+    "address": 9,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_10",
+    "name": "Reset",
+    "address": 10,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_11",
+    "name": "Stop",
+    "address": 11,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_12",
+    "name": "Emergency stop",
+    "address": 12,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_13",
+    "name": "Auto",
+    "address": 13,
+    "type": "DISCRETE_INPUT"
+  },
+  {
+    "id": "input_14",
+    "name": "FACTORY I/O (Running)",
+    "address": 14,
+    "type": "DISCRETE_INPUT"
+  },
+  {
     "id": "coil_0",
-    "name": "Belt Conveyor (6m) 0",
+    "name": "Entry Conveyor",
     "address": 0,
     "type": "COIL"
   },
   {
     "id": "coil_1",
-    "name": "Belt Conveyor (6m) 1",
+    "name": "Load Conveyor",
     "address": 1,
     "type": "COIL"
   },
   {
     "id": "coil_2",
-    "name": "Curved Belt Conveyor 0 CW",
+    "name": "Forks Left",
     "address": 2,
     "type": "COIL"
   },
   {
-    "id": "input_0",
-    "name": "Vision Sensor 0",
-    "address": 0,
-    "type": "DISCRETE_INPUT"
-  },
-  {
-    "id": "tag_coil_3_eb49",
-    "name": "Pause",
+    "id": "coil_3",
+    "name": "Forks Right",
     "address": 3,
     "type": "COIL"
   },
   {
-    "id": "tag_coil_4_0592",
-    "name": "Reset",
+    "id": "coil_4",
+    "name": "Lift",
     "address": 4,
     "type": "COIL"
   },
   {
-    "id": "tag_coil_5_1c2b",
-    "name": "Run",
+    "id": "coil_5",
+    "name": "Unload Conveyor",
     "address": 5,
     "type": "COIL"
   },
   {
-    "id": "tag_coil_6_0794",
-    "name": "Pivot Arm Sorter 0 Belt (+)",
+    "id": "coil_6",
+    "name": "Exit Conveyor",
     "address": 6,
     "type": "COIL"
   },
   {
-    "id": "tag_coil_8_6564",
-    "name": "Pivot Arm Sorter Turn",
+    "id": "coil_7",
+    "name": "Start light",
+    "address": 7,
+    "type": "COIL"
+  },
+  {
+    "id": "coil_8",
+    "name": "Reset light",
     "address": 8,
     "type": "COIL"
   },
   {
-    "id": "tag_coil_9_a5cf",
-    "name": "Belt Conveyor (2m) 0",
+    "id": "coil_9",
+    "name": "Stop light",
     "address": 9,
     "type": "COIL"
+  },
+  {
+    "id": "reg_0",
+    "name": "Target Position",
+    "address": 0,
+    "type": "HOLDING_REGISTER"
   }
 ]

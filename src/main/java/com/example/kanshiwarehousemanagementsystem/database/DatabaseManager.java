@@ -92,13 +92,13 @@ public class DatabaseManager {
             // 2. Initialize Inventory Table (Week 6 Relational DB)
             stmt.execute(createInventoryTable);
 
-            // Seed initial warehouse inventory items
+            // Seed initial warehouse inventory items in ASRS High-Bay Rack
             String seedInventory = "INSERT OR IGNORE INTO inventory (sku, name, category, quantity, unit_price, location) VALUES " +
-                    "('BOX-SML-101', 'Standard Cardboard Box (Small)', 'Packaging', 150, 12.50, 'Aisle A-01'), " +
-                    "('BOX-MED-102', 'Heavy Duty Corrugated Box (Med)', 'Packaging', 85, 18.00, 'Aisle A-02'), " +
-                    "('PAL-EUR-201', 'Euro Pallet EPAL-1 Heavy Duty', 'Material Handling', 40, 35.00, 'Bay B-05'), " +
-                    "('SEN-OPT-301', 'Optical Retroreflective Sensor M18', 'Automation Parts', 24, 120.00, 'Secure Shelf S-01'), " +
-                    "('CON-BLT-401', 'Modular Conveyor Belt Segment 2m', 'Spares', 12, 245.00, 'Rack R-03');";
+                    "('BOX-SML-101', 'Standard Cardboard Box (Small)', 'Packaging', 150, 12.50, 'Bay-01'), " +
+                    "('BOX-MED-102', 'Heavy Duty Corrugated Box (Med)', 'Packaging', 85, 18.00, 'Bay-05'), " +
+                    "('PAL-EUR-201', 'Euro Pallet EPAL-1 Heavy Duty', 'Material Handling', 40, 35.00, 'Bay-12'), " +
+                    "('SEN-OPT-301', 'Optical Retroreflective Sensor M18', 'Automation Parts', 24, 120.00, 'Bay-21'), " +
+                    "('CON-BLT-401', 'Modular Conveyor Belt Segment 2m', 'Spares', 12, 245.00, 'Bay-33');";
             stmt.execute(seedInventory);
 
             // 3. Initialize Relational Invoices & Items tables

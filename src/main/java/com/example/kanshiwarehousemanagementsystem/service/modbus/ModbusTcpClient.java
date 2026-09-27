@@ -218,6 +218,99 @@ public class ModbusTcpClient implements AutoCloseable {
         return states;
     }
 
+    /**
+     * Function Code 06 (0x06): Write Single Holding Register (e.g. ASRS Crane Target Position).
+     *
+     * @param address Register address (0 = Target Position in Factory I/O Automated Warehouse)
+     * @param value   Numerical setpoint (e.g. 1..54 for storage bays, 55 for infeed station)
+     * @return true if successfully acknowledged by server
+     */
+    public synchronized boolean writeSingleRegister(int address, int value) throws IOException {
+        ensureConnected();
+
+        int transactionId = getNextTransactionId();
+        byte[] request = new byte[12];
+
+        // MBAP Header (7 bytes)
+        request[0] = (byte) ((transactionId >> 8) & 0xFF);
+        request[1] = (byte) (transactionId & 0xFF);
+        request[2] = 0x00; // Protocol ID (0 = Modbus)
+        request[3] = 0x00;
+        request[4] = 0x00; // Length (6 bytes following)
+        request[5] = 0x06;
+        request[6] = (byte) (slaveId & 0xFF);
+
+        // PDU: Function Code 0x06
+        request[7] = 0x06;
+        request[8] = (byte) ((address >> 8) & 0xFF);
+        request[9] = (byte) (address & 0xFF);
+        request[10] = (byte) ((value >> 8) & 0xFF);
+        request[11] = (byte) (value & 0xFF);
+
+        out.write(request);
+        out.flush();
+
+        byte[] response = readResponse(12);
+
+        // Check for Modbus exception (FC | 0x80)
+        if (response[7] == (byte) 0x86) {
+            int exceptionCode = response[8] & 0xFF;
+            throw new IOException("Modbus Exception 0x86 (Code: " + exceptionCode + ")");
+        }
+
+        return response[7] == 0x06;
+    }
+
+    /**
+     * Function Code 03 (0x03): Read Holding Registers.
+     *
+     * @param startAddress Starting register address
+     * @param count        Number of registers to read
+     * @return array of 16-bit register integer values
+     */
+    public synchronized int[] readHoldingRegisters(int startAddress, int count) throws IOException {
+        ensureConnected();
+
+        int transactionId = getNextTransactionId();
+        byte[] request = new byte[12];
+
+        // MBAP Header
+        request[0] = (byte) ((transactionId >> 8) & 0xFF);
+        request[1] = (byte) (transactionId & 0xFF);
+        request[2] = 0x00;
+        request[3] = 0x00;
+        request[4] = 0x00;
+        request[5] = 0x06;
+        request[6] = (byte) (slaveId & 0xFF);
+
+        // PDU: Function Code 0x03
+        request[7] = 0x03;
+        request[8] = (byte) ((startAddress >> 8) & 0xFF);
+        request[9] = (byte) (startAddress & 0xFF);
+        request[10] = (byte) ((count >> 8) & 0xFF);
+        request[11] = (byte) (count & 0xFF);
+
+        out.write(request);
+        out.flush();
+
+        int expectedLength = 9 + (count * 2);
+        byte[] response = readResponse(expectedLength);
+
+        if (response[7] == (byte) 0x83) {
+            int exceptionCode = response[8] & 0xFF;
+            throw new IOException("Modbus Exception 0x83 (Code: " + exceptionCode + ")");
+        }
+
+        int[] values = new int[count];
+        for (int i = 0; i < count; i++) {
+            int msb = response[9 + (i * 2)] & 0xFF;
+            int lsb = response[10 + (i * 2)] & 0xFF;
+            values[i] = (msb << 8) | lsb;
+        }
+
+        return values;
+    }
+
     private void ensureConnected() throws IOException {
         if (!isConnected()) {
             connect();

@@ -74,7 +74,7 @@ public class FactoryIOService {
     }
 
     /**
-     * Writes state to a dynamic ModbusTag actuator (Coil).
+     * Writes state to a dynamic ModbusTag actuator (Coil) or setpoint (Holding Register).
      */
     public boolean writeTag(ModbusTag tag, boolean on) throws IOException {
         if (tag.isActuator()) {
@@ -83,12 +83,50 @@ public class FactoryIOService {
                 tag.setActive(on);
             }
             return success;
+        } else if (tag.isRegister()) {
+            return writeTagRegister(tag, on ? 1 : 0);
         }
         return false;
     }
 
     /**
-     * Reads state from a dynamic ModbusTag (Sensor or Actuator).
+     * Writes numerical setpoint to a Holding Register tag (e.g. Target Position 1..55).
+     */
+    public boolean writeTagRegister(ModbusTag tag, int value) throws IOException {
+        if (tag.isRegister() || tag.getType() == ModbusTag.TagType.HOLDING_REGISTER) {
+            boolean success = client.writeSingleRegister(tag.getAddress(), value);
+            if (success) {
+                tag.setRegisterValue(value);
+                tag.setActive(value > 0);
+            }
+            return success;
+        }
+        return false;
+    }
+
+    /**
+     * Writes an integer value to a Modbus holding register.
+     */
+    public boolean writeRegister(int address, int value) throws IOException {
+        if (client != null) {
+            return client.writeSingleRegister(address, value);
+        }
+        return false;
+    }
+
+    /**
+     * Reads a 16-bit value from a Modbus holding register.
+     */
+    public int readRegister(int address) throws IOException {
+        if (client != null) {
+            int[] vals = client.readHoldingRegisters(address, 1);
+            return vals.length > 0 ? vals[0] : 0;
+        }
+        return 0;
+    }
+
+    /**
+     * Reads state from a dynamic ModbusTag (Sensor, Actuator, or Holding Register).
      */
     public boolean readTag(ModbusTag tag) throws IOException {
         if (tag.isSensor()) {
@@ -100,6 +138,13 @@ public class FactoryIOService {
             boolean state = states.length > 0 && states[0];
             tag.setActive(state);
             return state;
+        } else if (tag.isRegister()) {
+            int[] vals = client.readHoldingRegisters(tag.getAddress(), 1);
+            if (vals.length > 0) {
+                tag.setRegisterValue(vals[0]);
+                tag.setActive(vals[0] > 0);
+                return vals[0] > 0;
+            }
         }
         return false;
     }

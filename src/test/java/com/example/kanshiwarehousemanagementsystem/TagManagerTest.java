@@ -38,12 +38,10 @@ public class TagManagerTest {
         List<ModbusTag> actuators = tagManager.getActuatorTags();
         List<ModbusTag> sensors = tagManager.getSensorTags();
 
-        assertEquals(3, actuators.size(), "Should have 3 default conveyor actuators");
-        assertEquals(1, sensors.size(), "Should have 1 default vision sensor");
+        assertEquals(10, actuators.size(), "Should have 10 default actuators/coils for Automated Warehouse");
+        assertEquals(15, sensors.size(), "Should have 15 default discrete inputs for Automated Warehouse");
 
         assertEquals(0, actuators.get(0).getAddress());
-        assertEquals(1, actuators.get(1).getAddress());
-        assertEquals(2, actuators.get(2).getAddress());
         assertEquals(0, sensors.get(0).getAddress());
     }
 

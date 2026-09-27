@@ -318,4 +318,94 @@ public class InventoryDao extends BaseDao<Product> {
             return false;
         }
     }
+
+    /**
+     * Returns a map of bay numbers (1..totalBays) to the stored Product occupying that bay.
+     */
+    public java.util.Map<Integer, Product> getBayOccupancyMap(int totalBays) {
+        java.util.Map<Integer, Product> map = new java.util.HashMap<>();
+        List<Product> products = getAllProducts();
+        for (Product p : products) {
+            if (p.getLocation() != null) {
+                int bay = parseBayNumber(p.getLocation());
+                if (bay >= 1 && bay <= totalBays && p.getQuantity() > 0) {
+                    map.put(bay, p);
+                }
+            }
+        }
+        return map;
+    }
+
+    /**
+     * Finds the lowest-numbered available/empty bay in the rack (1..totalBays).
+     * Returns -1 if the rack is 100% full.
+     */
+    public int findNextAvailableBay(int totalBays) {
+        java.util.Map<Integer, Product> occupancy = getBayOccupancyMap(totalBays);
+        for (int i = 1; i <= totalBays; i++) {
+            if (!occupancy.containsKey(i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Retrieves the product located at a specific bay number.
+     */
+    public Product getProductByBay(int bayNumber) {
+        String bayLocation = String.format("Bay-%02d", bayNumber);
+        String sql = "SELECT id, sku, name, category, quantity, unit_price, location FROM inventory WHERE location = ? OR location = ?;";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, bayLocation);
+            pstmt.setString(2, "Bay " + bayNumber);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSet(rs);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to fetch product for bay " + bayNumber + ": " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Stores or updates a product in a high-bay storage cell.
+     */
+    public boolean storeProductInBay(String sku, String name, String category, int qty, double unitPrice, int bayNumber) {
+        String bayLocation = String.format("Bay-%02d", bayNumber);
+        Product existing = findProductBySku(sku);
+        if (existing != null) {
+            existing.setLocation(bayLocation);
+            existing.setQuantity(existing.getQuantity() + qty);
+            return updateProduct(existing);
+        } else {
+            Product newP = new Product(0, sku, name, category, qty, unitPrice, bayLocation);
+            return addProduct(newP);
+        }
+    }
+
+    /**
+     * Clears or removes product from a high-bay storage cell upon retrieval.
+     */
+    public boolean clearBay(int bayNumber) {
+        Product p = getProductByBay(bayNumber);
+        if (p != null) {
+            return deleteProduct(p.getId());
+        }
+        return false;
+    }
+
+    private int parseBayNumber(String location) {
+        if (location == null) return -1;
+        String cleaned = location.replaceAll("[^0-9]", "");
+        if (!cleaned.isEmpty()) {
+            try {
+                return Integer.parseInt(cleaned);
+            } catch (NumberFormatException ignored) {}
+        }
+        return -1;
+    }
 }
