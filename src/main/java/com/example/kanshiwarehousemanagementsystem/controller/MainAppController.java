@@ -47,6 +47,7 @@ import com.example.kanshiwarehousemanagementsystem.model.FloorCellPlacement;
 import com.example.kanshiwarehousemanagementsystem.model.FloorCellPlacement.AssetType;
 import com.example.kanshiwarehousemanagementsystem.model.FloorCellPlacement.Direction;
 import com.example.kanshiwarehousemanagementsystem.service.scada.FloorLayoutService;
+import com.example.kanshiwarehousemanagementsystem.service.api.CurrencyApiService;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -141,6 +142,14 @@ public class MainAppController implements Initializable {
     @FXML private Button btnStoreBatch;
     @FXML private ComboBox<String> cmbDispatchQty;
     @FXML private Button btnDispatchBatch;
+
+    // Level 1 Dashboard Currency & Live FX API
+    @FXML private ComboBox<String> cmbDashboardCurrency;
+    @FXML private Label lblCurrencyApiBadge;
+    @FXML private Label lblFxRatesTicker;
+    @FXML private Label lblFxApiTimestamp;
+    private final CurrencyApiService currencyApiService = new CurrencyApiService();
+    private String selectedCurrency = "USD";
 
     // Level 1 KPI Overview Labels & Badges
     @FXML private Label lblKpiValuation;
@@ -284,6 +293,7 @@ public class MainAppController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         initClock();
+        setupCurrencyApi();
         setupTagTable();
         setupTagForm();
         setupInventoryLedger();
@@ -314,6 +324,68 @@ public class MainAppController implements Initializable {
         }));
         clockTimeline.setCycleCount(Animation.INDEFINITE);
         clockTimeline.play();
+    }
+
+    /**
+     * Initializes the live foreign exchange REST API telemetry and currency selector.
+     */
+    private void setupCurrencyApi() {
+        if (cmbDashboardCurrency != null) {
+            cmbDashboardCurrency.setItems(FXCollections.observableArrayList(currencyApiService.getSupportedCurrencies()));
+            cmbDashboardCurrency.setValue("USD");
+            cmbDashboardCurrency.setOnAction(this::handleCurrencyChanged);
+        }
+
+        updateFxRatesDisplay();
+
+        // Asynchronously fetch live JSON rates over HTTP without blocking the JavaFX UI thread
+        currencyApiService.fetchLiveRatesAsync().thenAccept(success -> {
+            Platform.runLater(() -> {
+                updateFxRatesDisplay();
+                refreshKpiMetrics();
+                if (success) {
+                    log("[REST API] Received live foreign exchange JSON rates from api.frankfurter.dev (Date: " + currencyApiService.getLastUpdatedDate() + ")");
+                    logAudit("IT", "Exchange rates updated via REST API (Date: " + currencyApiService.getLastUpdatedDate() + ").");
+                }
+            });
+        });
+    }
+
+    private void updateFxRatesDisplay() {
+        if (lblCurrencyApiBadge != null) {
+            if (currencyApiService.isLiveApiConnected()) {
+                lblCurrencyApiBadge.setText("● Live API (" + currencyApiService.getLastUpdatedDate() + ")");
+                lblCurrencyApiBadge.setStyle("-fx-background-color: #dcfce7; -fx-text-fill: #15803d; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 2 6; -fx-background-radius: 999px;");
+            } else {
+                lblCurrencyApiBadge.setText("● Offline Rates");
+                lblCurrencyApiBadge.setStyle("-fx-background-color: #fef3c7; -fx-text-fill: #b45309; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 2 6; -fx-background-radius: 999px;");
+            }
+        }
+        if (lblFxRatesTicker != null) {
+            String ticker = String.format("1 USD = €%.2f EUR  |  £%.2f GBP  |  ¥%.1f JPY  |  CA$%.2f CAD  |  ₹%.2f INR",
+                    currencyApiService.getRate("EUR"),
+                    currencyApiService.getRate("GBP"),
+                    currencyApiService.getRate("JPY"),
+                    currencyApiService.getRate("CAD"),
+                    currencyApiService.getRate("INR"));
+            lblFxRatesTicker.setText(ticker);
+        }
+        if (lblFxApiTimestamp != null) {
+            lblFxApiTimestamp.setText(currencyApiService.isLiveApiConnected() ?
+                    "Source: api.frankfurter.dev (REST/JSON)" : "Source: Default Baseline Rates");
+        }
+    }
+
+    @FXML
+    private void handleCurrencyChanged(ActionEvent event) {
+        if (cmbDashboardCurrency != null) {
+            String val = cmbDashboardCurrency.getValue();
+            if (val != null && !val.trim().isEmpty()) {
+                selectedCurrency = val.trim();
+            }
+        }
+        refreshKpiMetrics();
+        log("[CURRENCY] Switched dashboard valuation currency to " + selectedCurrency);
     }
 
     // =========================================================================
@@ -4405,7 +4477,13 @@ public class MainAppController implements Initializable {
     @FXML
     private void handleRefreshDashboard(ActionEvent event) {
         refreshKpiMetrics();
-        logAudit("IT-STOCK", "Dashboard KPIs refreshed from SQLite inventory database.");
+        currencyApiService.fetchLiveRatesAsync().thenAccept(success -> {
+            Platform.runLater(() -> {
+                updateFxRatesDisplay();
+                refreshKpiMetrics();
+            });
+        });
+        logAudit("IT-STOCK", "Dashboard KPIs and live FX API exchange rates refreshed.");
     }
 
     private static class AuditRecord {
@@ -4509,7 +4587,7 @@ public class MainAppController implements Initializable {
             lblKpiInventory.setText(String.format("%,d Units", totalUnits));
         }
         if (lblKpiValuation != null) {
-            lblKpiValuation.setText(String.format("$%,.2f", totalValuation));
+            lblKpiValuation.setText(currencyApiService.formatCurrency(totalValuation, selectedCurrency));
         }
         if (lblKpiSkuCount != null) {
             lblKpiSkuCount.setText(distinctSkus + " Active SKUs");
