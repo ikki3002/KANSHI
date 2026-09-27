@@ -331,14 +331,21 @@ public class InventoryDao extends BaseDao<Product> {
     /**
      * Returns a map of bay numbers (1..totalBays) to the stored Product occupying that bay.
      */
+    /**
+     * Returns a map of bay numbers (1..totalBays) to the stored Product occupying that bay.
+     * Considers a bay occupied if a product record has quantity > 0 and status is not DISPATCHED.
+     */
     public java.util.Map<Integer, Product> getBayOccupancyMap(int totalBays) {
         java.util.Map<Integer, Product> map = new java.util.HashMap<>();
         List<Product> products = getAllProducts();
         for (Product p : products) {
             if (p.getLocation() != null) {
                 int bay = parseBayNumber(p.getLocation());
-                if (bay >= 1 && bay <= totalBays && p.getQuantity() > 0) {
-                    map.put(bay, p);
+                if (bay >= 1 && bay <= totalBays) {
+                    boolean isOccupied = p.getQuantity() > 0 && !"DISPATCHED".equalsIgnoreCase(p.getStatus());
+                    if (isOccupied) {
+                        map.put(bay, p);
+                    }
                 }
             }
         }
@@ -361,14 +368,21 @@ public class InventoryDao extends BaseDao<Product> {
 
     /**
      * Retrieves the product located at a specific bay number.
+     * Supports various formatting aliases (Bay-01, Bay-1, Bay 01, Bay 1).
      */
     public Product getProductByBay(int bayNumber) {
-        String bayLocation = String.format("Bay-%02d", bayNumber);
-        String sql = "SELECT id, sku, name, category, quantity, unit_price, location, status FROM inventory WHERE location = ? OR location = ?;";
+        String loc1 = String.format("Bay-%02d", bayNumber);
+        String loc2 = String.format("Bay-%d", bayNumber);
+        String loc3 = String.format("Bay %02d", bayNumber);
+        String loc4 = String.format("Bay %d", bayNumber);
+        String sql = "SELECT id, sku, name, category, quantity, unit_price, location, status FROM inventory " +
+                     "WHERE location IN (?, ?, ?, ?) ORDER BY id DESC LIMIT 1;";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, bayLocation);
-            pstmt.setString(2, "Bay " + bayNumber);
+            pstmt.setString(1, loc1);
+            pstmt.setString(2, loc2);
+            pstmt.setString(3, loc3);
+            pstmt.setString(4, loc4);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     return mapResultSet(rs);
@@ -386,8 +400,25 @@ public class InventoryDao extends BaseDao<Product> {
      */
     public boolean storeProductInBay(String sku, String name, String category, int qty, double unitPrice, int bayNumber) {
         String bayLocation = String.format("Bay-%02d", bayNumber);
+
+        // Generate a bay-unique SKU:
+        // If sku already ends with -B<bayNumber> or -<bayNumber>, keep it.
+        // If sku ends with -B<otherBay>, replace it with -B<bayNumber>.
+        // Otherwise, append -B<bayNumber>.
+        String uniqueSku;
+        String baySuffix = String.format("-B%02d", bayNumber);
+        String altBaySuffix = "-" + bayNumber;
+        if (sku.endsWith(baySuffix) || sku.endsWith(altBaySuffix)) {
+            uniqueSku = sku;
+        } else if (sku.matches(".*-B\\d+$")) {
+            uniqueSku = sku.substring(0, sku.lastIndexOf("-B")) + baySuffix;
+        } else {
+            uniqueSku = String.format("%s-B%02d", sku, bayNumber);
+        }
+
         Product existingInBay = getProductByBay(bayNumber);
         if (existingInBay != null) {
+            existingInBay.setSku(uniqueSku);
             existingInBay.setName(name);
             existingInBay.setCategory(category);
             existingInBay.setQuantity(qty);
@@ -397,13 +428,13 @@ public class InventoryDao extends BaseDao<Product> {
             return updateProduct(existingInBay);
         }
 
-        String uniqueSku = sku.contains("-B") ? sku : String.format("%s-B%02d", sku, bayNumber);
         Product existingSku = findProductBySku(uniqueSku);
         if (existingSku != null) {
             existingSku.setName(name);
             existingSku.setCategory(category);
             existingSku.setLocation(bayLocation);
             existingSku.setQuantity(qty);
+            existingSku.setUnitPrice(unitPrice);
             existingSku.setStatus("STORED");
             return updateProduct(existingSku);
         } else {
@@ -416,11 +447,23 @@ public class InventoryDao extends BaseDao<Product> {
      * Clears or removes product from a high-bay storage cell upon retrieval.
      */
     public boolean clearBay(int bayNumber) {
-        Product p = getProductByBay(bayNumber);
-        if (p != null) {
-            return deleteProduct(p.getId());
+        String loc1 = String.format("Bay-%02d", bayNumber);
+        String loc2 = String.format("Bay-%d", bayNumber);
+        String loc3 = String.format("Bay %02d", bayNumber);
+        String loc4 = String.format("Bay %d", bayNumber);
+        String sql = "DELETE FROM inventory WHERE location IN (?, ?, ?, ?);";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, loc1);
+            pstmt.setString(2, loc2);
+            pstmt.setString(3, loc3);
+            pstmt.setString(4, loc4);
+            int rows = pstmt.executeUpdate();
+            return rows > 0;
+        } catch (SQLException e) {
+            System.err.println("Failed to clear bay " + bayNumber + ": " + e.getMessage());
+            return false;
         }
-        return false;
     }
 
     /**
@@ -490,12 +533,25 @@ public class InventoryDao extends BaseDao<Product> {
         return types;
     }
 
-    private int parseBayNumber(String location) {
-        if (location == null) return -1;
-        String cleaned = location.replaceAll("[^0-9]", "");
-        if (!cleaned.isEmpty()) {
+    public int parseBayNumber(String location) {
+        if (location == null || location.trim().isEmpty()) return -1;
+        String loc = location.trim();
+        // Match standard bay formats: "Bay-01", "Bay 01", "Bay-1", "Bay 1", "Bay01", "B-01"
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(?i)^(?:Bay[\\s\\-_]*|B[\\s\\-_]+)(\\d{1,2})$")
+                .matcher(loc);
+        if (m.matches()) {
             try {
-                return Integer.parseInt(cleaned);
+                return Integer.parseInt(m.group(1));
+            } catch (NumberFormatException ignored) {}
+        }
+        // Match word "Bay" followed by digits anywhere e.g. "Rack Bay 12"
+        java.util.regex.Matcher m2 = java.util.regex.Pattern
+                .compile("(?i)\\bBay[\\s\\-_]*(\\d{1,2})\\b")
+                .matcher(loc);
+        if (m2.find()) {
+            try {
+                return Integer.parseInt(m2.group(1));
             } catch (NumberFormatException ignored) {}
         }
         return -1;
