@@ -29,11 +29,7 @@ public class HelloApplication extends Application {
         FXMLLoader fxmlLoader = new FXMLLoader(fxmlLocation);
         Scene scene = new Scene(fxmlLoader.load());
 
-        // Apply White + Dark Red Cherry industrial stylesheet with Segoe UI typography
-        URL cssResource = HelloApplication.class.getResource("css/industrial-dark.css");
-        if (cssResource != null) {
-            scene.getStylesheets().add(cssResource.toExternalForm());
-        }
+
 
         stage.setTitle("KANSHI WMS");
 
