@@ -74,6 +74,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1267,10 +1268,20 @@ public class MainAppController implements Initializable {
         colTagAddress.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getAddress()));
 
         colTagAction.setCellFactory(param -> new TableCell<>() {
+            private final Button btnEdit = new Button("Edit");
             private final Button btnDelete = new Button("Delete");
+            private final HBox boxActions = new HBox(6, btnEdit, btnDelete);
 
             {
-                btnDelete.setStyle("-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 10; -fx-cursor: hand;");
+                boxActions.setAlignment(Pos.CENTER);
+                btnEdit.setStyle("-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 10; -fx-cursor: hand;");
+                btnDelete.setStyle("-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-border-color: #fca5a5; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 10; -fx-cursor: hand;");
+
+                btnEdit.setOnAction(e -> {
+                    ModbusTag tag = getTableView().getItems().get(getIndex());
+                    openEditTagDialog(tag);
+                });
+
                 btnDelete.setOnAction(e -> {
                     ModbusTag tag = getTableView().getItems().get(getIndex());
                     tagManager.removeTag(tag.getId());
@@ -1285,11 +1296,96 @@ public class MainAppController implements Initializable {
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btnDelete);
+                setGraphic(empty ? null : boxActions);
             }
         });
 
+        tableTags.setRowFactory(tv -> {
+            TableRow<ModbusTag> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                    ModbusTag rowData = row.getItem();
+                    openEditTagDialog(rowData);
+                }
+            });
+            return row;
+        });
+
         loadTableData();
+    }
+
+    private void openEditTagDialog(ModbusTag tag) {
+        if (tag == null) return;
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Edit Hardware Tag - " + tag.getName());
+        dialog.setHeaderText("Update hardware tag parameters for " + tag.getId());
+        if (mainContentPane != null && mainContentPane.getScene() != null && mainContentPane.getScene().getWindow() != null) {
+            dialog.initOwner(mainContentPane.getScene().getWindow());
+        }
+
+        ButtonType saveBtnType = new ButtonType("Save Changes", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveBtnType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(12);
+        grid.setStyle("-fx-padding: 20px;");
+
+        TextField txtId = new TextField(tag.getId());
+        txtId.setEditable(false);
+        txtId.setStyle("-fx-background-color: #f3f4f6; -fx-font-family: 'Consolas', monospace; -fx-border-color: #e5e7eb; -fx-border-radius: 6px; -fx-background-radius: 6px; -fx-padding: 6 10;");
+
+        TextField txtName = new TextField(tag.getName());
+        txtName.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 6px; -fx-background-radius: 6px; -fx-padding: 6 10;");
+
+        TextField txtAddress = new TextField(String.valueOf(tag.getAddress()));
+        txtAddress.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 6px; -fx-background-radius: 6px; -fx-padding: 6 10;");
+
+        ComboBox<TagType> cmbType = new ComboBox<>(FXCollections.observableArrayList(TagType.COIL, TagType.DISCRETE_INPUT, TagType.HOLDING_REGISTER));
+        cmbType.setValue(tag.getType());
+        cmbType.setMaxWidth(Double.MAX_VALUE);
+        cmbType.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 6px; -fx-background-radius: 6px;");
+
+        grid.add(new Label("Tag ID (Internal):"), 0, 0);
+        grid.add(txtId, 1, 0);
+        grid.add(new Label("Tag Name:"), 0, 1);
+        grid.add(txtName, 1, 1);
+        grid.add(new Label("Modbus Register Address:"), 0, 2);
+        grid.add(txtAddress, 1, 2);
+        grid.add(new Label("Tag Type:"), 0, 3);
+        grid.add(cmbType, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == saveBtnType) {
+            String newName = txtName.getText() == null ? "" : txtName.getText().trim();
+            String addressText = txtAddress.getText() == null ? "" : txtAddress.getText().trim();
+            TagType newType = cmbType.getValue();
+
+            if (newName.isEmpty() || addressText.isEmpty() || newType == null) {
+                showAlert("Validation Error", "Please fill in all tag fields.");
+                return;
+            }
+
+            int newAddress;
+            try {
+                newAddress = Integer.parseInt(addressText);
+                if (newAddress < 0) throw new NumberFormatException();
+            } catch (NumberFormatException e) {
+                showAlert("Validation Error", "Modbus Register Address must be a non-negative integer (e.g. 0, 1, 2).");
+                return;
+            }
+
+            tagManager.updateTag(tag.getId(), newName, newAddress, newType);
+            loadTableData();
+            refreshDynamicHardwareUI();
+            renderFloorGrid();
+
+            log("[TAG MANAGER] Updated hardware tag: " + tag.getId() + " -> " + newName + " (addr=" + newAddress + ", type=" + newType + ")");
+            logAudit("HARDWARE-TAGS", "Updated hardware tag: " + tag.getId() + " (" + newName + ")");
+        }
     }
 
     private void setupTagForm() {
@@ -4269,6 +4365,16 @@ public class MainAppController implements Initializable {
         txtNewTagAddress.clear();
 
         log("[TAG MANAGER] Added new tag: " + name + " (" + type + " " + address + ")");
+    }
+
+    @FXML
+    private void handleEditSelectedTag(ActionEvent event) {
+        ModbusTag selected = tableTags.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert("No Selection", "Please select a hardware tag from the table to edit.");
+            return;
+        }
+        openEditTagDialog(selected);
     }
 
     @FXML

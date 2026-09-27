@@ -79,4 +79,20 @@ public class TagManagerTest {
 
         assertTrue(found, "Tag should be persisted and reloaded from JSON file");
     }
+
+    @Test
+    void testUpdateTag() {
+        tagManager.addTag("Optical Sorter", 8, TagType.DISCRETE_INPUT);
+        ModbusTag tag = tagManager.findTagByName("Optical Sorter");
+        assertNotNull(tag);
+
+        boolean updated = tagManager.updateTag(tag.getId(), "High-Speed Sorter", 15, TagType.COIL);
+        assertTrue(updated);
+
+        ModbusTag modified = tagManager.findTagById(tag.getId());
+        assertNotNull(modified);
+        assertEquals("High-Speed Sorter", modified.getName());
+        assertEquals(15, modified.getAddress());
+        assertEquals(TagType.COIL, modified.getType());
+    }
 }

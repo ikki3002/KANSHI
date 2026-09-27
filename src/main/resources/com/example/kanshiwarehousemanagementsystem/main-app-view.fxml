@@ -520,11 +520,13 @@
                                 <TableColumn fx:id="colTagName" text="Tag Name" prefWidth="240" />
                                 <TableColumn fx:id="colTagType" text="Type" prefWidth="180" />
                                 <TableColumn fx:id="colTagAddress" text="Modbus Address" prefWidth="140" />
-                                <TableColumn fx:id="colTagAction" text="Action" prefWidth="100" />
+                                <TableColumn fx:id="colTagAction" text="Action" prefWidth="160" />
                             </columns>
                         </TableView>
 
                         <HBox spacing="12" alignment="CENTER_LEFT">
+                            <Button text="✏️ Edit Selected" onAction="#handleEditSelectedTag"
+                                    style="-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;" />
                             <Button text="💾 Save to warehouse_tags.json" onAction="#handleSaveTags"
                                     style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;" />
                             <Button text="↺ Reset to Defaults" onAction="#handleResetTags"

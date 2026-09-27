@@ -178,6 +178,20 @@ public class TagManager {
         return removed;
     }
 
+    public synchronized boolean updateTag(String id, String newName, int newAddress, TagType newType) {
+        ModbusTag tag = findTagById(id);
+        if (tag != null) {
+            tag.setName(newName);
+            tag.setAddress(newAddress);
+            if (newType != null) {
+                tag.setType(newType);
+            }
+            saveToFile();
+            return true;
+        }
+        return false;
+    }
+
     public File getConfigFile() {
         return configFile;
     }
