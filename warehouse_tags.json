@@ -40,5 +40,23 @@
     "name": "Run",
     "address": 5,
     "type": "COIL"
+  },
+  {
+    "id": "tag_coil_6_0794",
+    "name": "Pivot Arm Sorter 0 Belt (+)",
+    "address": 6,
+    "type": "COIL"
+  },
+  {
+    "id": "tag_coil_8_6564",
+    "name": "Pivot Arm Sorter Turn",
+    "address": 8,
+    "type": "COIL"
+  },
+  {
+    "id": "tag_coil_9_a5cf",
+    "name": "Belt Conveyor (2m) 0",
+    "address": 9,
+    "type": "COIL"
   }
 ]

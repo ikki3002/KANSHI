@@ -37,12 +37,6 @@
       "direction": "EAST"
     },
     {
-      "row": 4,
-      "col": 2,
-      "assetType": "DEPOT",
-      "direction": "EAST"
-    },
-    {
       "row": 0,
       "col": 4,
       "assetType": "CONVEYOR",
@@ -61,6 +55,33 @@
       "col": 6,
       "assetType": "CONVEYOR",
       "tagId": "tag_coil_3_eb49",
+      "direction": "EAST"
+    },
+    {
+      "row": 6,
+      "col": 2,
+      "assetType": "DEPOT",
+      "direction": "EAST"
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "assetType": "CONVEYOR",
+      "tagId": "tag_coil_6_0794",
+      "direction": "EAST"
+    },
+    {
+      "row": 5,
+      "col": 0,
+      "assetType": "CURVED_CONVEYOR",
+      "tagId": "tag_coil_8_6564",
+      "direction": "EAST"
+    },
+    {
+      "row": 5,
+      "col": 3,
+      "assetType": "CONVEYOR",
+      "tagId": "tag_coil_9_a5cf",
       "direction": "EAST"
     }
   ]
