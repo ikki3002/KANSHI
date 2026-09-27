@@ -407,14 +407,28 @@
 
                     <Region HBox.hgrow="ALWAYS" />
 
-                    <Button fx:id="btnStartAll" text="▶ START ALL / RUN SYSTEM" onAction="#handleStartAllSystem"
-                            style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;" />
-                    <Button fx:id="btnScadaUnload" text="📤 Unload Product" onAction="#handleOpenUnloadDialog"
-                            style="-fx-background-color: #0284c7; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 14; -fx-cursor: hand;" />
-                    <Button fx:id="btnAutoTest" text="⚡ 2s Motor Test" onAction="#handleRunAutoSequence"
-                            style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 14; -fx-cursor: hand;" />
+                    <!-- Infeed Putaway Batch Control (Store N units to Rack) -->
+                    <HBox alignment="CENTER_LEFT" spacing="6" style="-fx-background-color: #f0fdf4; -fx-padding: 3 8; -fx-background-radius: 999px; -fx-border-color: #bbf7d0; -fx-border-radius: 999px;">
+                        <Label text="📥 Putaway:" minWidth="-Infinity" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #166534;" />
+                        <ComboBox fx:id="cmbPutawayQty" prefWidth="135" minWidth="110" style="-fx-font-size: 11px; -fx-background-color: #ffffff; -fx-background-radius: 999px; -fx-border-color: #86efac; -fx-border-radius: 999px; -fx-padding: 2 4;" />
+                        <Button fx:id="btnStoreBatch" text="Store (3)" minWidth="-Infinity" onAction="#handleStartBatchPutaway"
+                                style="-fx-background-color: #15803d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;" />
+                    </HBox>
+
+                    <!-- Outbound Bunch Dispatch Control (Dispatch M units as a bunch) -->
+                    <HBox alignment="CENTER_LEFT" spacing="6" style="-fx-background-color: #f0f9ff; -fx-padding: 3 8; -fx-background-radius: 999px; -fx-border-color: #bae6fd; -fx-border-radius: 999px;">
+                        <Label text="📤 Dispatch:" minWidth="-Infinity" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #075985;" />
+                        <ComboBox fx:id="cmbDispatchQty" prefWidth="120" minWidth="95" style="-fx-font-size: 11px; -fx-background-color: #ffffff; -fx-background-radius: 999px; -fx-border-color: #7dd3fc; -fx-border-radius: 999px; -fx-padding: 2 4;" />
+                        <Button fx:id="btnDispatchBatch" text="Dispatch" minWidth="-Infinity" onAction="#handleStartBunchDispatch"
+                                style="-fx-background-color: #0284c7; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;" />
+                    </HBox>
+
+                    <Button fx:id="btnScadaUnload" text="🔍 By SKU" onAction="#handleOpenUnloadDialog"
+                            style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 6 12; -fx-cursor: hand;" />
+                    <Button fx:id="btnStartAll" text="▶ Start (3)" onAction="#handleStartAllSystem"
+                            style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 12; -fx-cursor: hand;" />
                     <Button fx:id="btnEstop" text="🛑 EMERGENCY STOP" onAction="#handleEmergencyStop"
-                            style="-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-border-color: #fca5a5; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;" />
+                            style="-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-border-color: #fca5a5; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;" />
                 </HBox>
 
                 <!-- SCADA Content (Floor Canvas & Log) -->

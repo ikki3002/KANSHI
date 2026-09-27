@@ -235,17 +235,18 @@ public class InventoryDao extends BaseDao<Product> {
      * Updates an existing product in the SQLite inventory ledger.
      */
     public boolean updateProduct(Product p) {
-        String sql = "UPDATE inventory SET name = ?, category = ?, quantity = ?, unit_price = ?, location = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;";
+        String sql = "UPDATE inventory SET sku = ?, name = ?, category = ?, quantity = ?, unit_price = ?, location = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, p.getName());
-            pstmt.setString(2, p.getCategory());
-            pstmt.setInt(3, p.getQuantity());
-            pstmt.setDouble(4, p.getUnitPrice());
-            pstmt.setString(5, p.getLocation());
-            pstmt.setString(6, p.getStatus() != null ? p.getStatus() : "STORED");
-            pstmt.setInt(7, p.getId());
+            pstmt.setString(1, p.getSku());
+            pstmt.setString(2, p.getName());
+            pstmt.setString(3, p.getCategory());
+            pstmt.setInt(4, p.getQuantity());
+            pstmt.setDouble(5, p.getUnitPrice());
+            pstmt.setString(6, p.getLocation());
+            pstmt.setString(7, p.getStatus() != null ? p.getStatus() : "STORED");
+            pstmt.setInt(8, p.getId());
 
             int rows = pstmt.executeUpdate();
             return rows > 0;
@@ -531,6 +532,65 @@ public class InventoryDao extends BaseDao<Product> {
             System.err.println("Failed to get distinct stored product types: " + e.getMessage());
         }
         return types;
+    }
+
+    /**
+     * Returns the list of occupied bay numbers ordered by FIFO timestamp (oldest first).
+     */
+    public List<Integer> getOccupiedBays(int limit) {
+        List<Integer> bays = new ArrayList<>();
+        String sql = "SELECT location FROM inventory WHERE status != 'DISPATCHED' AND (location LIKE 'Bay-%' OR location LIKE 'Bay %' OR location LIKE '%Bay%') AND quantity > 0 ORDER BY id ASC"
+                + (limit > 0 ? " LIMIT " + limit : "") + ";";
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                int bay = parseBayNumber(rs.getString("location"));
+                if (bay > 0 && !bays.contains(bay)) {
+                    bays.add(bay);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to get occupied bays: " + e.getMessage());
+        }
+        if (bays.isEmpty()) {
+            java.util.Map<Integer, Product> map = getBayOccupancyMap(54);
+            List<Integer> mapBays = new ArrayList<>(map.keySet());
+            java.util.Collections.sort(mapBays);
+            if (limit > 0 && mapBays.size() > limit) {
+                return new ArrayList<>(mapBays.subList(0, limit));
+            }
+            return mapBays;
+        }
+        return bays;
+    }
+
+    /**
+     * Returns total number of occupied bays.
+     */
+    public int getTotalStoredCount() {
+        int count = 0;
+        String sql = "SELECT COUNT(*) FROM inventory WHERE status != 'DISPATCHED' AND (location LIKE 'Bay-%' OR location LIKE 'Bay %' OR location LIKE '%Bay%') AND quantity > 0;";
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                count = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to get total stored count: " + e.getMessage());
+        }
+        if (count == 0) {
+            count = getBayOccupancyMap(54).size();
+        }
+        return count;
+    }
+
+    /**
+     * Returns number of vacant bays out of total available bays.
+     */
+    public int getVacantCount(int totalBays) {
+        return Math.max(0, totalBays - getTotalStoredCount());
     }
 
     public int parseBayNumber(String location) {

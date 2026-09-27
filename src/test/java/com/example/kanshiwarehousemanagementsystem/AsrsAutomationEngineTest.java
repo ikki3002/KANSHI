@@ -23,6 +23,7 @@ public class AsrsAutomationEngineTest {
     static void setUp() {
         DatabaseManager.initializeDatabase();
         inventoryDao = new InventoryDao();
+        inventoryDao.clearBay(42);
         ioService = new FactoryIOService();
         engine = new AsrsAutomationEngine(ioService, inventoryDao);
     }
@@ -31,6 +32,9 @@ public class AsrsAutomationEngineTest {
     static void tearDown() {
         if (engine != null) {
             engine.stop();
+        }
+        if (inventoryDao != null) {
+            inventoryDao.clearBay(42);
         }
     }
 
@@ -56,6 +60,7 @@ public class AsrsAutomationEngineTest {
         engine.emergencyStop();
         assertFalse(engine.isAutoMode());
         assertEquals(AsrsAutomationEngine.AsrsState.FAULT, engine.getCurrentState());
+        engine.stop(); // Reset state to IDLE
     }
 
     @Test
@@ -162,5 +167,85 @@ public class AsrsAutomationEngineTest {
         // Clean up
         inventoryDao.clearBay(bay1);
         inventoryDao.clearBay(bay2);
+    }
+
+    @Test
+    void testBatchPutawayControl() {
+        // Test starting batch putaway
+        boolean started = engine.startBatchPutaway(3, null, null);
+        assertTrue(started, "Starting batch putaway with valid count should succeed");
+        assertTrue(engine.isBatchPutawayActive(), "Batch putaway flag must be true");
+        assertEquals(3, engine.getTargetPutawayCount(), "Target count should be 3");
+        assertEquals(0, engine.getCompletedPutawayCount(), "Initial completed count should be 0");
+        assertTrue(engine.isAutoMode(), "Auto mode should be engaged for batch execution");
+
+        // Test cancel
+        engine.cancelBatchPutaway();
+        assertFalse(engine.isBatchPutawayActive(), "Batch putaway must be inactive after cancel");
+        assertEquals(0, engine.getTargetPutawayCount(), "Target count must be reset to 0 after cancel");
+        assertFalse(engine.isAutoMode(), "Auto mode should be false after cancel");
+
+        // Test autoMode(false) also resets batch
+        engine.startBatchPutaway(5, null, null);
+        assertTrue(engine.isBatchPutawayActive());
+        assertEquals(5, engine.getTargetPutawayCount());
+        engine.setAutoMode(false);
+        assertFalse(engine.isBatchPutawayActive());
+        assertEquals(0, engine.getTargetPutawayCount());
+
+        // Test invalid batch count (0 or negative)
+        assertFalse(engine.startBatchPutaway(0, null, null), "Zero count must be rejected");
+        assertFalse(engine.startBatchPutaway(-5, null, null), "Negative count must be rejected");
+    }
+
+    @Test
+    void testBunchDispatchValidationAndFifoOrdering() {
+        // Setup 3 items in specific bays
+        inventoryDao.clearBay(31);
+        inventoryDao.clearBay(32);
+        inventoryDao.clearBay(33);
+
+        inventoryDao.storeProductInBay("ITEM-1", "Product One", "Cat1", 1, 10.0, 31);
+        inventoryDao.storeProductInBay("ITEM-2", "Product Two", "Cat2", 1, 20.0, 32);
+        inventoryDao.storeProductInBay("ITEM-3", "Product Three", "Cat3", 1, 30.0, 33);
+
+        int totalStored = inventoryDao.getTotalStoredCount();
+        assertTrue(totalStored >= 3, "Total stored count must be at least 3");
+
+        // Verify getOccupiedBays returns occupied bays in FIFO limit
+        java.util.List<Integer> bays = inventoryDao.getOccupiedBays(2);
+        assertEquals(2, bays.size(), "Should return exactly 2 occupied bays when limit is 2");
+
+        // Test rejection when requestedQty > totalStored
+        java.util.concurrent.atomic.AtomicBoolean rejected = new java.util.concurrent.atomic.AtomicBoolean(false);
+        boolean started = engine.requestBunchDispatch(totalStored + 999, null, (ok, msg) -> {
+            if (!ok) rejected.set(true);
+        });
+        assertFalse(started, "Excessive dispatch quantity must be rejected");
+        assertTrue(rejected.get(), "Rejection callback must be invoked");
+
+        // Test rejection with 0 or negative
+        assertFalse(engine.requestBunchDispatch(0, null, null), "Zero dispatch quantity must be rejected");
+        assertFalse(engine.requestBunchDispatch(-1, null, null), "Negative dispatch quantity must be rejected");
+
+        // Clean up
+        inventoryDao.clearBay(31);
+        inventoryDao.clearBay(32);
+        inventoryDao.clearBay(33);
+    }
+
+    @Test
+    void testScanLoopDecoupledFromSequenceWorker() throws InterruptedException {
+        // Start engine scan loop
+        engine.start();
+        assertFalse(engine.isUnloading(), "Engine should not be unloading initially");
+
+        // Submit retrieval request - should not deadlock or queue indefinitely behind scan loop
+        engine.requestRetrieval(99); // invalid bay (> 54), handled gracefully
+        assertFalse(engine.isUnloading());
+
+        // Stop engine cleanly
+        engine.stop();
+        assertEquals(AsrsAutomationEngine.AsrsState.IDLE, engine.getCurrentState());
     }
 }

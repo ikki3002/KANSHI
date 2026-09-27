@@ -17,15 +17,15 @@ import java.util.function.BiConsumer;
  * Embedded Soft-PLC Automation Controller for the Factory I/O Automated Warehouse (ASRS).
  *
  * Physical layout assumptions (Factory I/O "Automated Warehouse" scene):
- *   - Infeed roller bed is on the LEFT side of the crane at Station 55  → FORKS_LEFT / IN_AT_LEFT
- *   - Outfeed roller bed is on the LEFT side of the crane at Station 55 → FORKS_LEFT / IN_AT_LEFT
- *   - Storage rack bays (1-54) are on the RIGHT side of the crane       → FORKS_RIGHT / IN_AT_RIGHT
+ *   - Infeed roller bed (Load Conveyor) is on the LEFT side of the crane at Station 55    → FORKS_LEFT / IN_AT_LEFT
+ *   - Outfeed roller bed (Unload Conveyor) is on the RIGHT side of the crane at Station 55 → FORKS_RIGHT / IN_AT_RIGHT
+ *   - Storage rack bays (1-54) are on the RIGHT side of the crane aisle                 → FORKS_RIGHT / IN_AT_RIGHT
  *
  * Conveyor rules:
  *   - ENTRY_CONVEYOR and LOAD_CONVEYOR start together once crane is confirmed ready at Station 55.
  *   - IN_AT_ENTRY (vision sensor) fires while the box is still moving — used ONLY to read product type.
  *   - Both conveyors stop only when IN_AT_LOAD fires (box fully on crane pickup bed).
- *   - During unload, UNLOAD_CONVEYOR and EXIT_CONVEYOR run until IN_AT_EXIT fires.
+ *   - During unload, UNLOAD_CONVEYOR and EXIT_CONVEYOR run until IN_AT_EXIT clears into the Remover.
  */
 public class AsrsAutomationEngine {
 
@@ -49,8 +49,8 @@ public class AsrsAutomationEngine {
     // ── Modbus Coil Addresses ────────────────────────────────────────────────────
     public static final int COIL_ENTRY_CONVEYOR = 0;   // First infeed roller
     public static final int COIL_LOAD_CONVEYOR  = 1;   // Second roller (entry → crane bed)
-    public static final int COIL_FORKS_LEFT     = 2;   // Extend forks LEFT (infeed/outfeed bed)
-    public static final int COIL_FORKS_RIGHT    = 3;   // Extend forks RIGHT (rack bays)
+    public static final int COIL_FORKS_LEFT     = 2;   // Extend forks LEFT (infeed load bed)
+    public static final int COIL_FORKS_RIGHT    = 3;   // Extend forks RIGHT (rack bays & outfeed unload bed)
     public static final int COIL_LIFT           = 4;   // Raise/lower fork carriage
     public static final int COIL_UNLOAD_CONVEYOR= 5;   // Outfeed roller
     public static final int COIL_EXIT_CONVEYOR  = 6;   // Exit belt
@@ -108,11 +108,15 @@ public class AsrsAutomationEngine {
     private final FactoryIOService ioService;
     private final InventoryDao     inventoryDao;
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "Asrs-SoftPLC-Thread");
+    // Dedicated single-thread worker for crane sequences (dispatch, bulk unload, single retrieval)
+    private final ExecutorService sequenceExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "Asrs-Sequence-Worker");
         t.setDaemon(true);
         return t;
     });
+
+    // Dedicated thread for the continuous Soft-PLC scan loop (100ms cycle)
+    private Thread scanThread;
 
     private final AtomicBoolean  running    = new AtomicBoolean(false);
     private final AtomicBoolean  autoMode   = new AtomicBoolean(false);
@@ -121,6 +125,13 @@ public class AsrsAutomationEngine {
     private final AtomicInteger  currentTargetPosition = new AtomicInteger(0);
     private final AtomicInteger  activeBay  = new AtomicInteger(0);
     private final AtomicInteger  profileIndex = new AtomicInteger(0);
+
+    // Batch putaway control
+    private final AtomicInteger targetPutawayCount = new AtomicInteger(0);
+    private final AtomicInteger completedPutawayCount = new AtomicInteger(0);
+    private final AtomicBoolean batchPutawayActive = new AtomicBoolean(false);
+    private BiConsumer<Integer, Integer> batchPutawayProgressCallback;
+    private Runnable batchPutawayCompleteCallback;
 
     private BiConsumer<AsrsState, String> stateListener;
     private Runnable inventoryRefreshCallback;
@@ -136,27 +147,51 @@ public class AsrsAutomationEngine {
     public void setInventoryRefreshCallback(Runnable cb) { this.inventoryRefreshCallback = cb; }
 
     public synchronized void start() {
-        if (running.get()) return;
+        if (running.get() && scanThread != null && scanThread.isAlive()) return;
         running.set(true);
-        executor.submit(this::runExecutionLoop);
+        scanThread = new Thread(this::runExecutionLoop, "Asrs-SoftPLC-Scan-Thread");
+        scanThread.setDaemon(true);
+        scanThread.start();
     }
 
     public synchronized void stop() {
         running.set(false);
         autoMode.set(false);
+        batchPutawayActive.set(false);
+        targetPutawayCount.set(0);
         isUnloading.set(false);
+        if (scanThread != null) {
+            scanThread.interrupt();
+            scanThread = null;
+        }
         stopAllActuators();
         setState(AsrsState.IDLE, "System stopped.");
     }
 
     public void setAutoMode(boolean enabled) {
         autoMode.set(enabled);
-        if (!enabled) stopAllActuators();
+        if (!enabled) {
+            batchPutawayActive.set(false);
+            targetPutawayCount.set(0);
+            stopAllActuators();
+        }
         notifyStateChange("Auto-Cycle Mode " + (enabled ? "ENABLED" : "PAUSED"));
     }
 
     public boolean isAutoMode()    { return autoMode.get(); }
     public boolean isUnloading()   { return isUnloading.get(); }
+    public boolean isBatchPutawayActive() { return batchPutawayActive.get(); }
+    public int getCompletedPutawayCount() { return completedPutawayCount.get(); }
+    public int getTargetPutawayCount()    { return targetPutawayCount.get(); }
+
+    public void cancelBatchPutaway() {
+        batchPutawayActive.set(false);
+        targetPutawayCount.set(0);
+        autoMode.set(false);
+        stopAllActuators();
+        setState(AsrsState.IDLE, "Batch putaway stopped by operator.");
+    }
+
     public AsrsState getCurrentState() { return currentState; }
     public int getCurrentTargetPosition() { return currentTargetPosition.get(); }
     public int getActiveBay()      { return activeBay.get(); }
@@ -173,6 +208,7 @@ public class AsrsAutomationEngine {
 
     public void emergencyStop() {
         autoMode.set(false);
+        batchPutawayActive.set(false);
         isUnloading.set(false);
         setState(AsrsState.FAULT, "EMERGENCY STOP TRIPPED");
         stopAllActuators();
@@ -181,14 +217,15 @@ public class AsrsAutomationEngine {
     /** Retrieve a single bay by bay number. */
     public void requestRetrieval(int bayNumber) {
         if (bayNumber < 1 || bayNumber > 54) return;
-        if (isUnloading.get() || currentState != AsrsState.IDLE) {
+        if (isUnloading.get() || currentState != AsrsState.IDLE || batchPutawayActive.get()) {
             notifyStateChange("System busy (" + currentState.getDescription() + "). Retrieval deferred.");
             return;
         }
         Product p = inventoryDao.getProductByBay(bayNumber);
         String prodName = (p != null && p.getName() != null) ? p.getName() : "Pallet #" + bayNumber;
         isUnloading.set(true);
-        executor.submit(() -> {
+        autoMode.set(false);
+        sequenceExecutor.submit(() -> {
             try { executeSingleRetrieval(bayNumber, prodName); }
             finally { isUnloading.set(false); }
         });
@@ -209,16 +246,96 @@ public class AsrsAutomationEngine {
             if (resultCallback != null) resultCallback.accept(false, msg);
             return false;
         }
-        if (isUnloading.get() || currentState != AsrsState.IDLE) {
+        if (isUnloading.get() || currentState != AsrsState.IDLE || batchPutawayActive.get()) {
             String msg = "System busy (" + currentState.getDescription() + "). Please wait.";
             if (resultCallback != null) resultCallback.accept(false, msg);
             return false;
         }
         isUnloading.set(true);
-        if (resultCallback != null) resultCallback.accept(true, "Unload approved and starting.");
-        executor.submit(() -> {
-            try { executeBulkUnloadSequence(productType, requestedQty); }
-            finally { isUnloading.set(false); }
+        autoMode.set(false);
+        sequenceExecutor.submit(() -> {
+            try {
+                executeBulkUnloadSequence(productType, requestedQty);
+                if (resultCallback != null) {
+                    resultCallback.accept(true, String.format("Unload complete: %d x '%s' dispatched.", requestedQty, productType));
+                }
+            } catch (Exception e) {
+                if (resultCallback != null) {
+                    resultCallback.accept(false, "Unload error: " + e.getMessage());
+                }
+            } finally {
+                isUnloading.set(false);
+            }
+        });
+        return true;
+    }
+
+    /**
+     * Initiates automated batch putaway of exactly targetCount products into rack bays.
+     * When targetCount is reached, all conveyors stop, crane returns to rest at Station 55,
+     * and system transitions to IDLE.
+     */
+    public synchronized boolean startBatchPutaway(int targetCount,
+                                                  BiConsumer<Integer, Integer> progressCallback,
+                                                  Runnable onComplete) {
+        if (targetCount <= 0) return false;
+        if (isUnloading.get()) {
+            String msg = "System busy with dispatch (" + currentState.getDescription() + "). Batch putaway deferred.";
+            notifyStateChange(msg);
+            return false;
+        }
+        int vacant = inventoryDao.getVacantCount(54);
+        if (targetCount > vacant) {
+            String msg = String.format("Cannot store %d units: only %d bay(s) vacant.", targetCount, vacant);
+            notifyStateChange(msg);
+            return false;
+        }
+        targetPutawayCount.set(targetCount);
+        completedPutawayCount.set(0);
+        batchPutawayActive.set(true);
+        batchPutawayProgressCallback = progressCallback;
+        batchPutawayCompleteCallback = onComplete;
+        autoMode.set(true);
+        notifyStateChange(String.format("Batch Putaway Target Set: %d pallet(s). Soft-PLC active.", targetCount));
+        return true;
+    }
+
+    /**
+     * Dispatches M items as a bunch in FIFO order (oldest stored pallets first).
+     * Once all M items are unloaded through the exit conveyor, the crane and conveyors go to rest at Station 55.
+     */
+    public synchronized boolean requestBunchDispatch(int requestedQty,
+                                                      BiConsumer<Integer, Integer> progressCallback,
+                                                      BiConsumer<Boolean, String> resultCallback) {
+        if (requestedQty <= 0) {
+            if (resultCallback != null) resultCallback.accept(false, "Requested dispatch quantity must be at least 1.");
+            return false;
+        }
+        int totalStored = inventoryDao.getTotalStoredCount();
+        if (requestedQty > totalStored) {
+            String msg = String.format("Dispatch Rejected: Requested %d unit(s), only %d stored in warehouse.",
+                    requestedQty, totalStored);
+            setState(AsrsState.UNLOAD_REQUEST, msg);
+            if (resultCallback != null) resultCallback.accept(false, msg);
+            return false;
+        }
+        if (isUnloading.get() || currentState != AsrsState.IDLE || batchPutawayActive.get()) {
+            String msg = "System busy (" + currentState.getDescription() + "). Please wait.";
+            if (resultCallback != null) resultCallback.accept(false, msg);
+            return false;
+        }
+        isUnloading.set(true);
+        autoMode.set(false);
+        sequenceExecutor.submit(() -> {
+            try {
+                executeBunchDispatchSequence(requestedQty, progressCallback, resultCallback);
+            } catch (Exception e) {
+                if (resultCallback != null) {
+                    resultCallback.accept(false, "Dispatch error: " + e.getMessage());
+                }
+            } finally {
+                isUnloading.set(false);
+            }
         });
         return true;
     }
@@ -406,6 +523,31 @@ public class AsrsAutomationEngine {
             awaitCraneStop(20_000);
             activeBay.set(0);
 
+            if (batchPutawayActive.get() || targetPutawayCount.get() > 0) {
+                int done = completedPutawayCount.incrementAndGet();
+                int target = targetPutawayCount.get();
+                if (batchPutawayProgressCallback != null) {
+                    batchPutawayProgressCallback.accept(done, target);
+                }
+                if (target > 0 && done >= target) {
+                    batchPutawayActive.set(false);
+                    targetPutawayCount.set(0);
+                    autoMode.set(false);
+                    stopAllActuators();
+                    try {
+                        coil(COIL_LIGHT_START, false);
+                        coil(COIL_LIGHT_STOP, true);
+                    } catch (Exception ignored) {}
+                    setState(AsrsState.IDLE, String.format("Batch putaway complete: %d/%d items stored in rack. System at rest.", done, target));
+                    if (batchPutawayCompleteCallback != null) {
+                        try {
+                            batchPutawayCompleteCallback.run();
+                        } catch (Exception ignored) {}
+                    }
+                    return;
+                }
+            }
+
             setState(AsrsState.IDLE, "Putaway done: Bay " + targetBay + " stored. Ready at Station 55.");
 
         } catch (InterruptedException e) {
@@ -415,6 +557,104 @@ public class AsrsAutomationEngine {
         } catch (Exception e) {
             stopAllActuators();
             setState(AsrsState.FAULT, "Putaway error: " + e.getMessage());
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════════
+    // BUNCH DISPATCH SEQUENCE  (FIFO Rack Bays → Crane → Outfeed)
+    // ══════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Executes bunch dispatch sequence for requestedQty pallets in FIFO order.
+     */
+    private void executeBunchDispatchSequence(int requestedQty,
+                                              BiConsumer<Integer, Integer> progressCallback,
+                                              BiConsumer<Boolean, String> resultCallback) {
+        try {
+            setState(AsrsState.UNLOAD_REQUEST, "Bunch dispatch: retrieving " + requestedQty + " pallet(s)...");
+
+            setState(AsrsState.CHECK_INVENTORY, "Querying oldest stored pallets (FIFO)...");
+            List<Integer> bays = inventoryDao.getOccupiedBays(requestedQty);
+            if (bays.size() < requestedQty) {
+                setState(AsrsState.IDLE, "Dispatch aborted: insufficient occupied bays found.");
+                if (resultCallback != null) resultCallback.accept(false, "Insufficient stock in warehouse.");
+                return;
+            }
+
+            for (int i = 0; i < requestedQty; i++) {
+                if (!running.get()) { stopAllActuators(); break; }
+
+                int bay = bays.get(i);
+                activeBay.set(bay);
+                Product p = inventoryDao.getProductByBay(bay);
+                String prodName = (p != null && p.getName() != null) ? p.getName() : "Pallet #" + bay;
+
+                // ── 1. Travel to bay ──────────────────────────────────────────
+                setState(AsrsState.FIND_PRODUCT,
+                        String.format("Retrieving %s from Bay %d (%d of %d)", prodName, bay, i + 1, requestedQty));
+                writeTarget(bay);
+                awaitCraneStop(20_000);
+
+                // ── 2. Pick from rack (RIGHT side) ────────────────────────────
+                setState(AsrsState.CRANE_PICKUP, "Picking from Rack Bay " + bay + " (RIGHT forks)");
+                coil(COIL_LIFT, false);
+                Thread.sleep(300);
+                coil(COIL_FORKS_RIGHT, true);
+                awaitInput(IN_AT_RIGHT, true, 6_000);
+                Thread.sleep(300);
+                coil(COIL_LIFT, true);
+                Thread.sleep(800);
+                coil(COIL_FORKS_RIGHT, false);
+                awaitInput(IN_AT_MIDDLE, true, 6_000);
+                Thread.sleep(300);
+
+                // ── 3. Travel to Station 55 ───────────────────────────────────
+                setState(AsrsState.MOVE_TO_DISPATCH, "Transporting " + prodName + " to Station 55");
+                writeTarget(STATION_INFEED_LOAD);
+                awaitCraneStop(20_000);
+
+                // ── 4 & 5. Deposit onto Unload Conveyor (RIGHT forks) & convey to Remover ─────
+                dischargeProductToRemover(prodName);
+
+                // ── 6. Update database ────────────────────────────────────────
+                setState(AsrsState.UPDATE_DATABASE, "Bay " + bay + " cleared");
+                inventoryDao.clearBay(bay);
+                if (inventoryRefreshCallback != null) inventoryRefreshCallback.run();
+
+                activeBay.set(0);
+                if (progressCallback != null) {
+                    progressCallback.accept(i + 1, requestedQty);
+                }
+            }
+
+            // ── 7. Return to rest at Station 55 ───────────────────────────────
+            setState(AsrsState.RETURN_TO_READY, "All bunch items dispatched. Confirming crane at Station 55.");
+            coil(COIL_LIFT, false);
+            writeTarget(STATION_INFEED_LOAD);
+            awaitCraneStop(6_000);
+            stopAllActuators();
+            coil(COIL_LIGHT_START, false);
+            coil(COIL_LIGHT_STOP, true);
+
+            setState(AsrsState.IDLE,
+                    String.format("Bunch dispatch complete: %d pallet(s) dispatched. System at rest.", requestedQty));
+            if (resultCallback != null) {
+                resultCallback.accept(true, String.format("Dispatched %d pallet(s) successfully.", requestedQty));
+            }
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            stopAllActuators();
+            setState(AsrsState.IDLE, "Bunch dispatch interrupted.");
+            if (resultCallback != null) {
+                resultCallback.accept(false, "Bunch dispatch interrupted.");
+            }
+        } catch (Exception e) {
+            stopAllActuators();
+            setState(AsrsState.FAULT, "Bunch dispatch error: " + e.getMessage());
+            if (resultCallback != null) {
+                resultCallback.accept(false, "Bunch dispatch error: " + e.getMessage());
+            }
         }
     }
 
@@ -473,24 +713,8 @@ public class AsrsAutomationEngine {
                 writeTarget(STATION_INFEED_LOAD);
                 awaitCraneStop(20_000);
 
-                // ── Deposit onto outfeed bed (LEFT side at Station 55) ─────────
-                setState(AsrsState.RELEASE_PRODUCT, "Depositing " + productType + " onto outfeed bed (LEFT forks)");
-                coil(COIL_FORKS_LEFT, true);
-                awaitInput(IN_AT_LEFT, true, 6_000);  // forks over outfeed rollers
-                Thread.sleep(300);
-                coil(COIL_LIFT, false);                // lower pallet onto outfeed rollers
-                Thread.sleep(800);
-                coil(COIL_FORKS_LEFT, false);          // retract empty forks
-                awaitInput(IN_AT_MIDDLE, true, 6_000);
-                Thread.sleep(300);
-
-                // ── Run outfeed rollers until product exits ────────────────────
-                coil(COIL_UNLOAD_CONVEYOR, true);
-                coil(COIL_EXIT_CONVEYOR,   true);
-                awaitInput(IN_AT_EXIT, true, 12_000); // pallet cleared the exit gate
-                Thread.sleep(1_500);                   // full clearance margin
-                coil(COIL_UNLOAD_CONVEYOR, false);
-                coil(COIL_EXIT_CONVEYOR,   false);
+                // ── Deposit onto Unload Conveyor (RIGHT forks) & convey to Remover ─────
+                dischargeProductToRemover(productType);
 
                 // ── Update database ────────────────────────────────────────────
                 setState(AsrsState.UPDATE_DATABASE, "Bay " + bay + " cleared");
@@ -552,24 +776,8 @@ public class AsrsAutomationEngine {
             writeTarget(STATION_INFEED_LOAD);
             awaitCraneStop(20_000);
 
-            // Deposit onto outfeed bed (LEFT side)
-            setState(AsrsState.RELEASE_PRODUCT, "Depositing " + prodName + " onto outfeed bed (LEFT forks)");
-            coil(COIL_FORKS_LEFT, true);
-            awaitInput(IN_AT_LEFT, true, 6_000);
-            Thread.sleep(300);
-            coil(COIL_LIFT, false);
-            Thread.sleep(800);
-            coil(COIL_FORKS_LEFT, false);
-            awaitInput(IN_AT_MIDDLE, true, 6_000);
-            Thread.sleep(300);
-
-            // Run outfeed rollers
-            coil(COIL_UNLOAD_CONVEYOR, true);
-            coil(COIL_EXIT_CONVEYOR,   true);
-            awaitInput(IN_AT_EXIT, true, 12_000);
-            Thread.sleep(1_500);
-            coil(COIL_UNLOAD_CONVEYOR, false);
-            coil(COIL_EXIT_CONVEYOR,   false);
+            // Deposit onto Unload Conveyor (RIGHT forks) & convey to Remover
+            dischargeProductToRemover(prodName);
 
             // Update database
             setState(AsrsState.UPDATE_DATABASE, "Bay " + bay + " cleared");
@@ -593,6 +801,54 @@ public class AsrsAutomationEngine {
             stopAllActuators();
             setState(AsrsState.FAULT, "Retrieval error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Deposits the retrieved pallet from the crane carriage onto the Unload Conveyor (RIGHT forks),
+     * retracts the forks to center, and drives both the Unload and Exit conveyors until
+     * the pallet passes the exit sensor and falls cleanly into the Remover.
+     */
+    private void dischargeProductToRemover(String prodName) throws Exception {
+        // ── 1. Deposit onto Unload Conveyor (RIGHT side at Station 55) ─────────────
+        setState(AsrsState.RELEASE_PRODUCT, "Depositing " + prodName + " onto Unload Conveyor (RIGHT forks)");
+        coil(COIL_FORKS_RIGHT, true);
+        boolean extendedRight = awaitInput(IN_AT_RIGHT, true, 6_000);
+        if (!extendedRight) {
+            throw new IOException("Forks failed to reach RIGHT outfeed/unload position (timeout).");
+        }
+        Thread.sleep(300);
+
+        // Lower fork carriage so pallet rests on the Unload Conveyor rollers
+        coil(COIL_LIFT, false);
+        Thread.sleep(800);
+
+        // Retract forks back to center
+        coil(COIL_FORKS_RIGHT, false);
+        boolean centered = awaitInput(IN_AT_MIDDLE, true, 6_000);
+        if (!centered) {
+            throw new IOException("Forks failed to retract to center from unload conveyor (timeout).");
+        }
+        Thread.sleep(300);
+
+        // ── 2. Run Unload & Exit conveyors to transport pallet to Remover ──────────
+        setState(AsrsState.RELEASE_PRODUCT, "Outfeed active: conveying " + prodName + " to exit remover...");
+        coil(COIL_UNLOAD_CONVEYOR, true);
+        coil(COIL_EXIT_CONVEYOR,   true);
+
+        // Wait for pallet leading edge to reach Exit sensor
+        boolean reachedExit = awaitInput(IN_AT_EXIT, true, 16_000);
+        if (reachedExit) {
+            // Wait for pallet trailing edge to clear Exit sensor beam
+            awaitInput(IN_AT_EXIT, false, 8_000);
+            // Run extra margin so the pallet rolls completely off into the Remover
+            Thread.sleep(2_500);
+        } else {
+            // Fallback timeout run if sensor was not tripped
+            Thread.sleep(8_000);
+        }
+
+        coil(COIL_UNLOAD_CONVEYOR, false);
+        coil(COIL_EXIT_CONVEYOR,   false);
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -706,7 +962,7 @@ public class AsrsAutomationEngine {
     }
 
     /** Turn off every actuator safely (used on stop / fault / interrupt). */
-    private void stopAllActuators() {
+    public void stopAllActuators() {
         try {
             if (!ioService.isConnected()) return;
             coil(COIL_ENTRY_CONVEYOR,  false);

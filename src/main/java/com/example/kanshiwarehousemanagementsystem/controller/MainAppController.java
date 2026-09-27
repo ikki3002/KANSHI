@@ -135,6 +135,12 @@ public class MainAppController implements Initializable {
     @FXML private Label lblCraneTelemetryInfo;
     @FXML private GridPane gridStorageMatrix;
 
+    // SCADA Batch Controls
+    @FXML private ComboBox<String> cmbPutawayQty;
+    @FXML private Button btnStoreBatch;
+    @FXML private ComboBox<String> cmbDispatchQty;
+    @FXML private Button btnDispatchBatch;
+
     // Level 1 KPI Overview Labels & Badges
     @FXML private Label lblKpiValuation;
     @FXML private Label lblKpiInventory;
@@ -284,6 +290,7 @@ public class MainAppController implements Initializable {
         setupProducerConsumerEngine();
         setupStorageMatrix();
         initAsrsEngine();
+        setupBatchControls();
         refreshDynamicHardwareUI();
         refreshKpiMetrics();
         initMimicAnimation();
@@ -3590,64 +3597,16 @@ public class MainAppController implements Initializable {
             showAlert("Not Connected", "Please connect to Factory I/O Modbus TCP server first.");
             return;
         }
+        if (asrsEngine == null) {
+            showAlert("Engine Error", "ASRS Automation Engine is not initialized.");
+            return;
+        }
 
-        isSystemRunningAll = !isSystemRunningAll;
-        boolean run = isSystemRunningAll;
-
-        new Thread(() -> {
-            try {
-                // Panel indicators: START light (7), STOP light (9)
-                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_START, run);
-                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_STOP, !run);
-
-                if (asrsEngine != null) {
-                    asrsEngine.setAutoMode(run);
-                }
-
-                if (!run) {
-                    // When stopping the system, shut off all line conveyors immediately
-                    ioService.writeCoil(AsrsAutomationEngine.COIL_ENTRY_CONVEYOR, false);
-                    ioService.writeCoil(AsrsAutomationEngine.COIL_LOAD_CONVEYOR, false);
-                    ioService.writeCoil(AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR, false);
-                    ioService.writeCoil(AsrsAutomationEngine.COIL_EXIT_CONVEYOR, false);
-                }
-
-                Platform.runLater(() -> {
-                    updateMasterStartButtonState(run);
-
-                    // Update UI actuator tiles for active coils
-                    for (ModbusTag tag : tagManager.getActuatorTags()) {
-                        int addr = tag.getAddress();
-                        if (addr == AsrsAutomationEngine.COIL_LIGHT_START) {
-                            tag.setActive(run);
-                            updateActuatorTileUI(tag, run);
-                        } else if (addr == AsrsAutomationEngine.COIL_LIGHT_STOP) {
-                            tag.setActive(!run);
-                            updateActuatorTileUI(tag, !run);
-                        } else if (!run && (addr == AsrsAutomationEngine.COIL_ENTRY_CONVEYOR ||
-                                addr == AsrsAutomationEngine.COIL_LOAD_CONVEYOR ||
-                                addr == AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR ||
-                                addr == AsrsAutomationEngine.COIL_EXIT_CONVEYOR)) {
-                            tag.setActive(false);
-                            updateActuatorTileUI(tag, false);
-                        }
-                    }
-
-                    if (run) {
-                        lblKpiLineState.setText("SYSTEM RUNNING");
-                        lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
-                        log(">> [MASTER START] System running. Soft-PLC coordinating entry roller with crane ready position.");
-                    } else {
-                        lblKpiLineState.setText("STANDBY");
-                        lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #1e293b;");
-                        log(">> [MASTER STOP] Stopped all line conveyors. ASRS entered Standby mode.");
-                    }
-                    redrawMimic();
-                });
-            } catch (Exception ex) {
-                Platform.runLater(() -> log("[ERROR] Master Start All execution failed: " + ex.getMessage()));
-            }
-        }).start();
+        if (isSystemRunningAll || asrsEngine.isAutoMode() || asrsEngine.isBatchPutawayActive()) {
+            stopFullSystem();
+        } else {
+            startPutawayFromSelection();
+        }
     }
 
     @FXML
@@ -3785,18 +3744,17 @@ public class MainAppController implements Initializable {
     }
 
     private void updateMasterStartButtonState(boolean running) {
-        String activeStyle = "-fx-background-color: #374151; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;";
-        String inactiveStyle = "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;";
-        String dashActiveStyle = "-fx-background-color: #374151; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;";
-        String dashInactiveStyle = "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;";
-
-        if (btnStartAll != null) {
-            btnStartAll.setText(running ? "⏹ STOP ALL CONVEYORS" : "▶ START ALL / RUN SYSTEM");
-            btnStartAll.setStyle(running ? activeStyle : inactiveStyle);
-        }
-        if (btnDashStartAll != null) {
-            btnDashStartAll.setText(running ? "⏹ Stop All" : "▶ Start All");
-            btnDashStartAll.setStyle(running ? dashActiveStyle : dashInactiveStyle);
+        if (running) {
+            String selected = cmbPutawayQty != null ? cmbPutawayQty.getValue() : "3 Pallets";
+            int qty = parseQuantityString(selected, 0);
+            if (qty > 0) {
+                int done = asrsEngine != null ? asrsEngine.getCompletedPutawayCount() : 0;
+                updatePutawayRunningUI(done, qty);
+            } else {
+                updateContinuousRunningUI();
+            }
+        } else {
+            resetPutawayUI();
         }
     }
 
@@ -3804,6 +3762,14 @@ public class MainAppController implements Initializable {
     private void handleEmergencyStop(ActionEvent event) {
         if (asrsEngine != null) {
             asrsEngine.emergencyStop();
+        }
+        if (btnStoreBatch != null) {
+            btnStoreBatch.setText("Store");
+            btnStoreBatch.setStyle("-fx-background-color: #15803d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;");
+        }
+        if (btnDispatchBatch != null) {
+            btnDispatchBatch.setText("Dispatch");
+            btnDispatchBatch.setStyle("-fx-background-color: #0284c7; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;");
         }
         isSystemRunningAll = false;
         updateMasterStartButtonState(false);
@@ -3823,6 +3789,407 @@ public class MainAppController implements Initializable {
                 redrawMimic();
             });
         }).start();
+    }
+
+    // =========================================================================
+    // ASRS BATCH OPERATIONS (Putaway Batch & Bunch Dispatch)
+    // =========================================================================
+
+    private void setupBatchControls() {
+        if (cmbPutawayQty != null) {
+            cmbPutawayQty.setItems(FXCollections.observableArrayList(
+                    "1 Pallet", "2 Pallets", "3 Pallets", "4 Pallets", "5 Pallets", "6 Pallets", "10 Pallets", "15 Pallets", "Continuous (No Limit)"
+            ));
+            cmbPutawayQty.setValue("3 Pallets");
+            cmbPutawayQty.valueProperty().addListener((obs, oldVal, newVal) -> updatePutawayButtonLabels());
+            updatePutawayButtonLabels();
+        }
+        if (cmbDispatchQty != null) {
+            cmbDispatchQty.valueProperty().addListener((obs, oldVal, newVal) -> updateDispatchButtonLabel());
+        }
+        refreshDispatchBatchOptions();
+    }
+
+    public void refreshDispatchBatchOptions() {
+        if (cmbDispatchQty != null) {
+            int totalStored = inventoryDao != null ? inventoryDao.getTotalStoredCount() : 0;
+            List<String> options = new ArrayList<>(List.of(
+                    "1 Pallet", "2 Pallets", "3 Pallets", "4 Pallets", "5 Pallets", "6 Pallets", "10 Pallets", "15 Pallets"
+            ));
+            if (totalStored > 0) {
+                options.add("All Stored (" + totalStored + ")");
+            } else {
+                options.add("All Stored");
+            }
+            String prev = cmbDispatchQty.getValue();
+            cmbDispatchQty.setItems(FXCollections.observableArrayList(options));
+            if (prev != null && options.contains(prev)) {
+                cmbDispatchQty.setValue(prev);
+            } else if (prev != null && prev.startsWith("All Stored")) {
+                cmbDispatchQty.setValue(totalStored > 0 ? "All Stored (" + totalStored + ")" : "All Stored");
+            } else if (options.contains("1 Pallet")) {
+                cmbDispatchQty.setValue("1 Pallet");
+            } else if (!options.isEmpty()) {
+                cmbDispatchQty.getSelectionModel().selectFirst();
+            }
+            updateDispatchButtonLabel();
+        }
+    }
+
+    private void updateDispatchButtonLabel() {
+        if (btnDispatchBatch == null) return;
+        String curText = btnDispatchBatch.getText();
+        if (curText != null && curText.startsWith("Dispatching")) {
+            return;
+        }
+        String selected = cmbDispatchQty != null ? cmbDispatchQty.getValue() : "1 Pallet";
+        int qty = parseQuantityString(selected, 1);
+        if (selected != null && selected.startsWith("All")) {
+            int totalStored = inventoryDao != null ? inventoryDao.getTotalStoredCount() : 0;
+            btnDispatchBatch.setText(totalStored > 0 ? "Dispatch (" + totalStored + ")" : "Dispatch All");
+        } else if (qty > 0) {
+            btnDispatchBatch.setText("Dispatch (" + qty + ")");
+        } else {
+            btnDispatchBatch.setText("Dispatch");
+        }
+    }
+
+    private void updatePutawayButtonLabels() {
+        if (isSystemRunningAll || (asrsEngine != null && (asrsEngine.isAutoMode() || asrsEngine.isBatchPutawayActive()))) {
+            return;
+        }
+        String selected = cmbPutawayQty != null ? cmbPutawayQty.getValue() : "3 Pallets";
+        int qty = parseQuantityString(selected, 0);
+
+        String greenStyle = "-fx-background-color: #15803d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;";
+        String masterGreenStyle = "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;";
+        String dashGreenStyle = "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;";
+
+        if (qty > 0) {
+            if (btnStoreBatch != null) {
+                btnStoreBatch.setText("Store (" + qty + ")");
+                btnStoreBatch.setStyle(greenStyle);
+            }
+            if (btnStartAll != null) {
+                btnStartAll.setText("▶ Start (" + qty + ")");
+                btnStartAll.setStyle(masterGreenStyle);
+            }
+            if (btnDashStartAll != null) {
+                btnDashStartAll.setText("▶ Start (" + qty + ")");
+                btnDashStartAll.setStyle(dashGreenStyle);
+            }
+            if (btnToggleAutoPutaway != null) {
+                btnToggleAutoPutaway.setText("⚡ Putaway (" + qty + ")");
+                btnToggleAutoPutaway.setStyle("-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
+            }
+        } else {
+            if (btnStoreBatch != null) {
+                btnStoreBatch.setText("Store (All)");
+                btnStoreBatch.setStyle(greenStyle);
+            }
+            if (btnStartAll != null) {
+                btnStartAll.setText("▶ Continuous");
+                btnStartAll.setStyle(masterGreenStyle);
+            }
+            if (btnDashStartAll != null) {
+                btnDashStartAll.setText("▶ Start All");
+                btnDashStartAll.setStyle(dashGreenStyle);
+            }
+            if (btnToggleAutoPutaway != null) {
+                btnToggleAutoPutaway.setText("⚡ Enable Auto-Putaway");
+                btnToggleAutoPutaway.setStyle("-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
+            }
+        }
+    }
+
+    private void updatePutawayRunningUI(int done, int total) {
+        String stopStyle = "-fx-background-color: #991b1b; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;";
+        String dashStopStyle = "-fx-background-color: #991b1b; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;";
+
+        if (btnStoreBatch != null) {
+            btnStoreBatch.setText(String.format("Storing %d/%d", done, total));
+            btnStoreBatch.setStyle("-fx-background-color: #b45309; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;");
+        }
+        if (btnStartAll != null) {
+            btnStartAll.setText(String.format("⏹ Stop (%d/%d)", done, total));
+            btnStartAll.setStyle(stopStyle);
+        }
+        if (btnDashStartAll != null) {
+            btnDashStartAll.setText(String.format("⏹ Stop (%d/%d)", done, total));
+            btnDashStartAll.setStyle(dashStopStyle);
+        }
+        if (btnToggleAutoPutaway != null) {
+            btnToggleAutoPutaway.setText(String.format("⏹ Stop (%d/%d)", done, total));
+            btnToggleAutoPutaway.setStyle("-fx-background-color: #991b1b; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
+        }
+        if (lblKpiLineState != null) {
+            lblKpiLineState.setText(String.format("STORING %d/%d", done, total));
+            lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
+        }
+    }
+
+    private void updateContinuousRunningUI() {
+        String stopStyle = "-fx-background-color: #991b1b; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; -fx-cursor: hand;";
+        String dashStopStyle = "-fx-background-color: #991b1b; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;";
+
+        if (btnStoreBatch != null) {
+            btnStoreBatch.setText("⏹ Stop Store");
+            btnStoreBatch.setStyle("-fx-background-color: #b45309; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;");
+        }
+        if (btnStartAll != null) {
+            btnStartAll.setText("⏹ Stop Auto");
+            btnStartAll.setStyle(stopStyle);
+        }
+        if (btnDashStartAll != null) {
+            btnDashStartAll.setText("⏹ Stop All");
+            btnDashStartAll.setStyle(dashStopStyle);
+        }
+        if (btnToggleAutoPutaway != null) {
+            btnToggleAutoPutaway.setText("⏹ Stop Putaway");
+            btnToggleAutoPutaway.setStyle("-fx-background-color: #991b1b; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
+        }
+        if (lblKpiLineState != null) {
+            lblKpiLineState.setText("SYSTEM RUNNING");
+            lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
+        }
+    }
+
+    private void resetPutawayUI() {
+        updatePutawayButtonLabels();
+        if (lblKpiLineState != null) {
+            lblKpiLineState.setText("STANDBY");
+            lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #1e293b;");
+        }
+    }
+
+    private void startPutawayFromSelection() {
+        String selected = cmbPutawayQty != null ? cmbPutawayQty.getValue() : "3 Pallets";
+        int qty = parseQuantityString(selected, 0);
+
+        int vacant = inventoryDao.getVacantCount(54);
+        if (vacant <= 0) {
+            showAlert("Warehouse Full", "All 54 rack bays are occupied. Cannot store new pallets.");
+            return;
+        }
+        if (qty > 0 && qty > vacant) {
+            showAlert("Insufficient Bays", String.format("Requested batch of %d exceeds available vacant bays (%d).", qty, vacant));
+            return;
+        }
+
+        isSystemRunningAll = true;
+
+        new Thread(() -> {
+            try {
+                // Panel indicators: START light (7), STOP light (9)
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_START, true);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_STOP, false);
+            } catch (Exception ignored) {}
+        }).start();
+
+        if (qty > 0) {
+            // Deterministic Batch Putaway of exactly N units
+            updatePutawayRunningUI(0, qty);
+
+            boolean started = asrsEngine.startBatchPutaway(qty, (done, total) -> {
+                Platform.runLater(() -> {
+                    updatePutawayRunningUI(done, total);
+                    log(String.format(">> [BATCH PUTAWAY] Progress: %d of %d pallets stored into rack.", done, total));
+                });
+            }, () -> {
+                Platform.runLater(() -> {
+                    isSystemRunningAll = false;
+                    resetPutawayUI();
+                    new Thread(() -> {
+                        try {
+                            ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_START, false);
+                            ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_STOP, true);
+                        } catch (Exception ignored) {}
+                    }).start();
+
+                    for (ModbusTag tag : tagManager.getActuatorTags()) {
+                        int addr = tag.getAddress();
+                        if (addr == AsrsAutomationEngine.COIL_LIGHT_START ||
+                            addr == AsrsAutomationEngine.COIL_ENTRY_CONVEYOR ||
+                            addr == AsrsAutomationEngine.COIL_LOAD_CONVEYOR) {
+                            tag.setActive(false);
+                            updateActuatorTileUI(tag, false);
+                        } else if (addr == AsrsAutomationEngine.COIL_LIGHT_STOP) {
+                            tag.setActive(true);
+                            updateActuatorTileUI(tag, true);
+                        }
+                    }
+
+                    logAudit("OT", String.format("Batch putaway of %d pallet(s) completed successfully. System returned to rest at Station 55.", qty));
+                    log(String.format(">> [BATCH PUTAWAY] Finished: Exactly %d pallet(s) stored into rack. System safely at rest at Station 55.", qty));
+                    refreshKpiMetrics();
+                    refreshDispatchBatchOptions();
+                    renderStorageMatrixGrid();
+                    redrawMimic();
+                });
+            });
+
+            if (started) {
+                logAudit("OT", String.format("Operator started batch putaway of %d pallet(s). Soft-PLC active.", qty));
+                log(String.format(">> [BATCH PUTAWAY] Started inbound batch of %d units. Crane & rollers coordinated.", qty));
+            } else {
+                isSystemRunningAll = false;
+                resetPutawayUI();
+            }
+        } else {
+            // Continuous Putaway (No limit)
+            asrsEngine.setAutoMode(true);
+            updateContinuousRunningUI();
+            logAudit("OT", "Operator engaged continuous auto-putaway line mode.");
+            log(">> [CONTINUOUS RUN] Continuous putaway engaged. System will store pallets until manually paused.");
+        }
+    }
+
+    private void stopFullSystem() {
+        isSystemRunningAll = false;
+        if (asrsEngine != null) {
+            asrsEngine.cancelBatchPutaway();
+            asrsEngine.setAutoMode(false);
+        }
+        new Thread(() -> {
+            try {
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_START, false);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_STOP, true);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_ENTRY_CONVEYOR, false);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_LOAD_CONVEYOR, false);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR, false);
+                ioService.writeCoil(AsrsAutomationEngine.COIL_EXIT_CONVEYOR, false);
+            } catch (Exception ignored) {}
+        }).start();
+
+        Platform.runLater(() -> {
+            resetPutawayUI();
+            for (ModbusTag tag : tagManager.getActuatorTags()) {
+                int addr = tag.getAddress();
+                if (addr == AsrsAutomationEngine.COIL_LIGHT_START ||
+                    addr == AsrsAutomationEngine.COIL_ENTRY_CONVEYOR ||
+                    addr == AsrsAutomationEngine.COIL_LOAD_CONVEYOR ||
+                    addr == AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR ||
+                    addr == AsrsAutomationEngine.COIL_EXIT_CONVEYOR) {
+                    tag.setActive(false);
+                    updateActuatorTileUI(tag, false);
+                } else if (addr == AsrsAutomationEngine.COIL_LIGHT_STOP) {
+                    tag.setActive(true);
+                    updateActuatorTileUI(tag, true);
+                }
+            }
+            lblKpiLineState.setText("STANDBY");
+            lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #1e293b;");
+            log(">> [MASTER STOP] Stopped all line conveyors. ASRS entered Standby mode.");
+            logAudit("OT", "Operator stopped putaway cycle. System entered Standby.");
+            redrawMimic();
+        });
+    }
+
+    @FXML
+    private void handleStartBatchPutaway(ActionEvent event) {
+        if (!ioService.isConnected()) {
+            showAlert("Not Connected", "Please connect to Factory I/O Modbus TCP server first.");
+            return;
+        }
+        if (asrsEngine == null) {
+            showAlert("Engine Error", "ASRS Automation Engine is not initialized.");
+            return;
+        }
+
+        if (isSystemRunningAll || asrsEngine.isAutoMode() || asrsEngine.isBatchPutawayActive()) {
+            stopFullSystem();
+        } else {
+            startPutawayFromSelection();
+        }
+    }
+
+    @FXML
+    private void handleStartBunchDispatch(ActionEvent event) {
+        if (!ioService.isConnected()) {
+            showAlert("Not Connected", "Please connect to Factory I/O Modbus TCP server first.");
+            return;
+        }
+        if (asrsEngine == null) {
+            showAlert("Engine Error", "ASRS Automation Engine is not initialized.");
+            return;
+        }
+
+        int totalStored = inventoryDao.getTotalStoredCount();
+        if (totalStored <= 0) {
+            showAlert("Warehouse Empty", "There are no stored pallets in the rack bays to dispatch.");
+            return;
+        }
+
+        String selected = cmbDispatchQty != null ? cmbDispatchQty.getValue() : "1";
+        int qty = parseQuantityString(selected, 1);
+        if (selected != null && selected.startsWith("All")) {
+            qty = totalStored;
+        }
+
+        if (qty > totalStored) {
+            showAlert("Insufficient Stock", String.format("Requested dispatch of %d exceeds total stored inventory (%d).", qty, totalStored));
+            return;
+        }
+
+        final int targetQty = qty;
+        if (btnDispatchBatch != null) {
+            btnDispatchBatch.setDisable(true);
+            btnDispatchBatch.setText("Dispatching 0/" + targetQty);
+            btnDispatchBatch.setStyle("-fx-background-color: #b45309; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: wait;");
+        }
+
+        boolean started = asrsEngine.requestBunchDispatch(targetQty, (done, total) -> {
+            Platform.runLater(() -> {
+                if (btnDispatchBatch != null) {
+                    btnDispatchBatch.setText("Dispatching " + done + "/" + total);
+                }
+                log(String.format(">> [BUNCH DISPATCH] Progress: %d of %d pallets discharged via outfeed.", done, total));
+                refreshKpiMetrics();
+                refreshDispatchBatchOptions();
+                renderStorageMatrixGrid();
+                redrawMimic();
+            });
+        }, (ok, msg) -> {
+            Platform.runLater(() -> {
+                if (btnDispatchBatch != null) {
+                    btnDispatchBatch.setDisable(false);
+                    updateDispatchButtonLabel();
+                    btnDispatchBatch.setStyle("-fx-background-color: #0284c7; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;");
+                }
+                if (!ok) {
+                    showAlert("Dispatch Warning", msg);
+                } else {
+                    log(">> [BUNCH DISPATCH] " + msg);
+                    logAudit("OT", String.format("Bunch dispatch of %d pallet(s) completed. Crane parked at Station 55 at rest.", targetQty));
+                }
+                refreshKpiMetrics();
+                refreshDispatchBatchOptions();
+                renderStorageMatrixGrid();
+                redrawMimic();
+            });
+        });
+
+        if (started) {
+            logAudit("OT", String.format("Operator started bunch dispatch of %d pallet(s) in FIFO order.", targetQty));
+            log(String.format(">> [BUNCH DISPATCH] Retrieving and discharging %d pallets. Crane & outfeed active.", targetQty));
+        } else {
+            if (btnDispatchBatch != null) {
+                btnDispatchBatch.setDisable(false);
+                updateDispatchButtonLabel();
+                btnDispatchBatch.setStyle("-fx-background-color: #0284c7; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;");
+            }
+        }
+    }
+
+    private int parseQuantityString(String str, int defaultVal) {
+        if (str == null || str.trim().isEmpty()) return defaultVal;
+        try {
+            String digits = str.replaceAll("[^0-9]", "");
+            if (!digits.isEmpty()) {
+                return Integer.parseInt(digits);
+            }
+        } catch (NumberFormatException ignored) {}
+        return defaultVal;
     }
 
     @FXML
@@ -4111,6 +4478,7 @@ public class MainAppController implements Initializable {
                 refreshKpiMetrics();
                 loadInventoryData();
                 renderStorageMatrixGrid();
+                refreshDispatchBatchOptions();
             });
         });
 
@@ -4135,20 +4503,20 @@ public class MainAppController implements Initializable {
 
     @FXML
     private void handleToggleAutoPutaway(ActionEvent event) {
-        if (asrsEngine == null) return;
-        boolean nextState = !asrsEngine.isAutoMode();
-        asrsEngine.setAutoMode(nextState);
-
-        if (btnToggleAutoPutaway != null) {
-            if (nextState) {
-                btnToggleAutoPutaway.setText("⏹ Pause Auto-Putaway");
-                btnToggleAutoPutaway.setStyle("-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
-            } else {
-                btnToggleAutoPutaway.setText("⚡ Enable Auto-Putaway");
-                btnToggleAutoPutaway.setStyle("-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
-            }
+        if (!ioService.isConnected()) {
+            showAlert("Not Connected", "Please connect to Factory I/O Modbus TCP server first.");
+            return;
         }
-        logAudit("OT", "ASRS Soft-PLC: Auto-Putaway mode set to " + (nextState ? "ENABLED (Sensors Active)" : "PAUSED"));
+        if (asrsEngine == null) {
+            showAlert("Engine Error", "ASRS Automation Engine is not initialized.");
+            return;
+        }
+
+        if (isSystemRunningAll || asrsEngine.isAutoMode() || asrsEngine.isBatchPutawayActive()) {
+            stopFullSystem();
+        } else {
+            startPutawayFromSelection();
+        }
     }
 
     @FXML
