@@ -337,7 +337,7 @@ To provide complete spatial visibility of the automated warehouse, Kanshi WMS wi
 ---
 
 ## 7. Verification and Acceptance Criteria
-1. **Zero External CSS**: All UI enhancements remain 100% inline-styled.
+1. **Zero External Stylesheet**: All UI enhancements use direct JavaFX styling.
 2. **Factory I/O Connection**: Single-click connection to `127.0.0.1:502` or `20.20.20.57:502`.
 3. **Modbus Handshake**: Live reading of all 15 sensors and writing of all 10 coils + 1 holding register verified.
 4. **Interactive $N \times M$ Matrix**: Displays all 54 bays accurately reflecting SQLite inventory state.

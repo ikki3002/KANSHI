@@ -10,19 +10,17 @@ import java.util.List;
 public class PasswordValidator {
 
     public enum StrengthLevel {
-        EMPTY("Enter a password", 0.0, "strength-empty"),
-        WEAK("Weak Password", 0.33, "strength-weak"),
-        MEDIUM("Moderate Password", 0.66, "strength-medium"),
-        STRONG("Strong Password", 1.0, "strength-strong");
+        EMPTY("Enter a password", 0.0),
+        WEAK("Weak Password", 0.33),
+        MEDIUM("Moderate Password", 0.66),
+        STRONG("Strong Password", 1.0);
 
         private final String label;
         private final double progress;
-        private final String cssClass;
 
-        StrengthLevel(String label, double progress, String cssClass) {
+        StrengthLevel(String label, double progress) {
             this.label = label;
             this.progress = progress;
-            this.cssClass = cssClass;
         }
 
         public String getLabel() {
@@ -31,10 +29,6 @@ public class PasswordValidator {
 
         public double getProgress() {
             return progress;
-        }
-
-        public String getCssClass() {
-            return cssClass;
         }
     }
 

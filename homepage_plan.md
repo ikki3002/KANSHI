@@ -114,7 +114,7 @@ Triggered on-demand from Level 2 workspaces:
 
 | Level | Component | Syllabus Topic |
 | :--- | :--- | :--- |
-| **Level 1** | Top KPIs & Navigation Rail | **Week 3**: JavaFX Layouts (`BorderPane`, `VBox`, `HBox`), CSS Styling |
+| **Level 1** | Top KPIs & Navigation Rail | **Week 3**: JavaFX Layouts (`BorderPane`, `VBox`, `HBox`), UI Styling |
 | **Level 2A** | OT SCADA & Sensor Polling | **Week 4**: Concurrency, `ScheduledExecutorService`, `Platform.runLater()` |
 | **Level 2B** | Inventory Ledger Table | **Week 6**: Relational Database, SQLite JDBC, `PreparedStatement`, CRUD |
 | **Level 2C** | Billing & Valuation Models | **Week 1**: Core OOP Syntax, Encapsulated Models (`Product`, `Invoice`) |
