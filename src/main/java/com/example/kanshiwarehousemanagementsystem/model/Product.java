@@ -13,11 +13,16 @@ public class Product {
     private int quantity;
     private double unitPrice;
     private String location;
+    private String status = "STORED";
 
     public Product() {
     }
 
     public Product(int id, String sku, String name, String category, int quantity, double unitPrice, String location) {
+        this(id, sku, name, category, quantity, unitPrice, location, "STORED");
+    }
+
+    public Product(int id, String sku, String name, String category, int quantity, double unitPrice, String location, String status) {
         this.id = id;
         this.sku = sku;
         this.name = name;
@@ -25,10 +30,11 @@ public class Product {
         this.quantity = quantity;
         this.unitPrice = unitPrice;
         this.location = location;
+        this.status = (status != null && !status.isEmpty()) ? status : "STORED";
     }
 
     public Product(String sku, String name, String category, int quantity, double unitPrice, String location) {
-        this(0, sku, name, category, quantity, unitPrice, location);
+        this(0, sku, name, category, quantity, unitPrice, location, "STORED");
     }
 
     public int getId() {
@@ -85,6 +91,14 @@ public class Product {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public double getTotalValue() {

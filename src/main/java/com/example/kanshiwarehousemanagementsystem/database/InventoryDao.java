@@ -20,7 +20,7 @@ public class InventoryDao extends BaseDao<Product> {
 
     @Override
     protected Product mapResultSet(ResultSet rs) throws SQLException {
-        return new Product(
+        Product p = new Product(
                 rs.getInt("id"),
                 rs.getString("sku"),
                 rs.getString("name"),
@@ -29,6 +29,13 @@ public class InventoryDao extends BaseDao<Product> {
                 rs.getDouble("unit_price"),
                 rs.getString("location")
         );
+        try {
+            String st = rs.getString("status");
+            if (st != null && !st.isEmpty()) {
+                p.setStatus(st);
+            }
+        } catch (SQLException ignored) {}
+        return p;
     }
 
     @Override
@@ -38,7 +45,7 @@ public class InventoryDao extends BaseDao<Product> {
 
     @Override
     public Product getById(int id) {
-        String sql = "SELECT id, sku, name, category, quantity, unit_price, location FROM inventory WHERE id = ?;";
+        String sql = "SELECT id, sku, name, category, quantity, unit_price, location, status FROM inventory WHERE id = ?;";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
@@ -73,7 +80,7 @@ public class InventoryDao extends BaseDao<Product> {
      */
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT id, sku, name, category, quantity, unit_price, location FROM inventory ORDER BY name ASC;";
+        String sql = "SELECT id, sku, name, category, quantity, unit_price, location, status FROM inventory ORDER BY name ASC;";
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
@@ -146,7 +153,7 @@ public class InventoryDao extends BaseDao<Product> {
      * Adds a new product to the warehouse ledger.
      */
     public boolean addProduct(Product product) {
-        String sql = "INSERT INTO inventory (sku, name, category, quantity, unit_price, location) VALUES (?, ?, ?, ?, ?, ?);";
+        String sql = "INSERT INTO inventory (sku, name, category, quantity, unit_price, location, status) VALUES (?, ?, ?, ?, ?, ?, ?);";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -156,6 +163,7 @@ public class InventoryDao extends BaseDao<Product> {
             pstmt.setInt(4, product.getQuantity());
             pstmt.setDouble(5, product.getUnitPrice());
             pstmt.setString(6, product.getLocation());
+            pstmt.setString(7, product.getStatus() != null ? product.getStatus() : "STORED");
 
             int rows = pstmt.executeUpdate();
             return rows > 0;
@@ -227,7 +235,7 @@ public class InventoryDao extends BaseDao<Product> {
      * Updates an existing product in the SQLite inventory ledger.
      */
     public boolean updateProduct(Product p) {
-        String sql = "UPDATE inventory SET name = ?, category = ?, quantity = ?, unit_price = ?, location = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;";
+        String sql = "UPDATE inventory SET name = ?, category = ?, quantity = ?, unit_price = ?, location = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -236,7 +244,8 @@ public class InventoryDao extends BaseDao<Product> {
             pstmt.setInt(3, p.getQuantity());
             pstmt.setDouble(4, p.getUnitPrice());
             pstmt.setString(5, p.getLocation());
-            pstmt.setInt(6, p.getId());
+            pstmt.setString(6, p.getStatus() != null ? p.getStatus() : "STORED");
+            pstmt.setInt(7, p.getId());
 
             int rows = pstmt.executeUpdate();
             return rows > 0;
@@ -288,7 +297,7 @@ public class InventoryDao extends BaseDao<Product> {
      * Finds a single product by SKU.
      */
     public Product findProductBySku(String sku) {
-        String sql = "SELECT id, sku, name, category, quantity, unit_price, location FROM inventory WHERE sku = ?;";
+        String sql = "SELECT id, sku, name, category, quantity, unit_price, location, status FROM inventory WHERE sku = ?;";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -355,7 +364,7 @@ public class InventoryDao extends BaseDao<Product> {
      */
     public Product getProductByBay(int bayNumber) {
         String bayLocation = String.format("Bay-%02d", bayNumber);
-        String sql = "SELECT id, sku, name, category, quantity, unit_price, location FROM inventory WHERE location = ? OR location = ?;";
+        String sql = "SELECT id, sku, name, category, quantity, unit_price, location, status FROM inventory WHERE location = ? OR location = ?;";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, bayLocation);
@@ -373,16 +382,32 @@ public class InventoryDao extends BaseDao<Product> {
 
     /**
      * Stores or updates a product in a high-bay storage cell.
+     * Ensures bay-specific uniqueness while keeping the product type/name consistent.
      */
     public boolean storeProductInBay(String sku, String name, String category, int qty, double unitPrice, int bayNumber) {
         String bayLocation = String.format("Bay-%02d", bayNumber);
-        Product existing = findProductBySku(sku);
-        if (existing != null) {
-            existing.setLocation(bayLocation);
-            existing.setQuantity(existing.getQuantity() + qty);
-            return updateProduct(existing);
+        Product existingInBay = getProductByBay(bayNumber);
+        if (existingInBay != null) {
+            existingInBay.setName(name);
+            existingInBay.setCategory(category);
+            existingInBay.setQuantity(qty);
+            existingInBay.setUnitPrice(unitPrice);
+            existingInBay.setLocation(bayLocation);
+            existingInBay.setStatus("STORED");
+            return updateProduct(existingInBay);
+        }
+
+        String uniqueSku = sku.contains("-B") ? sku : String.format("%s-B%02d", sku, bayNumber);
+        Product existingSku = findProductBySku(uniqueSku);
+        if (existingSku != null) {
+            existingSku.setName(name);
+            existingSku.setCategory(category);
+            existingSku.setLocation(bayLocation);
+            existingSku.setQuantity(qty);
+            existingSku.setStatus("STORED");
+            return updateProduct(existingSku);
         } else {
-            Product newP = new Product(0, sku, name, category, qty, unitPrice, bayLocation);
+            Product newP = new Product(0, uniqueSku, name, category, qty, unitPrice, bayLocation, "STORED");
             return addProduct(newP);
         }
     }
@@ -396,6 +421,73 @@ public class InventoryDao extends BaseDao<Product> {
             return deleteProduct(p.getId());
         }
         return false;
+    }
+
+    /**
+     * Returns total stored units for a product type currently in rack bays.
+     */
+    public int getAvailableCountByProductType(String productType) {
+        String sql = "SELECT COALESCE(SUM(quantity), 0) AS total FROM inventory WHERE (name = ? OR category = ? OR sku LIKE ?) AND status = 'STORED' AND location LIKE 'Bay-%';";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, productType);
+            pstmt.setString(2, productType);
+            pstmt.setString(3, productType + "%");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("total");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to get available count for " + productType + ": " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * Returns the ordered list of bay numbers where a product type is currently stored.
+     */
+    public List<Integer> getBaysForProductType(String productType) {
+        List<Integer> bays = new ArrayList<>();
+        String sql = "SELECT location FROM inventory WHERE (name = ? OR category = ? OR sku LIKE ?) AND status = 'STORED' AND location LIKE 'Bay-%' ORDER BY id ASC;";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, productType);
+            pstmt.setString(2, productType);
+            pstmt.setString(3, productType + "%");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    int bay = parseBayNumber(rs.getString("location"));
+                    if (bay > 0) {
+                        bays.add(bay);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to get bays for " + productType + ": " + e.getMessage());
+        }
+        return bays;
+    }
+
+    /**
+     * Returns a list of distinct product types currently stored in the high-bay warehouse.
+     */
+    public List<String> getDistinctStoredProductTypes() {
+        List<String> types = new ArrayList<>();
+        String sql = "SELECT DISTINCT name FROM inventory WHERE status = 'STORED' AND location LIKE 'Bay-%' AND quantity > 0 ORDER BY name ASC;";
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String name = rs.getString("name");
+                if (name != null && !name.trim().isEmpty()) {
+                    types.add(name);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to get distinct stored product types: " + e.getMessage());
+        }
+        return types;
     }
 
     private int parseBayNumber(String location) {

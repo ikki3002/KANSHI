@@ -129,6 +129,8 @@ public class MainAppController implements Initializable {
     @FXML private TextField txtMatrixSearch;
     @FXML private ComboBox<String> cmbMatrixCategoryFilter;
     @FXML private Button btnToggleAutoPutaway;
+    @FXML private Button btnOpenUnloadModal;
+    @FXML private Button btnScadaUnload;
     @FXML private Button btnDispatchInfeed;
     @FXML private Label lblCraneTelemetryInfo;
     @FXML private GridPane gridStorageMatrix;
@@ -3594,11 +3596,6 @@ public class MainAppController implements Initializable {
 
         new Thread(() -> {
             try {
-                // Conveyors: Entry (0), Load (1), Unload (5), Exit (6)
-                ioService.writeCoil(AsrsAutomationEngine.COIL_ENTRY_CONVEYOR, run);
-                ioService.writeCoil(AsrsAutomationEngine.COIL_LOAD_CONVEYOR, run);
-                ioService.writeCoil(AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR, run);
-                ioService.writeCoil(AsrsAutomationEngine.COIL_EXIT_CONVEYOR, run);
                 // Panel indicators: START light (7), STOP light (9)
                 ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_START, run);
                 ioService.writeCoil(AsrsAutomationEngine.COIL_LIGHT_STOP, !run);
@@ -3607,25 +3604,39 @@ public class MainAppController implements Initializable {
                     asrsEngine.setAutoMode(run);
                 }
 
+                if (!run) {
+                    // When stopping the system, shut off all line conveyors immediately
+                    ioService.writeCoil(AsrsAutomationEngine.COIL_ENTRY_CONVEYOR, false);
+                    ioService.writeCoil(AsrsAutomationEngine.COIL_LOAD_CONVEYOR, false);
+                    ioService.writeCoil(AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR, false);
+                    ioService.writeCoil(AsrsAutomationEngine.COIL_EXIT_CONVEYOR, false);
+                }
+
                 Platform.runLater(() -> {
                     updateMasterStartButtonState(run);
 
                     // Update UI actuator tiles for active coils
                     for (ModbusTag tag : tagManager.getActuatorTags()) {
                         int addr = tag.getAddress();
-                        if (addr == AsrsAutomationEngine.COIL_ENTRY_CONVEYOR ||
-                            addr == AsrsAutomationEngine.COIL_LOAD_CONVEYOR ||
-                            addr == AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR ||
-                            addr == AsrsAutomationEngine.COIL_EXIT_CONVEYOR) {
+                        if (addr == AsrsAutomationEngine.COIL_LIGHT_START) {
                             tag.setActive(run);
                             updateActuatorTileUI(tag, run);
+                        } else if (addr == AsrsAutomationEngine.COIL_LIGHT_STOP) {
+                            tag.setActive(!run);
+                            updateActuatorTileUI(tag, !run);
+                        } else if (!run && (addr == AsrsAutomationEngine.COIL_ENTRY_CONVEYOR ||
+                                addr == AsrsAutomationEngine.COIL_LOAD_CONVEYOR ||
+                                addr == AsrsAutomationEngine.COIL_UNLOAD_CONVEYOR ||
+                                addr == AsrsAutomationEngine.COIL_EXIT_CONVEYOR)) {
+                            tag.setActive(false);
+                            updateActuatorTileUI(tag, false);
                         }
                     }
 
                     if (run) {
                         lblKpiLineState.setText("SYSTEM RUNNING");
                         lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #15803d;");
-                        log(">> [MASTER START] Energized all conveyors (Entry, Load, Unload, Exit) and activated ASRS Soft-PLC automation.");
+                        log(">> [MASTER START] System running. Soft-PLC coordinating entry roller with crane ready position.");
                     } else {
                         lblKpiLineState.setText("STANDBY");
                         lblKpiLineState.setStyle("-fx-font-size: 24px; -fx-text-fill: #1e293b;");
@@ -3637,6 +3648,140 @@ public class MainAppController implements Initializable {
                 Platform.runLater(() -> log("[ERROR] Master Start All execution failed: " + ex.getMessage()));
             }
         }).start();
+    }
+
+    @FXML
+    private void handleOpenUnloadDialog(ActionEvent event) {
+        if (!ioService.isConnected()) {
+            showAlert("Not Connected", "Please connect to Factory I/O Modbus TCP server first.");
+            return;
+        }
+
+        List<String> storedProducts = inventoryDao.getDistinctStoredProductTypes();
+        if (storedProducts.isEmpty()) {
+            showAlert("No Products Stored", "The warehouse currently has no stored products in rack bays to unload.");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Unload / Dispatch Stored Products");
+        dialog.setHeaderText("Request automated retrieval of stored warehouse inventory.");
+        if (mainContentPane != null && mainContentPane.getScene() != null && mainContentPane.getScene().getWindow() != null) {
+            dialog.initOwner(mainContentPane.getScene().getWindow());
+        }
+
+        ButtonType unloadBtnType = new ButtonType("Start Unload Sequence", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(unloadBtnType, ButtonType.CANCEL);
+
+        VBox content = new VBox(14);
+        content.setStyle("-fx-padding: 20px; -fx-background-color: #ffffff; -fx-min-width: 440px;");
+
+        // Product selection
+        Label lblProduct = new Label("Product Type to Unload:");
+        lblProduct.setStyle("-fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-font-size: 13px;");
+        ComboBox<String> cmbProduct = new ComboBox<>(FXCollections.observableArrayList(storedProducts));
+        cmbProduct.setMaxWidth(Double.MAX_VALUE);
+        cmbProduct.setStyle("-fx-font-size: 13px; -fx-background-radius: 6px; -fx-border-color: #cbd5e1; -fx-border-radius: 6px; -fx-padding: 4 8;");
+        cmbProduct.getSelectionModel().selectFirst();
+
+        // Live availability badge
+        HBox boxAvail = new HBox(8);
+        boxAvail.setAlignment(Pos.CENTER_LEFT);
+        boxAvail.setStyle("-fx-background-color: #f0fdf4; -fx-padding: 10 14; -fx-background-radius: 8px; -fx-border-color: #bbf7d0; -fx-border-radius: 8px;");
+        Label lblAvailIcon = new Label("📊");
+        Label lblAvailText = new Label();
+        lblAvailText.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #15803d;");
+        boxAvail.getChildren().addAll(lblAvailIcon, lblAvailText);
+
+        // Quantity input
+        Label lblQty = new Label("Requested Unload Quantity:");
+        lblQty.setStyle("-fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-font-size: 13px;");
+        TextField txtQuantity = new TextField("1");
+        txtQuantity.setStyle("-fx-font-size: 13px; -fx-background-radius: 6px; -fx-border-color: #cbd5e1; -fx-border-radius: 6px; -fx-padding: 6 10;");
+
+        // Validation banner
+        Label lblValidation = new Label();
+        lblValidation.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;");
+        lblValidation.setWrapText(true);
+
+        Runnable updateAvailability = () -> {
+            String selected = cmbProduct.getValue();
+            if (selected != null) {
+                int count = inventoryDao.getAvailableCountByProductType(selected);
+                List<Integer> bays = inventoryDao.getBaysForProductType(selected);
+                lblAvailText.setText(String.format("Available in Warehouse: %d unit(s)  [Bays: %s]",
+                        count, bays.toString()));
+
+                try {
+                    int requested = Integer.parseInt(txtQuantity.getText().trim());
+                    if (requested <= 0) {
+                        lblValidation.setText("⚠️ Quantity must be greater than zero.");
+                        lblValidation.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #b91c1c;");
+                    } else if (requested > count) {
+                        lblValidation.setText(String.format("❌ Requested (%d) exceeds available stock (%d). Unload will be rejected.", requested, count));
+                        lblValidation.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #b91c1c;");
+                    } else {
+                        lblValidation.setText(String.format("✓ Valid request: Crane will retrieve %d pallet(s) sequentially to dispatch.", requested));
+                        lblValidation.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #15803d;");
+                    }
+                } catch (NumberFormatException e) {
+                    lblValidation.setText("⚠️ Please enter a valid integer quantity.");
+                    lblValidation.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #b91c1c;");
+                }
+            }
+        };
+
+        cmbProduct.valueProperty().addListener((obs, oldV, newV) -> updateAvailability.run());
+        txtQuantity.textProperty().addListener((obs, oldV, newV) -> updateAvailability.run());
+        updateAvailability.run();
+
+        content.getChildren().addAll(lblProduct, cmbProduct, boxAvail, lblQty, txtQuantity, lblValidation);
+        dialog.getDialogPane().setContent(content);
+
+        dialog.showAndWait().ifPresent(btn -> {
+            if (btn == unloadBtnType) {
+                String selectedProduct = cmbProduct.getValue();
+                int requestedQty;
+                try {
+                    requestedQty = Integer.parseInt(txtQuantity.getText().trim());
+                } catch (NumberFormatException e) {
+                    showAlert("Invalid Input", "Please enter a valid integer number for quantity.");
+                    return;
+                }
+
+                if (requestedQty <= 0) {
+                    showAlert("Invalid Quantity", "Unload quantity must be at least 1 unit.");
+                    return;
+                }
+
+                int available = inventoryDao.getAvailableCountByProductType(selectedProduct);
+                if (requestedQty > available) {
+                    showAlert("Unload Rejected", String.format("Requested quantity (%d) exceeds available stock (%d) for '%s'. Operation aborted.",
+                            requestedQty, available, selectedProduct));
+                    return;
+                }
+
+                if (asrsEngine == null) {
+                    showAlert("Engine Error", "ASRS Automation Engine is not initialized.");
+                    return;
+                }
+
+                boolean started = asrsEngine.requestBulkUnload(selectedProduct, requestedQty, (ok, msg) -> {
+                    Platform.runLater(() -> {
+                        if (!ok) {
+                            showAlert("Unload Error", msg);
+                        } else {
+                            log(">> [BULK UNLOAD] " + msg);
+                        }
+                    });
+                });
+
+                if (started) {
+                    logAudit("OT", String.format("Operator initiated automated unload of %d unit(s) of '%s'.", requestedQty, selectedProduct));
+                    log(String.format(">> [DISPATCH] Started retrieval of %d unit(s) of '%s' to outfeed transfer.", requestedQty, selectedProduct));
+                }
+            }
+        });
     }
 
     private void updateMasterStartButtonState(boolean running) {

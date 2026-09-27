@@ -40,6 +40,7 @@ public class DatabaseManager {
                 "quantity INTEGER NOT NULL DEFAULT 0, " +
                 "unit_price REAL NOT NULL DEFAULT 0.0, " +
                 "location TEXT NOT NULL, " +
+                "status TEXT NOT NULL DEFAULT 'STORED', " +
                 "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP" +
                 ");";
 
@@ -91,6 +92,11 @@ public class DatabaseManager {
 
             // 2. Initialize Inventory Table (Week 6 Relational DB)
             stmt.execute(createInventoryTable);
+            try {
+                stmt.execute("ALTER TABLE inventory ADD COLUMN status TEXT NOT NULL DEFAULT 'STORED';");
+            } catch (SQLException ignored) {
+                // Column already exists
+            }
 
             // 3. Initialize Relational Invoices & Items tables (Clean Slate - no dummy records)
             stmt.execute(createInvoicesTable);
