@@ -3,6 +3,7 @@ package com.example.warehousescadasystem.service.api;
 import com.example.warehousescadasystem.database.DatabaseManager;
 import com.example.warehousescadasystem.database.InventoryDao;
 import com.example.warehousescadasystem.model.Product;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,11 @@ public class TelegramBotServiceTest {
     @BeforeAll
     public static void initDatabase() {
         DatabaseManager.initializeDatabase();
+        DatabaseManager.purgeWarehouseData();
+    }
+
+    @AfterAll
+    public static void tearDown() {
         DatabaseManager.purgeWarehouseData();
     }
 
