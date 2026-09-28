@@ -1,6 +1,6 @@
-# 🎙️ Kanshi WMS — 8-Minute Video Presentation Script & Walkthrough Notes
+﻿# 🎙️ Warehouse SCADA System — 8-Minute Video Presentation Script & Walkthrough Notes
 
-> **Project Name:** Kanshi Warehouse Management System (IT/OT Convergence)  
+> **Project Name:** Warehouse SCADA System (IT/OT Convergence)  
 > **Target Duration:** Exactly 8 minutes (00:00 – 08:00)  
 > **Technologies:** Java 21, JavaFX, SQLite (JDBC), Modbus TCP/IP (Factory I/O), REST API (Frankfurter / European Central Bank), Gson, Concurrency (Locks/Conditions/Thread Pools).
 
@@ -31,9 +31,9 @@
 - Show the clean JavaFX Login dialog, enter `admin@gmail.com` / `Admin@123`, and log into the main dashboard.
 
 **🗣️ Spoken Script:**
-> *"Hello everyone and welcome. Today I am presenting **Kanshi Warehouse Management System**, an enterprise-grade desktop application built with Java 21 and JavaFX.*  
+> *"Hello everyone and welcome. Today I am presenting **Warehouse SCADA System**, an enterprise-grade desktop application built with Java 21 and JavaFX.*  
 >  
-> *Kanshi bridges the critical gap between enterprise Information Technology (IT)—such as inventory relational databases, commercial invoicing, and live financial REST APIs—and physical Operational Technology (OT)—such as industrial Modbus PLC automation and automated storage and retrieval cranes.*  
+> *Warehouse SCADA bridges the critical gap between enterprise Information Technology (IT)—such as inventory relational databases, commercial invoicing, and live financial REST APIs—and physical Operational Technology (OT)—such as industrial Modbus PLC automation and automated storage and retrieval cranes.*  
 >  
 > *In this 8-minute presentation, I will walk you through all core computer science requirements: our Git version control history, advanced object-oriented design patterns, rich JavaFX layout responsiveness, custom multi-threaded concurrency, SQLite relational database structure, full CRUD data manipulation, and asynchronous REST API networking."*
 
@@ -152,7 +152,7 @@
 
 ### 📍 [06:15 – 07:00] Point 7: Data Manipulation (Full CRUD Live Demo) (45s)
 **🖥️ What to show on screen:**
-- Switch to the running Kanshi app and click on **Inventory Ledger**.
+- Switch to the running Warehouse SCADA app and click on **Inventory Ledger**.
 - Perform a live CRUD cycle:
   1. **Create:** Click `+ Add Product`, enter SKU `SKU-DEMO-99`, Name `Precision Sensor`, Category `Sensors`, Qty `25`, Price `$45.00`, Bin `B-01-01`. Click Save. Show it in the table.
   2. **Read:** Type `DEMO` in the search bar. Show instant table filtering.
@@ -181,7 +181,7 @@
 **🗣️ Spoken Script:**
 > *"Finally, we demonstrate **Networking and JSON Data Parsing**.*  
 >  
-> *Modern warehouses participate in global supply chains, so Kanshi connects to live international financial markets via REST API:*  
+> *Modern warehouses participate in global supply chains, so Warehouse SCADA connects to live international financial markets via REST API:*  
 > - *In `CurrencyApiService.java`, we use the modern Java 21 **`HttpClient`** to perform asynchronous non-blocking HTTP GET requests to `api.frankfurter.dev`, which serves public reference exchange rates from the European Central Bank.*  
 > - *When the HTTP 200 payload arrives, we deserialize the raw JSON string into strongly-typed Java DTOs using Google's **`Gson`** library (`ExchangeRateResponse.java`).*  
 > - *On the dashboard, you can see our live FX ticker. When I change the currency dropdown to **Euro** or **Japanese Yen**, the system dynamically queries the live exchange rate and recalculates our total warehouse inventory asset valuation in real time.*  
@@ -194,7 +194,7 @@
 - Return to the Dashboard or SCADA Studio view with active animations.
 
 **🗣️ Spoken Script:**
-> *"In summary, Kanshi Warehouse Management System successfully fulfills and exceeds every project objective: continuous Git version control, rigorous OOP architecture, responsive JavaFX interface design, thread-safe Producer-Consumer concurrency, a relational SQLite database with foreign keys, full CRUD capabilities, and live JSON REST API integration.*  
+> *"In summary, Warehouse SCADA System successfully fulfills and exceeds every project objective: continuous Git version control, rigorous OOP architecture, responsive JavaFX interface design, thread-safe Producer-Consumer concurrency, a relational SQLite database with foreign keys, full CRUD capabilities, and live JSON REST API integration.*  
 >  
 > *Thank you very much for your time. I am now open to any questions!"*
 
@@ -202,7 +202,7 @@
 
 ## 💡 Quick Tips for Recording Your 8-Minute Video
 
-1. **Keep IntelliJ & App Ready:** Launch Factory I/O (or have it in test mode) and have the Kanshi app running on your secondary monitor before hitting Record.
+1. **Keep IntelliJ & App Ready:** Launch Factory I/O (or have it in test mode) and have the Warehouse SCADA app running on your secondary monitor before hitting Record.
 2. **Pacing:** Stick strictly to the time markers above. If you spend too long on OOP, you may run out of time for REST API and CRUD.
 3. **Audio Clarity:** Speak clearly and with energy; examiners appreciate confident explanations of design decisions (e.g. *"we chose `ReentrantLock` over synchronized blocks because..."*).
 4. **Mouse Pointer:** Use your cursor deliberately to point at the exact code lines and UI widgets as you mention them.

@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>kanshi-warehouse-management-system</artifactId>
+    <artifactId>warehouse-scada-system</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>kanshi-warehouse-management-system</name>
+    <name>Warehouse SCADA System</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
