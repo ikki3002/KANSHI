@@ -11,14 +11,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Service that exchanges JSON data with the public Frankfurter Exchange Rates REST API.
- * Demonstrates:
- * 1. Java 21 java.net.http.HttpClient for REST communication over HTTPS.
- * 2. Asynchronous non-blocking network I/O with CompletableFuture.
- * 3. JSON deserialization using Google Gson.
- * 4. Resilient caching and offline fallback for enterprise multi-currency WMS accounting.
- */
+
 public class CurrencyApiService {
 
     private static final String API_URL = "https://api.frankfurter.dev/v1/latest?base=USD";
@@ -35,10 +28,6 @@ public class CurrencyApiService {
         initDefaultFallbackRates();
     }
 
-    /**
-     * Initializes standard exchange rate fallbacks to guarantee uninterrupted WMS operations
-     * even when completely offline or during disconnected academic demonstrations.
-     */
     private void initDefaultFallbackRates() {
         rates.put("USD", 1.0);
         rates.put("EUR", 0.88);
@@ -51,9 +40,7 @@ public class CurrencyApiService {
         rates.put("INR", 85.0);
     }
 
-    /**
-     * Asynchronously fetches live exchange rates from the REST API without blocking the JavaFX UI thread.
-     */
+
     public CompletableFuture<Boolean> fetchLiveRatesAsync() {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(API_URL))
@@ -83,9 +70,7 @@ public class CurrencyApiService {
                 });
     }
 
-    /**
-     * Converts a USD amount to the specified target currency.
-     */
+
     public double convert(double amountInUsd, String targetCurrency) {
         if (targetCurrency == null || "USD".equalsIgnoreCase(targetCurrency)) {
             return amountInUsd;

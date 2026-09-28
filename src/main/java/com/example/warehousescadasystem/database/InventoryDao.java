@@ -315,6 +315,13 @@ public class InventoryDao extends BaseDao<Product> {
     }
 
     /**
+     * Alias for findProductBySku for service and test compatibility.
+     */
+    public Product getProductBySku(String sku) {
+        return findProductBySku(sku);
+    }
+
+    /**
      * Exports the complete inventory list to a formatted JSON file (Week 7 syllabus).
      */
     public boolean exportInventoryToJson(File destinationFile) {

@@ -62,7 +62,7 @@ public class TelegramBotService {
      * Tests the connection by sending a test message and returns true if successful.
      */
     public CompletableFuture<Boolean> testConnection() {
-        return sendMessage("✅ *Warehouse SCADA System Connected*\nTelegram Bot integration is active and receiving warehouse telemetry.")
+        return sendMessage("*Warehouse SCADA System Connected*\nTelegram Bot integration is active and receiving warehouse telemetry.")
                 .thenApply(success -> {
                     this.connected = success;
                     return success;
@@ -184,7 +184,7 @@ public class TelegramBotService {
 
     private String buildInventoryReport() {
         if (inventoryDao == null) {
-            return "⚠️ Inventory data not available.";
+            return "Inventory data not available.";
         }
         int units = inventoryDao.getTotalStockCount();
         double val = inventoryDao.getTotalValuation();
@@ -192,7 +192,7 @@ public class TelegramBotService {
         int low = inventoryDao.getLowStockCount(15);
 
         return String.format(
-                "📦 *Warehouse SCADA Inventory Summary*\n" +
+                "*Warehouse SCADA Inventory Summary*\n" +
                 "━━━━━━━━━━━━━━━━━━\n" +
                 "Total Units: *%,d*\n" +
                 "Active SKUs: *%d*\n" +
@@ -205,11 +205,11 @@ public class TelegramBotService {
         if (systemStatusSupplier != null) {
             return systemStatusSupplier.get();
         }
-        return "🏭 *Warehouse SCADA System Status*\n━━━━━━━━━━━━━━━━━━\nStatus data unavailable.";
+        return "*Warehouse SCADA System Status*\n━━━━━━━━━━━━━━━━━━\nStatus data unavailable.";
     }
 
     private String buildHelpMessage() {
-        return "🤖 *Warehouse SCADA Bot Commands*\n" +
+        return "*Warehouse SCADA Bot Commands*\n" +
                 "━━━━━━━━━━━━━━━━━━\n" +
                 "/inventory — Current stock summary\n" +
                 "/status — System health & PLC status\n" +

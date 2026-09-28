@@ -3,10 +3,7 @@ package com.example.warehousescadasystem.model;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Immutable package item payload transferred across the Producer-Consumer buffer.
- * Demonstrates Object-Oriented Encapsulation and Data Transfer Objects (DTO).
- */
+
 public class PackagePayload {
 
     private final String trackingId;

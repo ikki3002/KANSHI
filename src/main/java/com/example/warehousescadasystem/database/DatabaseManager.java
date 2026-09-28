@@ -5,10 +5,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-/**
- * Manages the SQLite database connection and schema initialization.
- * Demonstrates Week 6 Relational Database concepts.
- */
+
 public class DatabaseManager {
     private static final String DB_URL = "jdbc:sqlite:warehouse_scada.db";
 
@@ -20,9 +17,7 @@ public class DatabaseManager {
         return conn;
     }
 
-    /**
-     * Initializes required SQLite tables and default seed user.
-     */
+
     public static void initializeDatabase() {
         String createUsersTable = "CREATE TABLE IF NOT EXISTS users (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -112,6 +107,35 @@ public class DatabaseManager {
                     "adjustment_count INTEGER NOT NULL DEFAULT 0" +
                     ");";
             stmt.execute(createDailyTransactionsTable);
+
+            // 5. Initialize Persistent System & Module Settings Table
+            String createAppSettingsTable = "CREATE TABLE IF NOT EXISTS app_settings (" +
+                    "key TEXT PRIMARY KEY, " +
+                    "value TEXT" +
+                    ");";
+            stmt.execute(createAppSettingsTable);
+
+            // 6. Initialize Persistent Industrial Modbus Hardware Tags Table
+            String createHardwareTagsTable = "CREATE TABLE IF NOT EXISTS hardware_tags (" +
+                    "id TEXT PRIMARY KEY, " +
+                    "name TEXT NOT NULL, " +
+                    "address INTEGER NOT NULL, " +
+                    "type TEXT NOT NULL, " +
+                    "active INTEGER DEFAULT 0, " +
+                    "register_value INTEGER DEFAULT 0" +
+                    ");";
+            stmt.execute(createHardwareTagsTable);
+
+            // 7. Initialize Unified Operational Transactions & Audit Table
+            String createTransactionsTable = "CREATE TABLE IF NOT EXISTS transactions (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "timestamp TEXT NOT NULL, " +
+                    "type TEXT NOT NULL, " +
+                    "category TEXT NOT NULL, " +
+                    "description TEXT NOT NULL, " +
+                    "details TEXT" +
+                    ");";
+            stmt.execute(createTransactionsTable);
 
         } catch (SQLException e) {
             System.err.println("Database initialization failed: " + e.getMessage());

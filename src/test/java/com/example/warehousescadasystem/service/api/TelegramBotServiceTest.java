@@ -20,12 +20,20 @@ public class TelegramBotServiceTest {
     @BeforeAll
     public static void initDatabase() {
         DatabaseManager.initializeDatabase();
-        DatabaseManager.purgeWarehouseData();
+        InventoryDao dao = new InventoryDao();
+        Product p = dao.getProductBySku("TEST-SKU-001");
+        if (p != null) {
+            dao.deleteProduct(p.getId());
+        }
     }
 
     @AfterAll
     public static void tearDown() {
-        DatabaseManager.purgeWarehouseData();
+        InventoryDao dao = new InventoryDao();
+        Product p = dao.getProductBySku("TEST-SKU-001");
+        if (p != null) {
+            dao.deleteProduct(p.getId());
+        }
     }
 
     @BeforeEach

@@ -1,5 +1,6 @@
 package com.example.warehousescadasystem.service.modbus;
 
+import com.example.warehousescadasystem.database.DatabaseManager;
 import com.example.warehousescadasystem.model.ModbusTag;
 import com.example.warehousescadasystem.model.ModbusTag.TagType;
 import com.google.gson.Gson;
@@ -11,6 +12,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,37 +23,55 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Manages industrial Modbus tags and handles JSON persistence.
- * Demonstrates Week 7 JSON Parsing and configuration handling.
+ * Manages industrial Modbus tags and handles SQLite and JSON persistence.
+ * Demonstrates Week 6 Relational DB integration and Week 7 JSON Parsing.
  */
 public class TagManager {
 
     private static final String DEFAULT_FILE_NAME = "warehouse_tags.json";
     private final File configFile;
+    private final boolean useDatabase;
     private final Gson gson;
     private final List<ModbusTag> tags = new ArrayList<>();
 
-    public TagManager(File configFile) {
+    public TagManager(File configFile, boolean useDatabase) {
         this.configFile = configFile;
+        this.useDatabase = useDatabase;
         this.gson = new GsonBuilder().setPrettyPrinting().create();
         init();
     }
 
+    public TagManager(File configFile) {
+        this(configFile, configFile != null && DEFAULT_FILE_NAME.equals(configFile.getName()));
+    }
+
     public TagManager() {
-        this(new File(DEFAULT_FILE_NAME));
+        this(new File(DEFAULT_FILE_NAME), true);
     }
 
     private void init() {
-        if (configFile.exists() && configFile.length() > 0) {
+        if (useDatabase) {
+            // Priority 1: Load from SQLite database if populated
+            boolean dbLoaded = loadFromDatabase();
+            if (dbLoaded && !tags.isEmpty()) {
+                saveToFile();
+                return;
+            }
+        }
+
+        // Priority 2: Load from JSON file if available
+        if (configFile != null && configFile.exists() && configFile.length() > 0) {
             boolean loaded = loadFromFile();
             if (!loaded || tags.isEmpty()) {
                 resetToDefaults();
-                saveToFile();
             }
         } else {
             resetToDefaults();
-            saveToFile();
         }
+        if (useDatabase) {
+            saveToDatabase();
+        }
+        saveToFile();
     }
 
     /**
@@ -87,6 +110,102 @@ public class TagManager {
 
         // Holding Register 0
         tags.add(new ModbusTag("reg_0", "Target Position", 0, TagType.HOLDING_REGISTER));
+
+        // Synchronize defaults into database if available
+        if (useDatabase) {
+            try (Connection conn = DatabaseManager.getConnection();
+                 Statement stmt = conn.createStatement()) {
+                stmt.execute("DELETE FROM hardware_tags;");
+            } catch (Exception ignored) {
+            }
+        }
+        for (ModbusTag tag : tags) {
+            attachListener(tag);
+        }
+        if (useDatabase) {
+            saveToDatabase();
+        }
+        saveToFile();
+    }
+
+    /**
+     * Loads tags from SQLite database table hardware_tags.
+     */
+    public synchronized boolean loadFromDatabase() {
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT id, name, address, type, active, register_value FROM hardware_tags ORDER BY address ASC;")) {
+            List<ModbusTag> loaded = new ArrayList<>();
+            while (rs.next()) {
+                String id = rs.getString("id");
+                String name = rs.getString("name");
+                int address = rs.getInt("address");
+                String typeStr = rs.getString("type");
+                boolean active = rs.getInt("active") == 1;
+                int regVal = rs.getInt("register_value");
+
+                TagType type = TagType.valueOf(typeStr);
+                ModbusTag tag = new ModbusTag(id, name, address, type);
+                tag.setActive(active);
+                tag.setRegisterValue(regVal);
+                loaded.add(tag);
+            }
+            if (!loaded.isEmpty()) {
+                tags.clear();
+                for (ModbusTag tag : loaded) {
+                    attachListener(tag);
+                }
+                tags.addAll(loaded);
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
+    /**
+     * Persists all current tags into SQLite hardware_tags table.
+     */
+    public synchronized boolean saveToDatabase() {
+        if (!useDatabase) return false;
+        String sql = "INSERT INTO hardware_tags (id, name, address, type, active, register_value) VALUES (?, ?, ?, ?, ?, ?) " +
+                "ON CONFLICT(id) DO UPDATE SET name = excluded.name, address = excluded.address, type = excluded.type, " +
+                "active = excluded.active, register_value = excluded.register_value;";
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                for (ModbusTag tag : tags) {
+                    pstmt.setString(1, tag.getId());
+                    pstmt.setString(2, tag.getName());
+                    pstmt.setInt(3, tag.getAddress());
+                    pstmt.setString(4, tag.getType().name());
+                    pstmt.setInt(5, tag.isActive() ? 1 : 0);
+                    pstmt.setInt(6, tag.getRegisterValue());
+                    pstmt.addBatch();
+                }
+                pstmt.executeBatch();
+            }
+            conn.commit();
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Persists the live state (active or register value) of a single tag to the database.
+     */
+    public synchronized void persistTagState(ModbusTag tag) {
+        if (!useDatabase || tag == null) return;
+        String sql = "UPDATE hardware_tags SET active = ?, register_value = ? WHERE id = ?;";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, tag.isActive() ? 1 : 0);
+            pstmt.setInt(2, tag.getRegisterValue());
+            pstmt.setString(3, tag.getId());
+            pstmt.executeUpdate();
+        } catch (Exception ignored) {
+        }
     }
 
     /**
@@ -100,8 +219,11 @@ public class TagManager {
         try (FileReader reader = new FileReader(configFile)) {
             Type listType = new TypeToken<List<ModbusTag>>() {}.getType();
             List<ModbusTag> loaded = gson.fromJson(reader, listType);
-            if (loaded != null) {
+            if (loaded != null && !loaded.isEmpty()) {
                 tags.clear();
+                for (ModbusTag tag : loaded) {
+                    attachListener(tag);
+                }
                 tags.addAll(loaded);
                 return true;
             }
@@ -166,14 +288,32 @@ public class TagManager {
     public synchronized void addTag(String name, int address, TagType type) {
         String id = "tag_" + type.name().toLowerCase() + "_" + address + "_" + UUID.randomUUID().toString().substring(0, 4);
         ModbusTag tag = new ModbusTag(id, name, address, type);
+        attachListener(tag);
         tags.add(tag);
         saveToFile();
+        if (useDatabase) {
+            saveToDatabase();
+        }
+    }
+
+    private void attachListener(ModbusTag tag) {
+        if (tag != null) {
+            tag.setStateChangeListener(() -> persistTagState(tag));
+        }
     }
 
     public synchronized boolean removeTag(String id) {
         boolean removed = tags.removeIf(tag -> tag.getId().equals(id));
         if (removed) {
             saveToFile();
+            if (useDatabase) {
+                try (Connection conn = DatabaseManager.getConnection();
+                     PreparedStatement pstmt = conn.prepareStatement("DELETE FROM hardware_tags WHERE id = ?;")) {
+                    pstmt.setString(1, id);
+                    pstmt.executeUpdate();
+                } catch (Exception ignored) {
+                }
+            }
         }
         return removed;
     }
@@ -187,6 +327,9 @@ public class TagManager {
                 tag.setType(newType);
             }
             saveToFile();
+            if (useDatabase) {
+                saveToDatabase();
+            }
             return true;
         }
         return false;

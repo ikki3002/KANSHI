@@ -8,15 +8,15 @@ import java.util.Objects;
 public class FloorCellPlacement {
 
     public enum AssetType {
-        INFEED("Infeed Chute", "Entry", "📥"),
-        CONVEYOR("Belt Conveyor", "Linear", "⚙️"),
-        CURVED_CONVEYOR("Curved Conveyor", "90° Turn", "↷"),
-        SENSOR("Vision Sensor", "Optical", "👁️"),
-        DEPOT("Depot Chute", "Outfeed", "📦"),
-        BRIDGE("Conveyor Bridge", "Flow Link", "──►"),
-        STACKER_CRANE("Stacker Crane", "ASRS 2-Axis", "🏗️"),
-        STORAGE_RACK("Storage Rack", "High-Bay", "🗄️"),
-        CONTROL_PANEL("Control Console", "Auto/Manual", "🎛️");
+        INFEED("Infeed Chute", "Entry", "IN"),
+        CONVEYOR("Belt Conveyor", "Linear", "CV"),
+        CURVED_CONVEYOR("Curved Conveyor", "90 Turn", "CRV"),
+        SENSOR("Vision Sensor", "Optical", "SN"),
+        DEPOT("Depot Chute", "Outfeed", "DP"),
+        BRIDGE("Conveyor Bridge", "Flow Link", "BRG"),
+        STACKER_CRANE("Stacker Crane", "ASRS 2-Axis", "CRN"),
+        STORAGE_RACK("Storage Rack", "High-Bay", "RCK"),
+        CONTROL_PANEL("Control Console", "Auto/Manual", "CTL");
 
         private final String displayName;
         private final String subTitle;
@@ -42,10 +42,10 @@ public class FloorCellPlacement {
     }
 
     public enum Direction {
-        EAST("→ East", 0),
-        SOUTH("↓ South", 90),
-        WEST("← West", 180),
-        NORTH("↑ North", 270);
+        EAST("East", 0),
+        SOUTH("South", 90),
+        WEST("West", 180),
+        NORTH("North", 270);
 
         private final String label;
         private final int angleDegrees;

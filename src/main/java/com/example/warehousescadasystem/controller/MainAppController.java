@@ -50,6 +50,9 @@ import com.example.warehousescadasystem.service.scada.FloorLayoutService;
 import com.example.warehousescadasystem.service.api.CurrencyApiService;
 import com.example.warehousescadasystem.service.api.TelegramBotService;
 import com.example.warehousescadasystem.database.TransactionLogDao;
+import com.example.warehousescadasystem.database.SettingsDao;
+import com.example.warehousescadasystem.database.TransactionDao;
+import com.example.warehousescadasystem.model.TransactionRecord;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -161,12 +164,20 @@ public class MainAppController implements Initializable {
     @FXML private GridPane gridCalendar;
     @FXML private Label lblCalendarMonth;
     private final TransactionLogDao transactionLogDao = new TransactionLogDao();
+    private final TransactionDao transactionDao = new TransactionDao();
+    private final SettingsDao settingsDao = new SettingsDao();
     private YearMonth calendarCurrentMonth = YearMonth.now();
 
-    // Telegram Bot Integration
+    // Telegram Bot Integration Module
+    @FXML private Button btnNavTelegram;
+    @FXML private VBox paneTelegram;
     @FXML private TextField txtTelegramToken;
     @FXML private TextField txtTelegramChatId;
+    @FXML private Button btnTelegramConnect;
+    @FXML private Button btnTelegramDisconnect;
     @FXML private Label lblTelegramStatus;
+    @FXML private Label lblTelegramStatusBadge;
+    @FXML private TextArea txtTelegramLog;
     private final TelegramBotService telegramBotService = new TelegramBotService();
 
     // Level 1 KPI Overview Labels & Badges
@@ -324,6 +335,7 @@ public class MainAppController implements Initializable {
         refreshKpiMetrics();
         initMimicAnimation();
         setupCalendarWidget();
+        loadTransactionsFromDatabase();
         setupTelegramBot();
 
         log("[SYSTEM] Warehouse SCADA System 3-Level Executive Shell initialized.");
@@ -501,7 +513,7 @@ public class MainAppController implements Initializable {
         }
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Day Transaction Summary");
-        alert.setHeaderText("📅 Summary for " + dateStr);
+        alert.setHeaderText("Summary for " + dateStr);
         alert.setContentText(details);
         alert.showAndWait();
     }
@@ -519,12 +531,39 @@ public class MainAppController implements Initializable {
     }
 
     // =========================================================================
-    // Telegram Bot Integration
+    // Telegram Bot Integration Module (Persistent SQLite Settings)
     // =========================================================================
 
     private void setupTelegramBot() {
         telegramBotService.setInventoryDao(inventoryDao);
         telegramBotService.setSystemStatusSupplier(this::buildSystemStatusForTelegram);
+
+        // Load persisted bot credentials from SQLite database
+        String savedToken = settingsDao.getSetting("telegram_bot_token", "");
+        String savedChatId = settingsDao.getSetting("telegram_chat_id", "");
+
+        if (txtTelegramToken != null && !savedToken.isEmpty()) {
+            txtTelegramToken.setText(savedToken);
+        }
+        if (txtTelegramChatId != null && !savedChatId.isEmpty()) {
+            txtTelegramChatId.setText(savedChatId);
+        }
+
+        if (!savedToken.isEmpty() && !savedChatId.isEmpty()) {
+            telegramBotService.setCredentials(savedToken, savedChatId);
+            telegramBotService.testConnection().thenAccept(success -> {
+                Platform.runLater(() -> {
+                    if (success) {
+                        updateTelegramStatusUI(true);
+                        telegramBotService.startPolling();
+                        logTelegram("[SYSTEM] Automatically connected using saved database credentials.");
+                        logAudit("IT", "Telegram Bot automatically connected from saved SQLite settings.");
+                    } else {
+                        updateTelegramStatusUI(false);
+                    }
+                });
+            });
+        }
     }
 
     private String buildSystemStatusForTelegram() {
@@ -536,7 +575,7 @@ public class MainAppController implements Initializable {
         boolean fxApiLive = currencyApiService.isLiveApiConnected();
 
         return String.format(
-                "🏭 *Warehouse SCADA System Status*\n" +
+                "*Warehouse SCADA System Status*\n" +
                 "━━━━━━━━━━━━━━━━━━\n" +
                 "Modbus PLC: *%s*\n" +
                 "Conveyor Line: *%s*\n" +
@@ -548,26 +587,55 @@ public class MainAppController implements Initializable {
 
     @FXML
     private void handleTelegramConnect(ActionEvent event) {
-        String token = txtTelegramToken != null ? txtTelegramToken.getText() : "";
-        String chatId = txtTelegramChatId != null ? txtTelegramChatId.getText() : "";
-        if (token.trim().isEmpty() || chatId.trim().isEmpty()) {
+        String token = txtTelegramToken != null ? txtTelegramToken.getText().trim() : "";
+        String chatId = txtTelegramChatId != null ? txtTelegramChatId.getText().trim() : "";
+        if (token.isEmpty() || chatId.isEmpty()) {
             showAlert("Telegram Setup", "Please enter both Bot Token and Chat ID.");
             return;
         }
+
+        // Persist credentials into SQLite database
+        settingsDao.setSetting("telegram_bot_token", token);
+        settingsDao.setSetting("telegram_chat_id", chatId);
+
         telegramBotService.setCredentials(token, chatId);
         telegramBotService.testConnection().thenAccept(success -> {
             Platform.runLater(() -> {
                 if (success) {
-                    lblTelegramStatus.setText("● Connected");
-                    lblTelegramStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d;");
+                    updateTelegramStatusUI(true);
                     telegramBotService.startPolling();
-                    logAudit("IT", "Telegram Bot connected and polling for commands.");
+                    logAudit("IT", "Telegram Bot connected. Credentials saved to database.");
+                    logTelegram("[CONNECT] Connected to Telegram Bot. Token and Chat ID saved to SQLite.");
                 } else {
-                    lblTelegramStatus.setText("● Connection Failed");
-                    lblTelegramStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #dc2626;");
+                    updateTelegramStatusUI(false);
+                    showAlert("Connection Failed", "Could not reach Telegram API. Verify your Bot Token.");
+                    logTelegram("[ERROR] Telegram connection test failed.");
                 }
             });
         });
+    }
+
+    @FXML
+    private void handleTelegramDisconnect(ActionEvent event) {
+        telegramBotService.stopPolling();
+        updateTelegramStatusUI(false);
+        logAudit("IT", "Telegram Bot disconnected.");
+        logTelegram("[DISCONNECT] Bot polling paused.");
+    }
+
+    private void updateTelegramStatusUI(boolean connected) {
+        if (lblTelegramStatus != null) {
+            lblTelegramStatus.setText(connected ? "● Connected" : "● Disconnected");
+            lblTelegramStatus.setStyle(connected ?
+                    "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d;" :
+                    "-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #9ca3af;");
+        }
+        if (lblTelegramStatusBadge != null) {
+            lblTelegramStatusBadge.setText(connected ? "● Connected & Polling" : "● Disconnected");
+            lblTelegramStatusBadge.setStyle(connected ?
+                    "-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #15803d; -fx-background-color: #dcfce7; -fx-padding: 6 14; -fx-background-radius: 999px;" :
+                    "-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-background-color: #f3f4f6; -fx-padding: 6 14; -fx-background-radius: 999px;");
+        }
     }
 
     @FXML
@@ -578,10 +646,29 @@ public class MainAppController implements Initializable {
         }
         int units = inventoryDao.getTotalStockCount();
         double val = inventoryDao.getTotalValuation();
-        String msg = String.format("📊 *Warehouse SCADA Test*\nInventory: %,d units\nValuation: $%,.2f\nTimestamp: %s",
+        String msg = String.format("*Warehouse SCADA Test*\nInventory: %,d units\nValuation: $%,.2f\nTimestamp: %s",
                 units, val, LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss dd-MMM-yyyy")));
         telegramBotService.sendMessage(msg);
         logAudit("IT", "Telegram test message sent.");
+        logTelegram("[TEST MESSAGE] Sent inventory test payload to chat.");
+    }
+
+    @FXML
+    private void handleClearTelegramLog(ActionEvent event) {
+        if (txtTelegramLog != null) {
+            txtTelegramLog.clear();
+        }
+    }
+
+    private void logTelegram(String msg) {
+        String timestamp = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+        String line = "[" + timestamp + "] " + msg + "\n";
+        Platform.runLater(() -> {
+            if (txtTelegramLog != null) {
+                txtTelegramLog.appendText(line);
+                txtTelegramLog.positionCaret(txtTelegramLog.getText().length());
+            }
+        });
     }
 
     /**
@@ -591,6 +678,7 @@ public class MainAppController implements Initializable {
     private void notifyTelegram(String message) {
         if (telegramBotService.isConnected()) {
             telegramBotService.sendMessage(message);
+            logTelegram("[OUTBOUND] " + message.replace("\n", " | "));
         }
     }
 
@@ -1288,18 +1376,22 @@ public class MainAppController implements Initializable {
             if (lblNavCatSystem != null) { lblNavCatSystem.setVisible(false); lblNavCatSystem.setManaged(false); }
             if (navRailFooter != null) { navRailFooter.setVisible(false); navRailFooter.setManaged(false); }
 
-            btnNavDashboard.setText("📊");
+            btnNavDashboard.setText("DB");
             btnNavDashboard.setTooltip(new Tooltip("Dashboard"));
-            btnNavScada.setText("🏭");
+            btnNavScada.setText("SC");
             btnNavScada.setTooltip(new Tooltip("SCADA Station"));
-            btnNavMatrix.setText("🗄️");
+            btnNavMatrix.setText("SM");
             btnNavMatrix.setTooltip(new Tooltip("Storage Matrix"));
-            btnNavInventory.setText("📦");
+            btnNavInventory.setText("INV");
             btnNavInventory.setTooltip(new Tooltip("Inventory Ledger"));
-            btnNavFinance.setText("💰");
+            btnNavFinance.setText("FIN");
             btnNavFinance.setTooltip(new Tooltip("Finance & Invoicing"));
-            btnNavTags.setText("⚙️");
-            btnNavTags.setTooltip(new Tooltip("Settings / Tags"));
+            btnNavTags.setText("SET");
+            btnNavTags.setTooltip(new Tooltip("Settings & Tags"));
+            if (btnNavTelegram != null) {
+                btnNavTelegram.setText("TG");
+                btnNavTelegram.setTooltip(new Tooltip("Telegram Bot"));
+            }
 
             btnNavDashboard.setAlignment(Pos.CENTER);
             btnNavScada.setAlignment(Pos.CENTER);
@@ -1307,9 +1399,12 @@ public class MainAppController implements Initializable {
             btnNavInventory.setAlignment(Pos.CENTER);
             btnNavFinance.setAlignment(Pos.CENTER);
             btnNavTags.setAlignment(Pos.CENTER);
+            if (btnNavTelegram != null) {
+                btnNavTelegram.setAlignment(Pos.CENTER);
+            }
 
             if (btnToggleSidebar != null) {
-                btnToggleSidebar.setText("▶");
+                btnToggleSidebar.setText(">");
             }
         } else {
             navRail.setPrefWidth(240);
@@ -1321,18 +1416,22 @@ public class MainAppController implements Initializable {
             if (lblNavCatSystem != null) { lblNavCatSystem.setVisible(true); lblNavCatSystem.setManaged(true); }
             if (navRailFooter != null) { navRailFooter.setVisible(true); navRailFooter.setManaged(true); }
 
-            btnNavDashboard.setText("📊 Dashboard");
+            btnNavDashboard.setText("Dashboard");
             btnNavDashboard.setTooltip(null);
-            btnNavScada.setText("🏭 SCADA Station");
+            btnNavScada.setText("SCADA Station");
             btnNavScada.setTooltip(null);
-            btnNavMatrix.setText("🗄️ Storage Matrix");
+            btnNavMatrix.setText("Storage Matrix");
             btnNavMatrix.setTooltip(null);
-            btnNavInventory.setText("📦 Inventory Ledger");
+            btnNavInventory.setText("Inventory Ledger");
             btnNavInventory.setTooltip(null);
-            btnNavFinance.setText("💰 Finance & Invoicing");
+            btnNavFinance.setText("Finance & Invoicing");
             btnNavFinance.setTooltip(null);
-            btnNavTags.setText("⚙️ Settings / Tags");
+            btnNavTags.setText("Settings & Tags");
             btnNavTags.setTooltip(null);
+            if (btnNavTelegram != null) {
+                btnNavTelegram.setText("Telegram Bot");
+                btnNavTelegram.setTooltip(null);
+            }
 
             btnNavDashboard.setAlignment(Pos.CENTER_LEFT);
             btnNavScada.setAlignment(Pos.CENTER_LEFT);
@@ -1340,9 +1439,12 @@ public class MainAppController implements Initializable {
             btnNavInventory.setAlignment(Pos.CENTER_LEFT);
             btnNavFinance.setAlignment(Pos.CENTER_LEFT);
             btnNavTags.setAlignment(Pos.CENTER_LEFT);
+            if (btnNavTelegram != null) {
+                btnNavTelegram.setAlignment(Pos.CENTER_LEFT);
+            }
 
             if (btnToggleSidebar != null) {
-                btnToggleSidebar.setText("☰");
+                btnToggleSidebar.setText("<");
             }
         }
     }
@@ -1379,6 +1481,11 @@ public class MainAppController implements Initializable {
         activateView(paneTags, btnNavTags);
     }
 
+    @FXML
+    private void handleNavTelegram(Event event) {
+        activateView(paneTelegram, btnNavTelegram);
+    }
+
     private void activateView(Node activePane, Button activeBtn) {
         paneDashboard.setVisible(false);
         paneDashboard.setManaged(false);
@@ -1392,11 +1499,15 @@ public class MainAppController implements Initializable {
         paneFinance.setManaged(false);
         paneTags.setVisible(false);
         paneTags.setManaged(false);
+        if (paneTelegram != null) {
+            paneTelegram.setVisible(false);
+            paneTelegram.setManaged(false);
+        }
 
         activePane.setVisible(true);
         activePane.setManaged(true);
 
-        Button[] navButtons = {btnNavDashboard, btnNavScada, btnNavMatrix, btnNavInventory, btnNavFinance, btnNavTags};
+        Button[] navButtons = {btnNavDashboard, btnNavScada, btnNavMatrix, btnNavInventory, btnNavFinance, btnNavTags, btnNavTelegram};
         for (Button btn : navButtons) {
             if (btn != null) {
                 String align = isSidebarCollapsed ? "-fx-alignment: CENTER;" : "-fx-alignment: CENTER_LEFT;";
@@ -1415,7 +1526,7 @@ public class MainAppController implements Initializable {
     public void setUserSession(User user) {
         this.sessionUser = user;
         if (user != null) {
-            lblOperatorEmail.setText("👤 Operator: " + (user.getEmail() != null ? user.getEmail() : user.getUsername()));
+            lblOperatorEmail.setText("Operator: " + (user.getEmail() != null ? user.getEmail() : user.getUsername()));
             log("[AUTH] Session established for user: " + user.getUsername() + " (" + user.getEmail() + ")");
             logAudit("AUTH", "Operator authenticated: " + user.getEmail());
         }
@@ -1483,7 +1594,7 @@ public class MainAppController implements Initializable {
                     lblConsumerStatus.setText("CONSUMER: INGESTED " + pkg.getTrackingId());
                     lblConsumerStatus.setStyle("-fx-background-color: #dcfce7; -fx-text-fill: #15803d; -fx-font-size: 10px;");
                 }
-                logAudit("IT", "📦 Buffer Consumer: Stored " + pkg.getTrackingId() + " (" + pkg.getSku() + ") -> SQLite Stock: " + newStock);
+                logAudit("IT", "Buffer Consumer: Stored " + pkg.getTrackingId() + " (" + pkg.getSku() + ") -> SQLite Stock: " + newStock);
                 refreshKpiMetrics();
                 loadInventoryData();
 
@@ -1531,7 +1642,7 @@ public class MainAppController implements Initializable {
             lblProducerStatus.setStyle("-fx-background-color: #fee2e2; -fx-text-fill: #b91c1c; -fx-font-size: 10px;");
         }
         producerService.produceBatchAsync(5, "BOX-SML-101", "Standard Cardboard Box (Small)");
-        logAudit("OT", "🏭 Conveyor Producer: Enqueued batch of 5 boxes into WarehouseBuffer (capacity 10)");
+        logAudit("OT", "Conveyor Producer: Enqueued batch of 5 boxes into WarehouseBuffer (capacity 10)");
 
         PauseTransition pt = new PauseTransition(Duration.millis(1500));
         pt.setOnFinished(e -> {
@@ -1768,8 +1879,8 @@ public class MainAppController implements Initializable {
         });
 
         colInvActions.setCellFactory(param -> new TableCell<>() {
-            private final Button btnEdit = new Button("✏️");
-            private final Button btnDelete = new Button("🗑");
+            private final Button btnEdit = new Button("Edit");
+            private final Button btnDelete = new Button("Delete");
             private final HBox pane = new HBox(6, btnEdit, btnDelete);
 
             {
@@ -2106,9 +2217,9 @@ public class MainAppController implements Initializable {
                 boolean ok = inventoryDao.updateStockDelta(selected.getSku(), signedDelta);
                 if (ok) {
                     loadInventoryData();
-                    transactionLogDao.incrementAdjustment(1);
-                    renderCalendarMonth();
                     int newStock = inventoryDao.getStockQuantity(selected.getSku());
+                    transactionDao.recordTransaction("ADJUSTMENT", "IT-STOCK", "Stock adjustment on " + selected.getSku() + ": " + (signedDelta >= 0 ? "+" : "") + signedDelta + " (" + txtReason.getText().trim() + ", Total: " + newStock + ")", "Delta: " + signedDelta, 1);
+                    renderCalendarMonth();
                     log("[INVENTORY] Adjusted stock for " + selected.getSku() + ": " + (signedDelta >= 0 ? "+" : "") + signedDelta + " units (New total: " + newStock + ")");
                     logAudit("IT-STOCK", "Stock adjustment on " + selected.getSku() + ": " + (signedDelta >= 0 ? "+" : "") + signedDelta + " (" + txtReason.getText().trim() + ", Total: " + newStock + ")");
                 } else {
@@ -2256,9 +2367,9 @@ public class MainAppController implements Initializable {
         });
 
         colInvoiceActions.setCellFactory(param -> new TableCell<>() {
-            private final Button btnReceipt = new Button("🧾");
-            private final Button btnStatus = new Button("🔄");
-            private final Button btnDelete = new Button("🗑");
+            private final Button btnReceipt = new Button("Receipt");
+            private final Button btnStatus = new Button("Status");
+            private final Button btnDelete = new Button("Delete");
             private final HBox pane = new HBox(6, btnReceipt, btnStatus, btnDelete);
 
             {
@@ -2537,9 +2648,9 @@ public class MainAppController implements Initializable {
         colDraftSubtotal.setPrefWidth(90);
 
         TableColumn<InvoiceItem, Void> colDraftRemove = new TableColumn<>("");
-        colDraftRemove.setPrefWidth(45);
+        colDraftRemove.setPrefWidth(55);
         colDraftRemove.setCellFactory(col -> new TableCell<>() {
-            private final Button btnRemove = new Button("✕");
+            private final Button btnRemove = new Button("Remove");
             {
                 btnRemove.setStyle("-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-font-size: 10px; -fx-padding: 3 6; -fx-cursor: hand; -fx-background-radius: 4px;");
                 btnRemove.setOnAction(e -> {
@@ -2673,7 +2784,7 @@ public class MainAppController implements Initializable {
 
                 loadInvoiceData();
                 loadInventoryData();
-                transactionLogDao.incrementInvoice(1);
+                transactionDao.recordTransaction("INVOICE", "FINANCE", "Booked invoice " + inv.getInvoiceNumber() + " ($" + String.format("%.2f", inv.getTotalAmount()) + ") for " + inv.getCustomerName(), "Customer: " + inv.getCustomerName() + " | Amount: $" + inv.getTotalAmount(), 1);
                 renderCalendarMonth();
 
                 log("[FINANCE] Booked invoice " + inv.getInvoiceNumber() + " ($" + String.format("%.2f", inv.getTotalAmount()) + ") for " + inv.getCustomerName());
@@ -2848,17 +2959,17 @@ public class MainAppController implements Initializable {
     private void handleToggleDesignMode(ActionEvent event) {
         isDesignMode = !isDesignMode;
         if (isDesignMode) {
-            btnToggleDesignMode.setText("💾 Done & Lock Layout");
+            btnToggleDesignMode.setText("Done & Lock Layout");
             btnToggleDesignMode.setStyle("-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
             boxDesignModeBanner.setVisible(true);
             boxDesignModeBanner.setManaged(true);
             if (lblFloorStudioSubtitle != null) {
-                lblFloorStudioSubtitle.setText("LAYOUT STUDIO ACTIVE: Click [+] on an empty cell to add equipment, [↻] to rotate flow direction, or [🗑] to remove.");
+                lblFloorStudioSubtitle.setText("LAYOUT STUDIO ACTIVE: Click [+] on an empty cell to add equipment, [Rotate] to rotate flow direction, or [Delete] to remove.");
             }
             log("[SCADA STUDIO] Entered layout design mode.");
         } else {
             floorLayoutService.saveToFile();
-            btnToggleDesignMode.setText("✏️ Edit Floor Layout");
+            btnToggleDesignMode.setText("Edit Floor Layout");
             btnToggleDesignMode.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
             boxDesignModeBanner.setVisible(false);
             boxDesignModeBanner.setManaged(false);
@@ -2908,14 +3019,14 @@ public class MainAppController implements Initializable {
             colControls.setAlignment(Pos.CENTER);
             colControls.setStyle("-fx-padding: 4px;");
 
-            Button addColBtn = new Button("➕\nC\nO\nL");
+            Button addColBtn = new Button("+\nC\nO\nL");
             addColBtn.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #bbf7d0; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-text-fill: #166534; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 8 6;");
             addColBtn.setTooltip(new Tooltip("Add Column (Expand Factory Floor)"));
             addColBtn.setOnAction(e -> handleExpandColumn());
             colControls.getChildren().add(addColBtn);
 
             if (floorLayoutService.isColEmpty(totalCols - 1) && totalCols > 1) {
-                Button removeColBtn = new Button("➖\nC\nO\nL");
+                Button removeColBtn = new Button("-\nC\nO\nL");
                 removeColBtn.setStyle("-fx-background-color: #fee2e2; -fx-border-color: #fca5a5; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-text-fill: #991b1b; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 8 6;");
                 removeColBtn.setTooltip(new Tooltip("Remove Empty Column " + totalCols));
                 removeColBtn.setOnAction(e -> handleShrinkColumn());
@@ -2929,14 +3040,14 @@ public class MainAppController implements Initializable {
             rowControls.setAlignment(Pos.CENTER);
             rowControls.setStyle("-fx-padding: 4px;");
 
-            Button addRowBtn = new Button("➕ Add Row");
+            Button addRowBtn = new Button("+ Add Row");
             addRowBtn.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #bbf7d0; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-text-fill: #166534; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 6 12;");
             addRowBtn.setTooltip(new Tooltip("Add Row (Expand Factory Floor)"));
             addRowBtn.setOnAction(e -> handleExpandRow());
             rowControls.getChildren().add(addRowBtn);
 
             if (floorLayoutService.isRowEmpty(totalRows - 1) && totalRows > 1) {
-                Button removeRowBtn = new Button("➖ Remove Row " + totalRows);
+                Button removeRowBtn = new Button("- Remove Row " + totalRows);
                 removeRowBtn.setStyle("-fx-background-color: #fee2e2; -fx-border-color: #fca5a5; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-text-fill: #991b1b; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 6 12;");
                 removeRowBtn.setTooltip(new Tooltip("Remove Empty Row " + totalRows));
                 removeRowBtn.setOnAction(e -> handleShrinkRow());
@@ -3003,7 +3114,7 @@ public class MainAppController implements Initializable {
         VBox cell = new VBox(2);
         cell.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #cbd5e1; -fx-border-style: dashed; -fx-border-width: 1.5; -fx-border-radius: 12px; -fx-background-radius: 12px; -fx-alignment: CENTER; -fx-cursor: hand; -fx-min-width: 120px; -fx-min-height: 84px;");
 
-        Label icon = new Label("➕");
+        Label icon = new Label("+");
         icon.setStyle("-fx-font-size: 14px; -fx-text-fill: #94a3b8;");
 
         Label label = new Label("Add Machine");
@@ -3031,7 +3142,7 @@ public class MainAppController implements Initializable {
         block.setMinHeight(84);
         block.setMaxHeight(84);
 
-        // Header Row: Icon, Name, Rotate [↻], Delete [🗑]
+        // Header Row: Icon, Name, Rotate, Delete
         HBox topRow = new HBox(3);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -3052,8 +3163,8 @@ public class MainAppController implements Initializable {
             renderFloorGrid();
         });
 
-        Button deleteBtn = new Button("🗑");
-        deleteBtn.setStyle("-fx-background-color: #fee2e2; -fx-border-color: #fca5a5; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #991b1b; -fx-font-size: 10px; -fx-padding: 2 6; -fx-cursor: hand;");
+        Button deleteBtn = new Button("Delete");
+        deleteBtn.setStyle("-fx-background-color: #fee2e2; -fx-border-color: #fca5a5; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-text-fill: #991b1b; -fx-font-size: 9px; -fx-padding: 2 6; -fx-cursor: hand;");
         deleteBtn.setTooltip(new Tooltip("Remove from Floor"));
         deleteBtn.setOnAction(e -> {
             floorLayoutService.removePlacement(placement.getRow(), placement.getCol());
@@ -3098,8 +3209,8 @@ public class MainAppController implements Initializable {
 
                 HBox microTopBar = new HBox(4);
                 microTopBar.setStyle("-fx-padding: 0 0 2 0;");
-                Label icon = new Label("📥");
-                icon.setStyle("-fx-font-size: 10px;");
+                Label icon = new Label("IN");
+                icon.setStyle("-fx-font-size: 9px; -fx-font-weight: 800; -fx-text-fill: #14532d; -fx-background-color: #dcfce7; -fx-padding: 1 4; -fx-background-radius: 3px;");
                 Label lbl = new Label("ENTRY");
                 lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 Region spacer = new Region();
@@ -3126,8 +3237,8 @@ public class MainAppController implements Initializable {
 
                 HBox microTopBar = new HBox(4);
                 microTopBar.setStyle("-fx-padding: 0 0 2 0;");
-                Label icon = new Label("📦");
-                icon.setStyle("-fx-font-size: 10px;");
+                Label icon = new Label("DP");
+                icon.setStyle("-fx-font-size: 9px; -fx-font-weight: 800; -fx-text-fill: #14532d; -fx-background-color: #dcfce7; -fx-padding: 1 4; -fx-background-radius: 3px;");
                 Label lbl = new Label("DEPOT");
                 lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 Region spacer = new Region();
@@ -3192,8 +3303,8 @@ public class MainAppController implements Initializable {
 
                 HBox microTopBar = new HBox(4);
                 microTopBar.setStyle("-fx-padding: 0 0 2 0;");
-                Label icon = new Label("🏗️");
-                icon.setStyle("-fx-font-size: 10px;");
+                Label icon = new Label("CRN");
+                icon.setStyle("-fx-font-size: 9px; -fx-font-weight: 800; -fx-text-fill: #14532d; -fx-background-color: #dcfce7; -fx-padding: 1 4; -fx-background-radius: 3px;");
                 Label lbl = new Label("CRANE");
                 lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 Region spacer = new Region();
@@ -3221,8 +3332,8 @@ public class MainAppController implements Initializable {
 
                 HBox microTopBar = new HBox(4);
                 microTopBar.setStyle("-fx-padding: 0 0 2 0;");
-                Label icon = new Label("🗄️");
-                icon.setStyle("-fx-font-size: 10px;");
+                Label icon = new Label("RCK");
+                icon.setStyle("-fx-font-size: 9px; -fx-font-weight: 800; -fx-text-fill: #1e40af; -fx-background-color: #dbeafe; -fx-padding: 1 4; -fx-background-radius: 3px;");
                 Label lbl = new Label("RACK");
                 lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 Region spacer = new Region();
@@ -3249,8 +3360,8 @@ public class MainAppController implements Initializable {
 
                 HBox microTopBar = new HBox(4);
                 microTopBar.setStyle("-fx-padding: 0 0 2 0;");
-                Label icon = new Label("🎛️");
-                icon.setStyle("-fx-font-size: 10px;");
+                Label icon = new Label("CTL");
+                icon.setStyle("-fx-font-size: 9px; -fx-font-weight: 800; -fx-text-fill: #14532d; -fx-background-color: #dcfce7; -fx-padding: 1 4; -fx-background-radius: 3px;");
                 Label lbl = new Label("CONSOLE");
                 lbl.setStyle("-fx-font-size: 8px; -fx-font-weight: bold; -fx-text-fill: #64748b;");
                 Region spacer = new Region();
@@ -3279,8 +3390,8 @@ public class MainAppController implements Initializable {
         box.setMinHeight(84);
         box.setMaxHeight(84);
         box.setAlignment(Pos.CENTER);
-        Label icon = new Label("⚠️");
-        icon.setStyle("-fx-font-size: 16px;");
+        Label icon = new Label("!");
+        icon.setStyle("-fx-font-size: 12px; -fx-font-weight: 900; -fx-text-fill: #991b1b;");
         Label lbl = new Label(placement.getAssetType().getDisplayName());
         lbl.setStyle("-fx-font-weight: bold; -fx-font-size: 9px; -fx-text-fill: #991b1b;");
         Label sub = new Label("Unassigned Tag");
@@ -3504,14 +3615,14 @@ public class MainAppController implements Initializable {
         actionBtns.setAlignment(Pos.CENTER_LEFT);
 
         if (tag != null && (placement.getAssetType() == AssetType.CONVEYOR || placement.getAssetType() == AssetType.CURVED_CONVEYOR)) {
-            Button diagToggleBtn = new Button(tag.isActive() ? "⏹ Stop Machine" : "▶ Start Machine");
+            Button diagToggleBtn = new Button(tag.isActive() ? "Stop Machine" : "Start Machine");
             diagToggleBtn.setStyle(tag.isActive() ? "-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 14; -fx-cursor: hand;" : "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 14; -fx-cursor: hand;");
             diagToggleBtn.setOnAction(e -> {
                 handleToggleActuator(tag);
                 dialog.close();
             });
 
-            Button pulseBtn = new Button("⚡ 2s Pulse Test");
+            Button pulseBtn = new Button("2s Pulse Test");
             pulseBtn.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 6 14; -fx-cursor: hand;");
             pulseBtn.setOnAction(e -> {
                 handleQuickTestActuator(tag);
@@ -3520,7 +3631,7 @@ public class MainAppController implements Initializable {
 
             actionBtns.getChildren().addAll(diagToggleBtn, pulseBtn);
         } else if (tag != null && placement.getAssetType() == AssetType.SENSOR) {
-            Button resetCtBtn = new Button("↺ Reset Counter");
+            Button resetCtBtn = new Button("Reset Counter");
             resetCtBtn.setStyle("-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 6 14; -fx-cursor: hand;");
             resetCtBtn.setOnAction(e -> {
                 sensorCounters.put(tag.getId(), 0);
@@ -3533,7 +3644,7 @@ public class MainAppController implements Initializable {
             });
             actionBtns.getChildren().add(resetCtBtn);
         } else if (placement.getAssetType() == AssetType.STACKER_CRANE) {
-            Button btnMatrix = new Button("🗄️ Open Storage Matrix");
+            Button btnMatrix = new Button("Open Storage Matrix");
             btnMatrix.setStyle("-fx-background-color: #1e40af; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
             btnMatrix.setOnAction(e -> {
                 dialog.close();
@@ -3541,7 +3652,7 @@ public class MainAppController implements Initializable {
             });
             actionBtns.getChildren().add(btnMatrix);
         } else if (placement.getAssetType() == AssetType.STORAGE_RACK) {
-            Button btnMatrix = new Button("🗄️ View 54-Bay Matrix Twin");
+            Button btnMatrix = new Button("View 54-Bay Matrix Twin");
             btnMatrix.setStyle("-fx-background-color: #1e40af; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
             btnMatrix.setOnAction(e -> {
                 dialog.close();
@@ -3549,7 +3660,7 @@ public class MainAppController implements Initializable {
             });
             actionBtns.getChildren().add(btnMatrix);
         } else if (placement.getAssetType() == AssetType.CONTROL_PANEL) {
-            Button btnStartToggle = new Button(isSystemRunningAll ? "⏹ Stop All Lines" : "▶ Start All Lines");
+            Button btnStartToggle = new Button(isSystemRunningAll ? "Stop All Lines" : "Start All Lines");
             btnStartToggle.setStyle(isSystemRunningAll ? "-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;" : "-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 14; -fx-cursor: hand;");
             btnStartToggle.setOnAction(e -> {
                 dialog.close();
@@ -3610,7 +3721,7 @@ public class MainAppController implements Initializable {
                 gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
                 gc.setFill(Color.WHITE);
                 gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
-                gc.fillText("📥 ENTRY CHUTE", 10, 15);
+                gc.fillText("ENTRY CHUTE", 10, 15);
             }
             case DEPOT -> {
                 GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -3618,7 +3729,7 @@ public class MainAppController implements Initializable {
                 gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
                 gc.setFill(Color.WHITE);
                 gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9));
-                gc.fillText("📦 OUTFEED DEPOT", 8, 15);
+                gc.fillText("OUTFEED DEPOT", 8, 15);
             }
             case BRIDGE -> {
                 GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -3657,24 +3768,24 @@ public class MainAppController implements Initializable {
         for (ModbusTag tag : tagManager.getActuatorTags()) {
             boolean alreadyPlaced = floorLayoutService.isTagPlaced(tag.getId());
             AssetType type = isCurvedConveyor(tag) ? AssetType.CURVED_CONVEYOR : AssetType.CONVEYOR;
-            String label = type.getIcon() + " " + tag.getName() + " (Coil " + tag.getAddress() + ")" + (alreadyPlaced ? " [In Use]" : "");
+            String label = tag.getName() + " (Coil " + tag.getAddress() + ")" + (alreadyPlaced ? " [In Use]" : "");
             options.add(new PlacementOption(type, tag.getId(), label, alreadyPlaced));
         }
 
         // 2. Sensors from Tag Profiler
         for (ModbusTag tag : tagManager.getSensorTags()) {
             boolean alreadyPlaced = floorLayoutService.isTagPlaced(tag.getId());
-            String label = "👁️ " + tag.getName() + " (Input " + tag.getAddress() + ")" + (alreadyPlaced ? " [In Use]" : "");
+            String label = tag.getName() + " (Input " + tag.getAddress() + ")" + (alreadyPlaced ? " [In Use]" : "");
             options.add(new PlacementOption(AssetType.SENSOR, tag.getId(), label, alreadyPlaced));
         }
 
         // 3. Terminals & Bridge
-        options.add(new PlacementOption(AssetType.INFEED, null, "📥 Infeed Chute (Entry Point)", false));
-        options.add(new PlacementOption(AssetType.DEPOT, null, "📦 Warehouse Depot (Outfeed Chute)", false));
-        options.add(new PlacementOption(AssetType.BRIDGE, null, "──► Conveyor Bridge (Flow Link)", false));
-        options.add(new PlacementOption(AssetType.STACKER_CRANE, null, "🏗️ Stacker Crane (ASRS 2-Axis)", false));
-        options.add(new PlacementOption(AssetType.STORAGE_RACK, null, "🗄️ Storage Rack (High-Bay)", false));
-        options.add(new PlacementOption(AssetType.CONTROL_PANEL, null, "🎛️ Control Console (Auto/Manual)", false));
+        options.add(new PlacementOption(AssetType.INFEED, null, "Infeed Chute (Entry Point)", false));
+        options.add(new PlacementOption(AssetType.DEPOT, null, "Warehouse Depot (Outfeed Chute)", false));
+        options.add(new PlacementOption(AssetType.BRIDGE, null, "Conveyor Bridge (Flow Link)", false));
+        options.add(new PlacementOption(AssetType.STACKER_CRANE, null, "Stacker Crane (ASRS 2-Axis)", false));
+        options.add(new PlacementOption(AssetType.STORAGE_RACK, null, "Storage Rack (High-Bay)", false));
+        options.add(new PlacementOption(AssetType.CONTROL_PANEL, null, "Control Console (Auto/Manual)", false));
 
         comboOptions.setItems(options);
         comboOptions.setCellFactory(param -> new ListCell<>() {
@@ -4035,7 +4146,8 @@ public class MainAppController implements Initializable {
         HBox boxAvail = new HBox(8);
         boxAvail.setAlignment(Pos.CENTER_LEFT);
         boxAvail.setStyle("-fx-background-color: #f0fdf4; -fx-padding: 10 14; -fx-background-radius: 8px; -fx-border-color: #bbf7d0; -fx-border-radius: 8px;");
-        Label lblAvailIcon = new Label("📊");
+        Label lblAvailIcon = new Label("QTY");
+        lblAvailIcon.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #15803d;");
         Label lblAvailText = new Label();
         lblAvailText.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #15803d;");
         boxAvail.getChildren().addAll(lblAvailIcon, lblAvailText);
@@ -4062,17 +4174,17 @@ public class MainAppController implements Initializable {
                 try {
                     int requested = Integer.parseInt(txtQuantity.getText().trim());
                     if (requested <= 0) {
-                        lblValidation.setText("⚠️ Quantity must be greater than zero.");
+                        lblValidation.setText("Quantity must be greater than zero.");
                         lblValidation.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #b91c1c;");
                     } else if (requested > count) {
-                        lblValidation.setText(String.format("❌ Requested (%d) exceeds available stock (%d). Unload will be rejected.", requested, count));
+                        lblValidation.setText(String.format("Requested (%d) exceeds available stock (%d). Unload will be rejected.", requested, count));
                         lblValidation.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #b91c1c;");
                     } else {
-                        lblValidation.setText(String.format("✓ Valid request: Crane will retrieve %d pallet(s) sequentially to dispatch.", requested));
+                        lblValidation.setText(String.format("Valid request: Crane will retrieve %d pallet(s) sequentially to dispatch.", requested));
                         lblValidation.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #15803d;");
                     }
                 } catch (NumberFormatException e) {
-                    lblValidation.setText("⚠️ Please enter a valid integer quantity.");
+                    lblValidation.setText("Please enter a valid integer quantity.");
                     lblValidation.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #b91c1c;");
                 }
             }
@@ -4119,12 +4231,12 @@ public class MainAppController implements Initializable {
                             showAlert("Unload Error", msg);
                         } else {
                             log(">> [BULK UNLOAD] " + msg);
-                            transactionLogDao.incrementDispatch(requestedQty);
-                            renderCalendarMonth();
                             int occ = inventoryDao.getOccupiedBayCount();
+                            transactionDao.recordTransaction("DISPATCH", "OT", String.format("Automated unload of %d unit(s) of %s.", requestedQty, selectedProduct), "Bays occupied: " + occ, requestedQty);
+                            renderCalendarMonth();
                             int totalBays = 54;
                             double pct = (occ * 100.0) / totalBays;
-                            notifyTelegram(String.format("📤 *BULK UNLOAD COMPLETE*\n%d unit(s) of %s unloaded.\nBay occupancy: %d/%d (%.1f%%)",
+                            notifyTelegram(String.format("*BULK UNLOAD COMPLETE*\n%d unit(s) of %s unloaded.\nBay occupancy: %d/%d (%.1f%%)",
                                     requestedQty, selectedProduct, occ, totalBays, pct));
                         }
                     });
@@ -4266,15 +4378,15 @@ public class MainAppController implements Initializable {
                 btnStoreBatch.setStyle(greenStyle);
             }
             if (btnStartAll != null) {
-                btnStartAll.setText("▶ Start (" + qty + ")");
+                btnStartAll.setText("Start (" + qty + ")");
                 btnStartAll.setStyle(masterGreenStyle);
             }
             if (btnDashStartAll != null) {
-                btnDashStartAll.setText("▶ Start (" + qty + ")");
+                btnDashStartAll.setText("Start (" + qty + ")");
                 btnDashStartAll.setStyle(dashGreenStyle);
             }
             if (btnToggleAutoPutaway != null) {
-                btnToggleAutoPutaway.setText("⚡ Putaway (" + qty + ")");
+                btnToggleAutoPutaway.setText("Putaway (" + qty + ")");
                 btnToggleAutoPutaway.setStyle("-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
             }
         } else {
@@ -4283,15 +4395,15 @@ public class MainAppController implements Initializable {
                 btnStoreBatch.setStyle(greenStyle);
             }
             if (btnStartAll != null) {
-                btnStartAll.setText("▶ Continuous");
+                btnStartAll.setText("Continuous");
                 btnStartAll.setStyle(masterGreenStyle);
             }
             if (btnDashStartAll != null) {
-                btnDashStartAll.setText("▶ Start All");
+                btnDashStartAll.setText("Start All");
                 btnDashStartAll.setStyle(dashGreenStyle);
             }
             if (btnToggleAutoPutaway != null) {
-                btnToggleAutoPutaway.setText("⚡ Enable Auto-Putaway");
+                btnToggleAutoPutaway.setText("Enable Auto-Putaway");
                 btnToggleAutoPutaway.setStyle("-fx-background-color: #f0fdf4; -fx-text-fill: #166534; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
             }
         }
@@ -4306,15 +4418,15 @@ public class MainAppController implements Initializable {
             btnStoreBatch.setStyle("-fx-background-color: #b45309; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;");
         }
         if (btnStartAll != null) {
-            btnStartAll.setText(String.format("⏹ Stop (%d/%d)", done, total));
+            btnStartAll.setText(String.format("Stop (%d/%d)", done, total));
             btnStartAll.setStyle(stopStyle);
         }
         if (btnDashStartAll != null) {
-            btnDashStartAll.setText(String.format("⏹ Stop (%d/%d)", done, total));
+            btnDashStartAll.setText(String.format("Stop (%d/%d)", done, total));
             btnDashStartAll.setStyle(dashStopStyle);
         }
         if (btnToggleAutoPutaway != null) {
-            btnToggleAutoPutaway.setText(String.format("⏹ Stop (%d/%d)", done, total));
+            btnToggleAutoPutaway.setText(String.format("Stop (%d/%d)", done, total));
             btnToggleAutoPutaway.setStyle("-fx-background-color: #991b1b; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
         }
         if (lblKpiLineState != null) {
@@ -4328,19 +4440,19 @@ public class MainAppController implements Initializable {
         String dashStopStyle = "-fx-background-color: #991b1b; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 9 16; -fx-cursor: hand;";
 
         if (btnStoreBatch != null) {
-            btnStoreBatch.setText("⏹ Stop Store");
+            btnStoreBatch.setText("Stop Store");
             btnStoreBatch.setStyle("-fx-background-color: #b45309; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 5 12; -fx-cursor: hand;");
         }
         if (btnStartAll != null) {
-            btnStartAll.setText("⏹ Stop Auto");
+            btnStartAll.setText("Stop Auto");
             btnStartAll.setStyle(stopStyle);
         }
         if (btnDashStartAll != null) {
-            btnDashStartAll.setText("⏹ Stop All");
+            btnDashStartAll.setText("Stop All");
             btnDashStartAll.setStyle(dashStopStyle);
         }
         if (btnToggleAutoPutaway != null) {
-            btnToggleAutoPutaway.setText("⏹ Stop Putaway");
+            btnToggleAutoPutaway.setText("Stop Putaway");
             btnToggleAutoPutaway.setStyle("-fx-background-color: #991b1b; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;");
         }
         if (lblKpiLineState != null) {
@@ -4414,14 +4526,14 @@ public class MainAppController implements Initializable {
                         }
                     }
 
+                    int occ = inventoryDao.getOccupiedBayCount();
+                    transactionDao.recordTransaction("PUTAWAY", "OT", String.format("Batch putaway of %d pallet(s) stored into rack.", qty), "Bays occupied: " + occ, qty);
                     logAudit("OT", String.format("Batch putaway of %d pallet(s) completed successfully. System returned to rest at Station 55.", qty));
                     log(String.format(">> [BATCH PUTAWAY] Finished: Exactly %d pallet(s) stored into rack. System safely at rest at Station 55.", qty));
-                    transactionLogDao.incrementPutaway(qty);
                     renderCalendarMonth();
-                    int occ = inventoryDao.getOccupiedBayCount();
                     int totalBays = 54;
                     double pct = (occ * 100.0) / totalBays;
-                    notifyTelegram(String.format("📥 *PUTAWAY COMPLETE*\n%d pallet(s) stored into rack.\nBay occupancy: %d/%d (%.1f%%)",
+                    notifyTelegram(String.format("*PUTAWAY COMPLETE*\n%d pallet(s) stored into rack.\nBay occupancy: %d/%d (%.1f%%)",
                             qty, occ, totalBays, pct));
                     refreshKpiMetrics();
                     refreshDispatchBatchOptions();
@@ -4562,13 +4674,13 @@ public class MainAppController implements Initializable {
                     showAlert("Dispatch Warning", msg);
                 } else {
                     log(">> [BUNCH DISPATCH] " + msg);
-                    logAudit("OT", String.format("Bunch dispatch of %d pallet(s) completed. Crane parked at Station 55 at rest.", targetQty));
-                    transactionLogDao.incrementDispatch(targetQty);
-                    renderCalendarMonth();
                     int occ = inventoryDao.getOccupiedBayCount();
+                    transactionDao.recordTransaction("DISPATCH", "OT", String.format("Bunch dispatch of %d pallet(s) completed.", targetQty), "Bays occupied: " + occ, targetQty);
+                    logAudit("OT", String.format("Bunch dispatch of %d pallet(s) completed. Crane parked at Station 55 at rest.", targetQty));
+                    renderCalendarMonth();
                     int totalBays = 54;
                     double pct = (occ * 100.0) / totalBays;
-                    notifyTelegram(String.format("📤 *DISPATCH COMPLETE*\n%d pallet(s) dispatched via outfeed.\nBay occupancy: %d/%d (%.1f%%)",
+                    notifyTelegram(String.format("*DISPATCH COMPLETE*\n%d pallet(s) dispatched via outfeed.\nBay occupancy: %d/%d (%.1f%%)",
                             targetQty, occ, totalBays, pct));
                 }
                 refreshKpiMetrics();
@@ -4828,7 +4940,7 @@ public class MainAppController implements Initializable {
         }
         if (lblKpiLowStockBadge != null) {
             if (lowStockCount > 0) {
-                lblKpiLowStockBadge.setText("⚠️ " + lowStockCount + " Low Stock");
+                lblKpiLowStockBadge.setText(lowStockCount + " Low Stock");
                 lblKpiLowStockBadge.setStyle("-fx-background-color: #fee2e2; -fx-background-radius: 6px; -fx-text-fill: #991b1b; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 3 8;");
             } else {
                 lblKpiLowStockBadge.setText("Stock Normal");
@@ -4844,12 +4956,34 @@ public class MainAppController implements Initializable {
     }
 
     /**
-     * Writes timestamped entries to the converged activity audit log.
+     * Loads historical operational transactions from the SQLite database into the live activity stream.
+     */
+    private void loadTransactionsFromDatabase() {
+        List<TransactionRecord> transactions = transactionDao.getAllTransactions();
+        for (TransactionRecord tr : transactions) {
+            String timePart = tr.getTimestamp();
+            if (timePart != null && timePart.length() >= 19 && timePart.contains(" ")) {
+                timePart = timePart.substring(11, 19);
+            }
+            auditRecords.add(new AuditRecord(timePart, tr.getCategory(), tr.getDescription()));
+        }
+        renderFilteredAuditLog();
+    }
+
+    /**
+     * Writes timestamped entries to the converged activity audit log and persists to SQLite database.
      */
     public void logAudit(String category, String message) {
+        logAudit("AUDIT", category, message);
+    }
+
+    public void logAudit(String type, String category, String message) {
         String timestamp = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         AuditRecord record = new AuditRecord(timestamp, category, message);
         auditRecords.add(record);
+
+        // Persist transaction to SQLite database
+        transactionDao.recordTransaction(type, category, message);
 
         Platform.runLater(() -> {
             if (txtAuditStream != null && shouldDisplayInFilter(category)) {
@@ -4894,15 +5028,15 @@ public class MainAppController implements Initializable {
                     lblCraneTelemetryInfo.setText("Crane Target Position: " + asrsEngine.getCurrentTargetPosition() + " (Bay " + asrsEngine.getActiveBay() + ") | Soft-PLC: " + state.name());
                 }
                 if (msg != null && msg.startsWith("Retrieval complete: Bay")) {
-                    transactionLogDao.incrementDispatch(1);
-                    renderCalendarMonth();
                     int occ = inventoryDao.getOccupiedBayCount();
+                    transactionDao.recordTransaction("DISPATCH", "OT", "Single pallet retrieved from rack.", "Bay occupancy: " + occ, 1);
+                    renderCalendarMonth();
                     int totalBays = 54;
                     double pct = (occ * 100.0) / totalBays;
-                    notifyTelegram(String.format("📤 *DISPATCH COMPLETE*\nSingle pallet retrieved from rack.\nBay occupancy: %d/%d (%.1f%%)",
+                    notifyTelegram(String.format("*DISPATCH COMPLETE*\nSingle pallet retrieved from rack.\nBay occupancy: %d/%d (%.1f%%)",
                             occ, totalBays, pct));
                 }
-                logAudit("OT", "🤖 ASRS Stacker Crane: " + msg);
+                logAudit("OT", "ASRS Stacker Crane: " + msg);
                 renderStorageMatrixGrid();
             });
         });
@@ -4963,7 +5097,8 @@ public class MainAppController implements Initializable {
 
         String assignedSku = "BOX-" + (100 + nextBay);
         inventoryDao.storeProductInBay(assignedSku, "Inbound Pallet #" + nextBay, "Packaging", 1, 14.50, nextBay);
-        logAudit("OT", "📦 Pallet Infeed: Dispatched pallet to Bay " + nextBay + " (SKU: " + assignedSku + ")");
+        transactionDao.recordTransaction("PUTAWAY", "OT", "Pallet Infeed: Dispatched pallet to Bay " + nextBay + " (SKU: " + assignedSku + ")", "Bay: " + nextBay, 1);
+        logAudit("OT", "Pallet Infeed: Dispatched pallet to Bay " + nextBay + " (SKU: " + assignedSku + ")");
         refreshKpiMetrics();
         loadInventoryData();
         renderStorageMatrixGrid();
@@ -5082,8 +5217,8 @@ public class MainAppController implements Initializable {
             Region spacer2 = new Region();
             HBox.setHgrow(spacer2, Priority.ALWAYS);
 
-            Button btnRetrieve = new Button("🚀");
-            btnRetrieve.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 8px; -fx-padding: 1 5; -fx-cursor: hand;");
+            Button btnRetrieve = new Button("Retrieve");
+            btnRetrieve.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #bbf7d0; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 8px; -fx-font-weight: bold; -fx-padding: 1 5; -fx-cursor: hand;");
             btnRetrieve.setTooltip(new Tooltip("Retrieve Pallet via Stacker Crane"));
             btnRetrieve.setOnAction(e -> {
                 e.consume();
@@ -5119,7 +5254,7 @@ public class MainAppController implements Initializable {
     private void triggerPalletRetrieval(int bayNumber, Product product) {
         if (asrsEngine == null) return;
         asrsEngine.requestRetrieval(bayNumber);
-        logAudit("OT", "🚀 Stacker Crane dispatched to RETRIEVE pallet from Bay " + bayNumber + " (" + product.getSku() + ")");
+        logAudit("OT", "Stacker Crane dispatched to RETRIEVE pallet from Bay " + bayNumber + " (" + product.getSku() + ")");
     }
 
     private void openOccupiedBayDialog(int bayNumber, Product product) {
@@ -5127,7 +5262,7 @@ public class MainAppController implements Initializable {
         dialog.setTitle("Bay " + String.format("%02d", bayNumber) + " - Occupied Storage Cell");
         dialog.setHeaderText("Pallet Inventory & Crane Retrieval Dispatch");
 
-        ButtonType retrieveBtnType = new ButtonType("🚀 Retrieve Pallet (Dispatch Crane)", ButtonBar.ButtonData.OK_DONE);
+        ButtonType retrieveBtnType = new ButtonType("Retrieve Pallet (Dispatch Crane)", ButtonBar.ButtonData.OK_DONE);
         ButtonType closeBtnType = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().addAll(retrieveBtnType, closeBtnType);
 
@@ -5167,7 +5302,7 @@ public class MainAppController implements Initializable {
         dialog.setTitle("Bay " + String.format("%02d", bayNumber) + " - Vacant Slot");
         dialog.setHeaderText("Allocate Pallet to High-Bay Storage Cell");
 
-        ButtonType allocateBtnType = new ButtonType("📦 Allocate Pallet", ButtonBar.ButtonData.OK_DONE);
+        ButtonType allocateBtnType = new ButtonType("Allocate Pallet", ButtonBar.ButtonData.OK_DONE);
         ButtonType closeBtnType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().addAll(allocateBtnType, closeBtnType);
 
@@ -5193,7 +5328,8 @@ public class MainAppController implements Initializable {
                 String name = txtName.getText().trim();
                 if (!sku.isEmpty()) {
                     inventoryDao.storeProductInBay(sku, name, "Packaging", 1, 15.00, bayNumber);
-                    logAudit("OT", "📦 Manual allocation: Stored " + sku + " in Bay " + bayNumber);
+                    transactionDao.recordTransaction("PUTAWAY", "OT", "Manual allocation: Stored " + sku + " in Bay " + bayNumber, "Bay: " + bayNumber, 1);
+                    logAudit("OT", "Manual allocation: Stored " + sku + " in Bay " + bayNumber);
                     refreshKpiMetrics();
                     loadInventoryData();
                     renderStorageMatrixGrid();

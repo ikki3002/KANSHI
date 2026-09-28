@@ -2,10 +2,7 @@ package com.example.warehousescadasystem.model;
 
 import java.util.Objects;
 
-/**
- * Represents an industrial SCADA Modbus Tag (Coil or Discrete Input).
- * Demonstrates Week 1 Core OOP encapsulation, enums, and constructors.
- */
+
 public class ModbusTag {
 
     public enum TagType {
@@ -80,12 +77,21 @@ public class ModbusTag {
         this.type = type;
     }
 
+    private transient Runnable stateChangeListener;
+
+    public void setStateChangeListener(Runnable listener) {
+        this.stateChangeListener = listener;
+    }
+
     public boolean isActive() {
         return active;
     }
 
     public void setActive(boolean active) {
         this.active = active;
+        if (stateChangeListener != null) {
+            stateChangeListener.run();
+        }
     }
 
     public int getRegisterValue() {
@@ -94,6 +100,9 @@ public class ModbusTag {
 
     public void setRegisterValue(int registerValue) {
         this.registerValue = registerValue;
+        if (stateChangeListener != null) {
+            stateChangeListener.run();
+        }
     }
 
     public boolean isActuator() {

@@ -5,12 +5,8 @@ import java.util.Queue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * Thread-Safe Bounded Buffer solving the classical Producer-Consumer synchronization problem.
- * Demonstrates Concurrency, ReentrantLock, and Condition variables (notFull, notEmpty).
- *
- * @param <T> The payload type stored in the queue.
- */
+
+
 public class WarehouseBuffer<T> {
 
     @FunctionalInterface
@@ -36,13 +32,7 @@ public class WarehouseBuffer<T> {
         this.notEmpty = lock.newCondition();
     }
 
-    /**
-     * Producer: Enqueues an item into the buffer.
-     * If the buffer is full, the calling thread blocks until space becomes available.
-     *
-     * @param item The item to enqueue.
-     * @throws InterruptedException If the thread is interrupted while waiting.
-     */
+
     public void put(T item) throws InterruptedException {
         lock.lock();
         try {
@@ -59,13 +49,7 @@ public class WarehouseBuffer<T> {
         }
     }
 
-    /**
-     * Consumer: Dequeues an item from the buffer.
-     * If the buffer is empty, the calling thread blocks until an item is produced.
-     *
-     * @return The dequeued item.
-     * @throws InterruptedException If the thread is interrupted while waiting.
-     */
+
     public T take() throws InterruptedException {
         lock.lock();
         try {
@@ -83,9 +67,7 @@ public class WarehouseBuffer<T> {
         }
     }
 
-    /**
-     * Non-blocking peek of current size.
-     */
+
     public int size() {
         lock.lock();
         try {
