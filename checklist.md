@@ -10,7 +10,7 @@ This document tracks all 8 evaluation criteria specified by the course instructo
 | :---: | :--- | :---: | :--- |
 | **1** | **Version Control** (Git & GitHub usage) | 🟢 **100% Ready** | Git log (20+ commits) • Feature branches: `main`, `scada_view`, `homepage` |
 | **2** | **Advanced OOP Concepts** (Interfaces, Abstract Classes) | 🟢 **DONE (100%)** | `CrudDao<T>`, `BaseDao<T>`, `IndustrialDevice`, `AbstractWarehouseActuator`, `BeltConveyorDevice` |
-| **3** | **JavaFX UI Design** (Layout panes, controls) | 🟢 **DONE (100%)** | `main-app-view.fxml`, `login-view.fxml`, `industrial-dark.css` |
+| **3** | **JavaFX UI Design** (Layout panes, controls) | 🟢 **DONE (100%)** | `main-app-view.fxml`, `login-view.fxml` |
 | **4** | **Layout Responsiveness** (Dynamic sizing & constraints) | 🟢 **DONE (100%)** | Responsive constraints, `HBox.hgrow`, `VBox.vgrow`, collapsible rail |
 | **5** | **Concurrency** (Multi-threading & Thread Pools) | 🟢 **DONE (100%)** | `WarehouseBuffer<T>` (Producer-Consumer), `ScheduledExecutorService`, `Platform.runLater` |
 | **6** | **Database Integration** (SQLite tables & relationships) | 🟢 **DONE (100%)** | `PRAGMA foreign_keys = ON;`, `invoices` & `invoice_items` with `FOREIGN KEY` & cascade |

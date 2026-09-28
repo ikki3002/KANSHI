@@ -73,16 +73,12 @@
 
 ## 4. Technical Implementation Steps
 
-### Step 1: Fix `HBox` Vertical Stretching & Sizing in FXML & CSS
+### Step 1: Fix `HBox` Vertical Stretching & Sizing in FXML & JavaFX
 - In `main-app-view.fxml`:
-  - Update `pipelineTrack` to: `<HBox fx:id="pipelineTrack" styleClass="pipeline-track" alignment="TOP_LEFT" fillHeight="false" />`.
+  - Update `pipelineTrack` to: `<HBox fx:id="pipelineTrack" alignment="TOP_LEFT" fillHeight="false" />`.
   - Add `btnToggleSidebar` (`[☰]`) to the top header bar next to brand title.
-- In `industrial-dark.css`:
-  - Update `.pipeline-block`:
-    `-fx-min-width: 155px; -fx-max-width: 165px; -fx-padding: 8px 10px; -fx-spacing: 6px;`
-  - Update `.pipeline-terminal`:
-    `-fx-min-width: 65px; -fx-max-width: 72px; -fx-padding: 10px 6px;`
-  - Add styles for `.nav-rail-collapsed`, `.sidebar-toggle-btn`.
+- Compact Pipeline Layout:
+  - Pipeline blocks configured with compact responsive bounds.
 
 ### Step 2: Implement Sidebar Collapsing Logic in `MainAppController.java`
 - Inject `@FXML private VBox navRail;` and `@FXML private Button btnToggleSidebar;`.
