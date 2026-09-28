@@ -102,6 +102,17 @@ public class DatabaseManager {
             stmt.execute(createInvoicesTable);
             stmt.execute(createInvoiceItemsTable);
 
+            // 4. Initialize Daily Transaction Log for Calendar Widget
+            String createDailyTransactionsTable = "CREATE TABLE IF NOT EXISTS daily_transactions (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "date TEXT UNIQUE NOT NULL, " +
+                    "putaway_count INTEGER NOT NULL DEFAULT 0, " +
+                    "dispatch_count INTEGER NOT NULL DEFAULT 0, " +
+                    "invoice_count INTEGER NOT NULL DEFAULT 0, " +
+                    "adjustment_count INTEGER NOT NULL DEFAULT 0" +
+                    ");";
+            stmt.execute(createDailyTransactionsTable);
+
         } catch (SQLException e) {
             System.err.println("Database initialization failed: " + e.getMessage());
             e.printStackTrace();

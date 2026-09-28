@@ -48,6 +48,8 @@ import com.example.kanshiwarehousemanagementsystem.model.FloorCellPlacement.Asse
 import com.example.kanshiwarehousemanagementsystem.model.FloorCellPlacement.Direction;
 import com.example.kanshiwarehousemanagementsystem.service.scada.FloorLayoutService;
 import com.example.kanshiwarehousemanagementsystem.service.api.CurrencyApiService;
+import com.example.kanshiwarehousemanagementsystem.service.api.TelegramBotService;
+import com.example.kanshiwarehousemanagementsystem.database.TransactionLogDao;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -82,6 +84,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.Month;
 
 /**
  * Controller for the integrated Kanshi WMS Main Application.
@@ -150,6 +156,18 @@ public class MainAppController implements Initializable {
     @FXML private Label lblFxApiTimestamp;
     private final CurrencyApiService currencyApiService = new CurrencyApiService();
     private String selectedCurrency = "USD";
+
+    // Transaction Calendar Widget
+    @FXML private GridPane gridCalendar;
+    @FXML private Label lblCalendarMonth;
+    private final TransactionLogDao transactionLogDao = new TransactionLogDao();
+    private YearMonth calendarCurrentMonth = YearMonth.now();
+
+    // Telegram Bot Integration
+    @FXML private TextField txtTelegramToken;
+    @FXML private TextField txtTelegramChatId;
+    @FXML private Label lblTelegramStatus;
+    private final TelegramBotService telegramBotService = new TelegramBotService();
 
     // Level 1 KPI Overview Labels & Badges
     @FXML private Label lblKpiValuation;
@@ -305,6 +323,8 @@ public class MainAppController implements Initializable {
         refreshDynamicHardwareUI();
         refreshKpiMetrics();
         initMimicAnimation();
+        setupCalendarWidget();
+        setupTelegramBot();
 
         log("[SYSTEM] Kanshi WMS 3-Level Executive Shell initialized.");
         logAudit("SYS", "Executive Command Center initialized. Modbus TCP & SQLite ready.");
@@ -386,6 +406,192 @@ public class MainAppController implements Initializable {
         }
         refreshKpiMetrics();
         log("[CURRENCY] Switched dashboard valuation currency to " + selectedCurrency);
+    }
+
+    // =========================================================================
+    // Transaction Calendar Widget
+    // =========================================================================
+
+    private void setupCalendarWidget() {
+        calendarCurrentMonth = YearMonth.now();
+        renderCalendarMonth();
+    }
+
+    private void renderCalendarMonth() {
+        if (gridCalendar == null) return;
+        gridCalendar.getChildren().clear();
+        gridCalendar.getColumnConstraints().clear();
+        gridCalendar.getRowConstraints().clear();
+
+        if (lblCalendarMonth != null) {
+            lblCalendarMonth.setText(calendarCurrentMonth.getMonth().toString().charAt(0)
+                    + calendarCurrentMonth.getMonth().toString().substring(1).toLowerCase()
+                    + " " + calendarCurrentMonth.getYear());
+        }
+
+        // Day-of-week headers
+        String[] dayNames = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+        for (int col = 0; col < 7; col++) {
+            Label header = new Label(dayNames[col]);
+            header.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #6b7280; -fx-alignment: center;");
+            header.setMaxWidth(Double.MAX_VALUE);
+            header.setAlignment(Pos.CENTER);
+            gridCalendar.add(header, col, 0);
+        }
+
+        // Load transaction data for this month
+        Map<Integer, int[]> monthData = transactionLogDao.getMonthSummary(calendarCurrentMonth);
+
+        LocalDate firstDay = calendarCurrentMonth.atDay(1);
+        int startCol = firstDay.getDayOfWeek().getValue() % 7; // Sunday=0
+        int daysInMonth = calendarCurrentMonth.lengthOfMonth();
+        LocalDate today = LocalDate.now();
+
+        int row = 1;
+        int col = startCol;
+        for (int day = 1; day <= daysInMonth; day++) {
+            final int currentDay = day;
+            int[] counts = monthData.get(day);
+            int totalOps = TransactionLogDao.totalOps(counts);
+            boolean isToday = calendarCurrentMonth.equals(YearMonth.from(today)) && day == today.getDayOfMonth();
+
+            VBox cell = new VBox(2);
+            cell.setAlignment(Pos.CENTER);
+            cell.setMinSize(36, 40);
+            cell.setMaxWidth(Double.MAX_VALUE);
+
+            String bgColor = isToday ? "#f0fdf4" : "#ffffff";
+            String borderColor = isToday ? "#14532d" : "#f3f4f6";
+            cell.setStyle("-fx-background-color: " + bgColor + "; -fx-background-radius: 8px; -fx-border-color: " + borderColor + "; -fx-border-radius: 8px; -fx-padding: 6 4; -fx-cursor: hand;");
+
+            Label dayLabel = new Label(String.valueOf(day));
+            dayLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: " + (isToday ? "800" : "600") + "; -fx-text-fill: " + (isToday ? "#14532d" : "#374151") + ";");
+            cell.getChildren().add(dayLabel);
+
+            // Each cell shows no transaction info directly; user clicks to reveal details
+            cell.setOnMouseEntered(e -> cell.setStyle("-fx-background-color: #f3f4f6; -fx-background-radius: 8px; -fx-border-color: #d1d5db; -fx-border-radius: 8px; -fx-padding: 6 4; -fx-cursor: hand;"));
+            cell.setOnMouseExited(e -> cell.setStyle("-fx-background-color: " + bgColor + "; -fx-background-radius: 8px; -fx-border-color: " + borderColor + "; -fx-border-radius: 8px; -fx-padding: 6 4; -fx-cursor: hand;"));
+
+            // Click handler: show breakdown popup
+            cell.setOnMouseClicked(e -> showCalendarDayPopup(currentDay, counts));
+
+            gridCalendar.add(cell, col, row);
+            col++;
+            if (col > 6) {
+                col = 0;
+                row++;
+            }
+        }
+    }
+
+    private void showCalendarDayPopup(int day, int[] counts) {
+        String dateStr = calendarCurrentMonth.atDay(day).toString();
+        String details;
+        if (counts == null || TransactionLogDao.totalOps(counts) == 0) {
+            details = "No warehouse transactions recorded on this date.";
+        } else {
+            details = String.format(
+                    "Putaway Operations: %d\n" +
+                    "Dispatch Operations: %d\n" +
+                    "Invoices Created: %d\n" +
+                    "Stock Adjustments: %d\n\n" +
+                    "Total Transactions: %d",
+                    counts[0], counts[1], counts[2], counts[3],
+                    TransactionLogDao.totalOps(counts));
+        }
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Day Transaction Summary");
+        alert.setHeaderText("📅 Summary for " + dateStr);
+        alert.setContentText(details);
+        alert.showAndWait();
+    }
+
+    @FXML
+    private void handleCalendarPrev(ActionEvent event) {
+        calendarCurrentMonth = calendarCurrentMonth.minusMonths(1);
+        renderCalendarMonth();
+    }
+
+    @FXML
+    private void handleCalendarNext(ActionEvent event) {
+        calendarCurrentMonth = calendarCurrentMonth.plusMonths(1);
+        renderCalendarMonth();
+    }
+
+    // =========================================================================
+    // Telegram Bot Integration
+    // =========================================================================
+
+    private void setupTelegramBot() {
+        telegramBotService.setInventoryDao(inventoryDao);
+        telegramBotService.setSystemStatusSupplier(this::buildSystemStatusForTelegram);
+    }
+
+    private String buildSystemStatusForTelegram() {
+        boolean modbusConnected = ioService != null && ioService.isConnected();
+        String modbusInfo = modbusConnected ? "CONNECTED" : "DISCONNECTED";
+        String lineState = (lblKpiLineState != null) ? lblKpiLineState.getText() : "UNKNOWN";
+        long activeEq = tagManager.getActuatorTags().stream().filter(ModbusTag::isActive).count();
+        int totalEq = tagManager.getActuatorTags().size();
+        boolean fxApiLive = currencyApiService.isLiveApiConnected();
+
+        return String.format(
+                "🏭 *Kanshi System Status*\n" +
+                "━━━━━━━━━━━━━━━━━━\n" +
+                "Modbus PLC: *%s*\n" +
+                "Conveyor Line: *%s*\n" +
+                "Active Equipment: *%d/%d*\n" +
+                "REST API (FX): *%s*",
+                modbusInfo, lineState, activeEq, totalEq,
+                fxApiLive ? "● Live" : "● Offline");
+    }
+
+    @FXML
+    private void handleTelegramConnect(ActionEvent event) {
+        String token = txtTelegramToken != null ? txtTelegramToken.getText() : "";
+        String chatId = txtTelegramChatId != null ? txtTelegramChatId.getText() : "";
+        if (token.trim().isEmpty() || chatId.trim().isEmpty()) {
+            showAlert("Telegram Setup", "Please enter both Bot Token and Chat ID.");
+            return;
+        }
+        telegramBotService.setCredentials(token, chatId);
+        telegramBotService.testConnection().thenAccept(success -> {
+            Platform.runLater(() -> {
+                if (success) {
+                    lblTelegramStatus.setText("● Connected");
+                    lblTelegramStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #15803d;");
+                    telegramBotService.startPolling();
+                    logAudit("IT", "Telegram Bot connected and polling for commands.");
+                } else {
+                    lblTelegramStatus.setText("● Connection Failed");
+                    lblTelegramStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #dc2626;");
+                }
+            });
+        });
+    }
+
+    @FXML
+    private void handleTelegramTest(ActionEvent event) {
+        if (!telegramBotService.isConnected()) {
+            showAlert("Telegram", "Please connect the bot first.");
+            return;
+        }
+        int units = inventoryDao.getTotalStockCount();
+        double val = inventoryDao.getTotalValuation();
+        String msg = String.format("📊 *Kanshi WMS Test*\nInventory: %,d units\nValuation: $%,.2f\nTimestamp: %s",
+                units, val, LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss dd-MMM-yyyy")));
+        telegramBotService.sendMessage(msg);
+        logAudit("IT", "Telegram test message sent.");
+    }
+
+    /**
+     * Sends a Telegram notification for a completed warehouse operation.
+     * Called after successful putaway or dispatch completions.
+     */
+    private void notifyTelegram(String message) {
+        if (telegramBotService.isConnected()) {
+            telegramBotService.sendMessage(message);
+        }
     }
 
     // =========================================================================
@@ -1255,6 +1461,9 @@ public class MainAppController implements Initializable {
         if (asrsEngine != null) {
             asrsEngine.stop();
         }
+        if (telegramBotService != null) {
+            telegramBotService.stopPolling();
+        }
     }
 
     /**
@@ -1897,6 +2106,8 @@ public class MainAppController implements Initializable {
                 boolean ok = inventoryDao.updateStockDelta(selected.getSku(), signedDelta);
                 if (ok) {
                     loadInventoryData();
+                    transactionLogDao.incrementAdjustment(1);
+                    renderCalendarMonth();
                     int newStock = inventoryDao.getStockQuantity(selected.getSku());
                     log("[INVENTORY] Adjusted stock for " + selected.getSku() + ": " + (signedDelta >= 0 ? "+" : "") + signedDelta + " units (New total: " + newStock + ")");
                     logAudit("IT-STOCK", "Stock adjustment on " + selected.getSku() + ": " + (signedDelta >= 0 ? "+" : "") + signedDelta + " (" + txtReason.getText().trim() + ", Total: " + newStock + ")");
@@ -2462,6 +2673,8 @@ public class MainAppController implements Initializable {
 
                 loadInvoiceData();
                 loadInventoryData();
+                transactionLogDao.incrementInvoice(1);
+                renderCalendarMonth();
 
                 log("[FINANCE] Booked invoice " + inv.getInvoiceNumber() + " ($" + String.format("%.2f", inv.getTotalAmount()) + ") for " + inv.getCustomerName());
                 logAudit("FINANCE", "Invoice booked: " + inv.getInvoiceNumber() + " | Customer: " + inv.getCustomerName() +
@@ -3906,6 +4119,13 @@ public class MainAppController implements Initializable {
                             showAlert("Unload Error", msg);
                         } else {
                             log(">> [BULK UNLOAD] " + msg);
+                            transactionLogDao.incrementDispatch(requestedQty);
+                            renderCalendarMonth();
+                            int occ = inventoryDao.getOccupiedBayCount();
+                            int totalBays = 54;
+                            double pct = (occ * 100.0) / totalBays;
+                            notifyTelegram(String.format("📤 *BULK UNLOAD COMPLETE*\n%d unit(s) of %s unloaded.\nBay occupancy: %d/%d (%.1f%%)",
+                                    requestedQty, selectedProduct, occ, totalBays, pct));
                         }
                     });
                 });
@@ -4196,6 +4416,13 @@ public class MainAppController implements Initializable {
 
                     logAudit("OT", String.format("Batch putaway of %d pallet(s) completed successfully. System returned to rest at Station 55.", qty));
                     log(String.format(">> [BATCH PUTAWAY] Finished: Exactly %d pallet(s) stored into rack. System safely at rest at Station 55.", qty));
+                    transactionLogDao.incrementPutaway(qty);
+                    renderCalendarMonth();
+                    int occ = inventoryDao.getOccupiedBayCount();
+                    int totalBays = 54;
+                    double pct = (occ * 100.0) / totalBays;
+                    notifyTelegram(String.format("📥 *PUTAWAY COMPLETE*\n%d pallet(s) stored into rack.\nBay occupancy: %d/%d (%.1f%%)",
+                            qty, occ, totalBays, pct));
                     refreshKpiMetrics();
                     refreshDispatchBatchOptions();
                     renderStorageMatrixGrid();
@@ -4336,6 +4563,13 @@ public class MainAppController implements Initializable {
                 } else {
                     log(">> [BUNCH DISPATCH] " + msg);
                     logAudit("OT", String.format("Bunch dispatch of %d pallet(s) completed. Crane parked at Station 55 at rest.", targetQty));
+                    transactionLogDao.incrementDispatch(targetQty);
+                    renderCalendarMonth();
+                    int occ = inventoryDao.getOccupiedBayCount();
+                    int totalBays = 54;
+                    double pct = (occ * 100.0) / totalBays;
+                    notifyTelegram(String.format("📤 *DISPATCH COMPLETE*\n%d pallet(s) dispatched via outfeed.\nBay occupancy: %d/%d (%.1f%%)",
+                            targetQty, occ, totalBays, pct));
                 }
                 refreshKpiMetrics();
                 refreshDispatchBatchOptions();
@@ -4658,6 +4892,15 @@ public class MainAppController implements Initializable {
                 }
                 if (lblCraneTelemetryInfo != null) {
                     lblCraneTelemetryInfo.setText("Crane Target Position: " + asrsEngine.getCurrentTargetPosition() + " (Bay " + asrsEngine.getActiveBay() + ") | Soft-PLC: " + state.name());
+                }
+                if (msg != null && msg.startsWith("Retrieval complete: Bay")) {
+                    transactionLogDao.incrementDispatch(1);
+                    renderCalendarMonth();
+                    int occ = inventoryDao.getOccupiedBayCount();
+                    int totalBays = 54;
+                    double pct = (occ * 100.0) / totalBays;
+                    notifyTelegram(String.format("📤 *DISPATCH COMPLETE*\nSingle pallet retrieved from rack.\nBay occupancy: %d/%d (%.1f%%)",
+                            occ, totalBays, pct));
                 }
                 logAudit("OT", "🤖 ASRS Stacker Crane: " + msg);
                 renderStorageMatrixGrid();

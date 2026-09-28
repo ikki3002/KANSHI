@@ -354,6 +354,13 @@ public class InventoryDao extends BaseDao<Product> {
     }
 
     /**
+     * Returns the count of occupied bays in the default 54-bay rack.
+     */
+    public int getOccupiedBayCount() {
+        return getBayOccupancyMap(54).size();
+    }
+
+    /**
      * Finds the lowest-numbered available/empty bay in the rack (1..totalBays).
      * Returns -1 if the rack is 100% full.
      */

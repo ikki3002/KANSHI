@@ -232,6 +232,22 @@
                         </VBox>
                     </HBox>
 
+                    <!-- Transaction Calendar Widget -->
+                    <VBox spacing="12"
+                          style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label text="📅 Transaction Calendar" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                            <Region HBox.hgrow="ALWAYS" />
+                            <Button text="◀" onAction="#handleCalendarPrev" minWidth="32"
+                                    style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 5 10; -fx-cursor: hand;" />
+                            <Label fx:id="lblCalendarMonth" text="September 2026" minWidth="140" alignment="CENTER"
+                                   style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                            <Button text="▶" onAction="#handleCalendarNext" minWidth="32"
+                                    style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 5 10; -fx-cursor: hand;" />
+                        </HBox>
+                        <GridPane fx:id="gridCalendar" hgap="4" vgap="4" alignment="CENTER" />
+                    </VBox>
+
                     <!-- Converged Real-Time Activity Log (IT & OT Stream) -->
                     <VBox spacing="12"
                           style="-fx-background-color: #ffffff; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-padding: 22px;">
@@ -582,6 +598,35 @@
                                 <Insets top="8" />
                             </VBox.margin>
                         </Button>
+                    </VBox>
+
+                    <!-- Telegram Bot Integration Card -->
+                    <VBox spacing="14"
+                          style="-fx-background-color: #ffffff; -fx-padding: 24px; -fx-background-radius: 16px; -fx-border-color: #e5e7eb; -fx-border-radius: 16px; -fx-min-width: 320px; -fx-max-width: 340px;">
+                        <Label text="📲 Telegram Bot" style="-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                        <Label text="Receive warehouse alerts via Telegram." style="-fx-font-size: 12px; -fx-text-fill: #6b7280;" />
+
+                        <VBox spacing="6">
+                            <Label text="Bot Token:" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #374151;" />
+                            <TextField fx:id="txtTelegramToken" promptText="e.g. 123456:ABC-DEF..."
+                                       style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 8 12; -fx-font-size: 12px;" />
+                        </VBox>
+
+                        <VBox spacing="6">
+                            <Label text="Chat ID:" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #374151;" />
+                            <TextField fx:id="txtTelegramChatId" promptText="e.g. -100123456789"
+                                       style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 8 12; -fx-font-size: 12px;" />
+                        </VBox>
+
+                        <HBox spacing="8">
+                            <Button text="🔗 Connect" onAction="#handleTelegramConnect"
+                                    style="-fx-background-color: #14532d; -fx-text-fill: #ffffff; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 16; -fx-cursor: hand;" />
+                            <Button text="📤 Test" onAction="#handleTelegramTest"
+                                    style="-fx-background-color: #f3f4f6; -fx-border-color: #e5e7eb; -fx-border-radius: 999px; -fx-background-radius: 999px; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 14; -fx-cursor: hand;" />
+                        </HBox>
+
+                        <Label fx:id="lblTelegramStatus" text="● Disconnected"
+                               style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #9ca3af;" />
                     </VBox>
                 </HBox>
             </VBox>
