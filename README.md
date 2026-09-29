@@ -1,4 +1,4 @@
-# KANSHI — Industrial Warehouse SCADA & Management System
+# Warehouse SCADA System
 
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/)
 [![JavaFX](https://img.shields.io/badge/JavaFX-21-blue.svg)](https://openjfx.io/)
@@ -6,7 +6,7 @@
 [![Tests](https://img.shields.io/badge/Tests-53%20Passed-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-green.svg)]()
 
-**KANSHI** is an industrial-grade Automated Storage & Retrieval System (AS/RS) SCADA and Warehouse Management application. Built with **Java 21** and **JavaFX**, it bridges physical plant-floor automation (conveyors, crane lifters, Modbus PLC I/O) with enterprise warehouse management (inventory ledger, financial invoicing with live FX rates, and remote Telegram telemetry).
+**Warehouse SCADA System** is an industrial-grade Automated Storage & Retrieval System (AS/RS) SCADA and Warehouse Management application. Built with **Java 21** and **JavaFX**, it bridges physical plant-floor automation (conveyors, crane lifters, Modbus PLC I/O) with enterprise warehouse management (inventory ledger, financial invoicing with live FX rates, and remote Telegram telemetry).
 
 ---
 
@@ -63,7 +63,7 @@ mvn clean javafx:run
 ## Project Structure
 
 ```text
-kanshi-warehouse-management-system/
+warehouse-scada-system/
 ├── src/main/java/com/example/warehousescadasystem/
 │   ├── concurrency/          # WarehouseBuffer, Producer & Consumer threads
 │   ├── controller/           # JavaFX FXML controllers (Login, Main Dashboard)
